@@ -1,0 +1,29 @@
+{
+  "name": "@carenest/web-buyer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Next.js buyer and caregiver portal for the CareNest platform",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf .next dist .turbo"
+  },
+  "dependencies": {
+    "@carenest/shared-types": "workspace:*",
+    "lucide-react": "^0.453.0",
+    "next": "^14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.15",
+    "typescript": "^5.6.0"
+  }
+}
