@@ -1,0 +1,30 @@
+# Default owners for everything in the repo
+*       @care-nest/maintainers
+
+# Front-end (Next.js)
+/frontend/                     @care-nest/frontend-team
+
+# Back-end (NestJS) microservices
+/backend/                      @care-nest/backend-team
+
+# IoT protocol + device firmware
+/packages/iot-codec/           @care-nest/iot-team
+/packages/iot-codec/test/      @care-nest/iot-team
+
+# Database schema + migrations
+/packages/database/prisma/     @care-nest/data-team
+/packages/database/scripts/    @care-nest/data-team
+/packages/database/src/        @care-nest/data-team
+
+# Infrastructure
+/infrastructure/               @care-nest/platform-team
+/.github/                      @care-nest/platform-team
+
+# CI workflows + root tooling
+/.github/workflows/            @care-nest/platform-team
+/turbo.json                    @care-nest/platform-team
+/pnpm-workspace.yaml           @care-nest/platform-team
+/package.json                  @care-nest/platform-team
+
+# Public docs
+/docs/                         @care-nest/maintainers

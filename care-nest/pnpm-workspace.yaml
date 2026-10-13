@@ -1,0 +1,20 @@
+# pnpm-workspace.yaml — CareNest monorepo
+
+# Top-level workspace globs.
+#   frontend/  — Next.js applications (Phase 1+)
+#   backend/   — NestJS microservices (Phase 1+)
+#   packages/  — shared libraries consumed by both sides
+packages:
+  - "frontend/*"
+  - "backend/*"
+  - "packages/*"
+
+# `onlyBuiltDependencies` requires pnpm >= 10.0.0. The CareNest root pins
+# pnpm 12.11.2 in `package.json#packageManager` — do not change one without
+# the other. We allow specific native builds here to keep the install
+# non-interactive in CI.
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true

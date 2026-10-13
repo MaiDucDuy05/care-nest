@@ -1,0 +1,10 @@
+# Placeholders — services live here in Phase 1
+# - iot-gateway/
+# - auth-service/
+# - catalog-service/
+# - order-service/
+# - payment-service/
+# - inventory-service/
+# - notification-service/
+# - health-service/
+# - analytics-service/

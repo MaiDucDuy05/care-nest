@@ -1,0 +1,12 @@
+# Local-dev Kubernetes manifests
+# These are deliberately minimal — they target `k3d` / `kind` / `minikube`
+# for local dev only. Production manifests live in a separate Helm chart
+# (planned for Phase 4).
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: carenest-dev
+  labels:
+    app.kubernetes.io/part-of: carenest
+    app.kubernetes.io/environment: dev

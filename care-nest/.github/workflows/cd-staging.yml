@@ -1,0 +1,44 @@
+name: cd-staging
+
+# Deploy the staging environment when changes land on `main`.
+# Phase 0 only ships the placeholder workflow — real service deployments
+# will be wired in Phase 1 once the first NestJS services are added.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAMESPACE: ${{ github.repository_owner }}
+
+jobs:
+  smoke:
+    name: Build + smoke (no deploy yet)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.11.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build all packages
+        run: pnpm turbo run build
+      - name: Run all tests
+        run: pnpm turbo run test
+      - name: Verify Prisma client
+        run: pnpm --filter @carenest/database prisma generate
+      - name: Mark staging deployable
+        run: echo "staging deploy stub: $GITHUB_SHA"
+        env:
+          GITHUB_SHA: ${{ github.sha }}
