@@ -87,6 +87,71 @@ services:
       kafka:
         condition: service_started
 
+  auth-service:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args:
+        SERVICE: auth-service
+    container_name: carenest-auth-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://carenest:carenest_dev@postgres:5432/carenest?schema=public
+      JWT_SECRET: care-nest-jwt-secret-dev-2026
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  catalog-service:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args:
+        SERVICE: catalog-service
+    container_name: carenest-catalog-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3002
+      DATABASE_URL: postgresql://carenest:carenest_dev@postgres:5432/carenest?schema=public
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3002:3002"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  device-service:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args:
+        SERVICE: device-service
+    container_name: carenest-device-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3003
+      DATABASE_URL: postgresql://carenest:carenest_dev@postgres:5432/carenest?schema=public
+      KAFKA_BROKERS: kafka:9092
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3003:3003"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
 volumes:
   postgres_data:
   redis_data:
