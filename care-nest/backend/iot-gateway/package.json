@@ -1,0 +1,33 @@
+{
+  "name": "@carenest/iot-gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "High-throughput TCP gateway for Wonlex V3.2 protocol decoding & Kafka publishing",
+  "main": "./dist/main.js",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch --onSuccess \"node dist/main.js\"",
+    "start": "node dist/main.js",
+    "lint": "eslint src test --no-error-on-unmatched-pattern",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo coverage"
+  },
+  "dependencies": {
+    "@carenest/iot-codec": "workspace:*",
+    "@carenest/shared-config": "workspace:*",
+    "@carenest/shared-kafka": "workspace:*",
+    "@carenest/shared-types": "workspace:*",
+    "@carenest/shared-utils": "workspace:*",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
