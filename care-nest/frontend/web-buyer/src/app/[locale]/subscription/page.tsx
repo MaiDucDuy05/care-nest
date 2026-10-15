@@ -1,28 +1,37 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { Link } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
 import { CreditCard, ArrowUpRight, Clock, CheckCircle } from 'lucide-react';
 import { subscriptionsService } from '@/services/subscriptions.service';
+import { plansService } from '@/services/plans.service';
 import { PlanCardSkeleton } from '@/components/ui/skeleton';
 import type { Subscription } from '@carenest/shared-types';
+import type { Plan } from '@carenest/shared-types';
 import type { PaymentRecord } from '@/services/subscriptions.service';
 
 export default function SubscriptionPage() {
   const t = useTranslations('subscription');
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [sub, pymts] = await Promise.all([
-          subscriptionsService.getMySubscription(),
-          subscriptionsService.listPayments(),
-        ]);
+        const sub = await subscriptionsService.getMySubscription();
         setSubscription(sub);
+        if (sub?.planId) {
+          try {
+            const plan = await plansService.getById(sub.planId);
+            setCurrentPlan(plan);
+          } catch {
+            // Plan lookup is non-critical for the page to render
+          }
+        }
+        const pymts = await subscriptionsService.listPayments();
         setPayments(pymts);
       } catch {
         // Handle error silently
@@ -76,7 +85,7 @@ export default function SubscriptionPage() {
               <h2 style={{ fontSize: '20px', fontWeight: 800 }}>{t('currentPlan')}</h2>
             </div>
             <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--primary)', marginBottom: '8px' }}>
-              {subscription.planId}
+              {currentPlan?.name ?? t('unknownPlan')}
             </div>
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
               <span className={`badge ${

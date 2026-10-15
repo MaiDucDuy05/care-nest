@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from '@/i18n/routing';
+import { useRouter, Link } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
 import { ArrowLeft, CheckCircle } from 'lucide-react';
-import Link from 'next/link';
 import { PlanCard } from '@/components/subscription/plan-card';
 import { ProrationPreview } from '@/components/subscription/proration-preview';
 import { subscriptionsService } from '@/services/subscriptions.service';

@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import Link from 'next/link';
-import { HeartPulse, ShoppingBag, User, Activity, Bell, CreditCard, MapPin, Users } from 'lucide-react';
+import { Link } from '@/i18n/routing';
+import { HeartPulse, ShoppingBag, User, Activity, CreditCard, MapPin, Users } from 'lucide-react';
 import { LocaleSwitcher } from '@/components/ui/locale-switcher';
 
 export function Header() {
@@ -47,10 +46,10 @@ export function Header() {
 
         {/* Navigation */}
         <nav style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <Link href="/products" id="nav-products" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-main)' }}>
+          <Link href="/shop/products" id="nav-products" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-main)' }}>
             Thiết Bị Y Tế
           </Link>
-          <Link href="/dashboard" id="nav-dashboard" style={{
+          <Link href="/health/dashboard" id="nav-dashboard" style={{
             fontWeight: 600,
             fontSize: '15px',
             color: 'var(--primary)',
@@ -65,11 +64,11 @@ export function Header() {
             <CreditCard size={18} />
             Gói Dịch Vụ
           </Link>
-          <Link href="/geofence" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Link href="/health/geofence" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <MapPin size={18} />
             Vùng An Toàn
           </Link>
-          <Link href="/caregivers" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Link href="/health/caregivers" style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Users size={18} />
             Người Chăm Sóc
           </Link>
@@ -78,11 +77,11 @@ export function Header() {
         {/* Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <LocaleSwitcher />
-          <Link href="/cart" id="header-cart-btn" className="btn btn-secondary" style={{ padding: '8px 14px' }}>
+          <Link href="/shop/cart" id="header-cart-btn" className="btn btn-secondary" style={{ padding: '8px 14px' }}>
             <ShoppingBag size={18} />
             <span>Giỏ hàng</span>
           </Link>
-          <Link href="/login" id="header-login-btn" className="btn btn-primary" style={{ padding: '8px 18px' }}>
+          <Link href="/auth/login" id="header-login-btn" className="btn btn-primary" style={{ padding: '8px 18px' }}>
             <User size={18} />
             <span>Đăng nhập</span>
           </Link>

@@ -199,6 +199,7 @@
     "cancelBtn": "Cancel Plan",
     "reactivateBtn": "Reactivate",
     "pauseBtn": "Pause",
+    "unknownPlan": "Plan",
     "paymentHistory": "Payment History",
     "noPayments": "No payment history yet",
     "paymentDate": "Payment Date",
@@ -209,6 +210,15 @@
     "pending": "Pending",
     "failed": "Failed",
     "refunded": "Refunded",
+    "paymentStatus": {
+      "PAID": "Paid",
+      "PENDING": "Pending",
+      "FAILED": "Failed",
+      "REFUNDED": "Refunded"
+    },
+    "paymentHistoryDesc": "{count} transactions total",
+    "subscriptionPayment": "Subscription payment",
+    "errorLoadingPayments": "Failed to load payment history. Please try again later.",
     "upgrade": {
       "title": "Upgrade Your Plan",
       "subtitle": "Choose a plan that fits your health monitoring needs",
@@ -276,6 +286,9 @@
     "resend": "Resend",
     "revoke": "Revoke",
     "revokeConfirm": "Revoke this person's access?",
+    "listTitle": "Caregivers ({count})",
+    "errorLoading": "Failed to load caregivers. Please try again.",
+    "loading": "Loading...",
     "list": {
       "pending": "Pending",
       "accepted": "Joined",

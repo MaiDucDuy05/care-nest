@@ -11,10 +11,19 @@ interface CaregiverListProps {
   caregivers: Caregiver[];
   onRevoke: (id: string) => Promise<void>;
   onResend: (id: string) => Promise<void>;
+  isLoading?: boolean;
 }
 
-export function CaregiverList({ caregivers, onRevoke, onResend }: CaregiverListProps) {
+export function CaregiverList({ caregivers, onRevoke, onResend, isLoading }: CaregiverListProps) {
   const t = useTranslations('caregivers');
+
+  if (isLoading) {
+    return (
+      <div className="card" style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)' }}>
+        {t('loading')}
+      </div>
+    );
+  }
 
   if (!caregivers.length) {
     return (

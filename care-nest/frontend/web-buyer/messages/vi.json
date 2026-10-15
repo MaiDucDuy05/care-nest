@@ -199,6 +199,7 @@
     "cancelBtn": "Hủy gói",
     "reactivateBtn": "Kích hoạt lại",
     "pauseBtn": "Tạm ngưng",
+    "unknownPlan": "Gói dịch vụ",
     "paymentHistory": "Lịch Sử Thanh Toán",
     "noPayments": "Chưa có lịch sử thanh toán",
     "paymentDate": "Ngày thanh toán",
@@ -209,6 +210,15 @@
     "pending": "Đang chờ",
     "failed": "Thất bại",
     "refunded": "Đã hoàn tiền",
+    "paymentStatus": {
+      "PAID": "Đã thanh toán",
+      "PENDING": "Đang chờ",
+      "FAILED": "Thất bại",
+      "REFUNDED": "Đã hoàn tiền"
+    },
+    "paymentHistoryDesc": "Tổng cộng {count} giao dịch",
+    "subscriptionPayment": "Thanh toán gói dịch vụ",
+    "errorLoadingPayments": "Không thể tải lịch sử thanh toán. Vui lòng thử lại sau.",
     "upgrade": {
       "title": "Nâng Cấp Gói Dịch Vụ",
       "subtitle": "Chọn gói phù hợp với nhu cầu chăm sóc sức khỏe của bạn",
@@ -276,6 +286,9 @@
     "resend": "Gửi lại",
     "revoke": "Thu hồi",
     "revokeConfirm": "Thu hồi quyền truy cập của người này?",
+    "listTitle": "Danh sách người chăm sóc ({count})",
+    "errorLoading": "Không thể tải danh sách. Vui lòng thử lại.",
+    "loading": "Đang tải...",
     "list": {
       "pending": "Đang chờ",
       "accepted": "Đã tham gia",

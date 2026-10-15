@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Users } from 'lucide-react';
 import { InviteForm } from '@/components/caregivers/invite-form';
@@ -11,7 +11,23 @@ import { caregiversService } from '@/services/caregivers.service';
 export default function CaregiversPage() {
   const t = useTranslations('caregivers');
   const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await caregiversService.list();
+        if (!cancelled) setCaregivers(list);
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'unknown');
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleInvite = async (email: string) => {
     const newCg = await caregiversService.invite(email);
@@ -53,13 +69,20 @@ export default function CaregiversPage() {
         {/* Caregiver List */}
         <div>
           <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '16px' }}>
-            Danh sách người chăm sóc ({caregivers.length})
+            {t('listTitle', { count: caregivers.length })}
           </h2>
-          <CaregiverList
-            caregivers={caregivers}
-            onRevoke={handleRevoke}
-            onResend={handleResend}
-          />
+          {error ? (
+            <div className="card" style={{ textAlign: 'center', padding: '24px', color: 'var(--danger)' }}>
+              {t('errorLoading')}
+            </div>
+          ) : (
+            <CaregiverList
+              caregivers={caregivers}
+              onRevoke={handleRevoke}
+              onResend={handleResend}
+              isLoading={isLoading}
+            />
+          )}
         </div>
       </div>
     </div>

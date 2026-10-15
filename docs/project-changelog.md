@@ -5,6 +5,38 @@
 
 ---
 
+## [0.2.1] — 2025-10-16 — Phase 2.2 Sprint 10 (S10): web-buyer page completion
+
+### Changed
+- **Header navigation**: switched to `@/i18n/routing` `Link`; updated hrefs to real locale-prefixed paths (`/shop/products`, `/health/dashboard`, `/subscription`, `/health/geofence`, `/health/caregivers`, `/auth/login`)
+- **`plansService`**: added `getById(planId)` method (list-then-find fallback); typed return as `Plan`
+- **Subscription page**: now fetches the current plan via `plansService.getById()` and displays plan name instead of planId UUID
+- **Subscription upgrade page**: switched to i18n-aware `Link`
+
+### Added
+- **Payment history page** (`/[locale]/subscription/payments`): real implementation with loading/error/empty states, payment list with status badges (PAID/PENDING/FAILED/REFUNDED), invoice link, formatted VND amount and date
+- **Caregivers page**: added `useEffect` data fetch via `caregiversService.list()`; loading skeleton + error state
+- **`CaregiverList` component**: added `isLoading` prop with loading skeleton
+- **i18n keys**: `paymentStatus.*`, `paymentHistoryDesc`, `subscriptionPayment`, `errorLoadingPayments`, `unknownPlan`, `caregivers.listTitle`, `caregivers.errorLoading`, `caregivers.loading`
+
+### Removed
+- **Duplicate non-locale pages** (per S10 plan "Delete" section): `(auth)/login`, `(auth)/register`, `(health)/dashboard`, `(shop)/cart`, `(shop)/products`, and root `page.tsx` — all moved to `[locale]/` previously, these were orphans
+- **`activation/page.tsx`**: removed unused `eslint-disable` directive and unused `CheckCircle2` import (no longer needed)
+- **`header.tsx`**: removed unused `Bell` icon import + unused `eslint-disable` directive
+
+### Fixed
+- **Link hrefs in subscription pages**: `next/link` (no locale prefix) → `@/i18n/routing` `Link` (locale-aware)
+- **`plansService.getById` typing**: was `Array<{id: string}>`, now properly typed as `Plan[]`
+- **Header Links**: now route to `/vi/shop/products` etc. instead of orphan `/products`
+
+### Pipeline status
+- ✅ Type-check: 0 errors across 22 packages
+- ✅ Tests: 426 passing
+- ✅ Lint: 0 errors
+- ✅ Build: all 22 packages build (CJS+ESM + Next.js apps; web-buyer now has clean `/[locale]/` route tree)
+
+---
+
 ## [0.2.0] — 2025-10-16 — Phase 1: Shared Platform & Build Pipeline
 
 ### Added
