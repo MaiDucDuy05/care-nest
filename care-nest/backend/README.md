@@ -6,17 +6,17 @@ Kiến trúc Backend phân tán theo hướng Microservices, sử dụng **NestJ
 
 | Service | Port | Giao Thức | Trách Nhiệm | Trạng Thái |
 |---|---|---|---|---|
-| **`auth-service/`** | `3001` | HTTP / REST | Đăng ký, đăng nhập, JWT tokens, RBAC, KYC verification | ✅ **Scaffolded** (Phase 1) |
-| **`catalog-service/`** | `3002` | HTTP / REST | Quản lý sản phẩm, danh mục y tế, tích hợp Redis Caching | ✅ **Scaffolded** (Phase 1) |
-| **`device-service/`** | `3003` | HTTP + Kafka | Đăng ký IMEI Wonlex, gán thiết bị, theo dõi telemetry | ✅ **Scaffolded** (Phase 1) |
+| **`auth-service/`** | `3001` | HTTP / REST | Đăng ký, đăng nhập, JWT tokens, RBAC, MFA TOTP, audit log, KYC verification | ✅ **Scaffolded** (Phase 1) |
+| **`catalog-service/`** | `3002` | HTTP / REST | Quản lý sản phẩm, danh mục y tế, KYC seller onboarding, Redis Caching | ✅ **Scaffolded** (Phase 1) |
+| **`device-service/`** | `3003` | HTTP + Kafka | Đăng ký IMEI Wonlex, gán thiết bị, geofence, theo dõi telemetry | ✅ **Scaffolded** (Phase 1) |
 | **`iot-gateway/`** | `18800` | TCP Raw Socket | Xử lý gói tin Wonlex V3.2, giải mã sinh tồn, publish Kafka | ✅ **Scaffolded** (Phase 1) |
-| `order-service/` | `3004` | HTTP / REST | Tạo đơn hàng, giỏ hàng, tracking đơn | ⏳ Kế hoạch Phase 2 |
-| `payment-service/` | `3005` | HTTP / REST | Tích hợp cổng VNPay, MoMo, ZaloPay, COD | ⏳ Kế hoạch Phase 2 |
-| `inventory-service/` | `3006` | HTTP / Kafka | Quản lý kho đa điểm, giữ hàng tồn | ⏳ Kế hoạch Phase 2 |
-| `health-service/` | `3007` | HTTP + TSDB | Lưu trữ time-series vitals vào TimescaleDB | ⏳ Kế hoạch Phase 3 |
-| `alert-engine/` | `3008` | Kafka Consumer | Đánh giá ngưỡng bất thường y tế, cảnh báo người nhà | ⏳ Kế hoạch Phase 3 |
-| `notification-service/` | `3009` | Kafka Consumer | Push notification, SMS, Zalo ZNS, Email | ⏳ Kế hoạch Phase 3 |
-| `analytics-service/` | `3010` | HTTP / Olap | Phân tích doanh số người bán, xu hướng sức khỏe | ⏳ Kế hoạch Phase 4 |
+| **`order-service/`** | `3004` | HTTP + Kafka | Multi-vendor cart, state machine đơn hàng, inventory hold, ORDER_CREATED/SHIPPED | ✅ **Scaffolded** (Phase 1) |
+| **`payment-service/`** | `3005` | HTTP + Webhooks | Tích hợp VNPay (HMAC-SHA512), MoMo (HMAC-SHA256), COD; escrow 7 ngày; idempotency | ✅ **Scaffolded** (Phase 1) |
+| **`notification-service/`** | `3006` | HTTP + Kafka | Email/SMS/Push (mock), 11 template tiếng Việt, consumer ORDER_/ALERT_ topics | ✅ **Scaffolded** (Phase 1) |
+| **`alert-service/`** | `3007` | HTTP + Kafka + WS | Vitals thresholds, SOS, fall, geofence, low-battery, Socket.IO push <5s | ✅ **Scaffolded** (Phase 1) |
+| `inventory-service/` | `3010` | HTTP / Kafka | Quản lý kho đa điểm, giữ hàng tồn | ⏳ Kế hoạch Phase 2 |
+| `health-service/` | `3008` | HTTP + TSDB | Lưu trữ time-series vitals vào TimescaleDB | ⏳ Kế hoạch Phase 2 |
+| `analytics-service/` | `3010` | HTTP / Olap | Phân tích doanh số người bán, xu hướng sức khỏe | ⏳ Kế hoạch Phase 3 |
 
 ---
 
@@ -41,4 +41,8 @@ pnpm --filter @carenest/auth-service dev
 pnpm --filter @carenest/catalog-service dev
 pnpm --filter @carenest/device-service dev
 pnpm --filter @carenest/iot-gateway dev
+pnpm --filter @carenest/order-service dev
+pnpm --filter @carenest/payment-service dev
+pnpm --filter @carenest/notification-service dev
+pnpm --filter @carenest/alert-service dev
 ```

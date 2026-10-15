@@ -152,6 +152,99 @@ services:
       kafka:
         condition: service_started
 
+  order-service:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args:
+        SERVICE: order-service
+    container_name: carenest-order-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3004
+      DATABASE_URL: postgresql://carenest:carenest_dev@postgres:5432/carenest?schema=public
+      KAFKA_BROKERS: kafka:9092
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3004:3004"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
+  payment-service:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args:
+        SERVICE: payment-service
+    container_name: carenest-payment-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3005
+      DATABASE_URL: postgresql://carenest:carenest_dev@postgres:5432/carenest?schema=public
+      REDIS_URL: redis://redis:6379
+      VNPAY_TMN_CODE: ${VNPAY_TMN_CODE:-DEMO_VNP}
+      VNPAY_HASH_SECRET: ${VNPAY_HASH_SECRET:-DEMO_VNP_SECRET}
+      MOMO_PARTNER_CODE: ${MOMO_PARTNER_CODE:-DEMO_MOMO}
+      MOMO_ACCESS_KEY: ${MOMO_ACCESS_KEY:-DEMO_MOMO_KEY}
+      MOMO_SECRET_KEY: ${MOMO_SECRET_KEY:-DEMO_MOMO_SECRET}
+    ports:
+      - "3005:3005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  notification-service:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args:
+        SERVICE: notification-service
+    container_name: carenest-notification-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3006
+      DATABASE_URL: postgresql://carenest:carenest_dev@postgres:5432/carenest?schema=public
+      KAFKA_BROKERS: kafka:9092
+    ports:
+      - "3006:3006"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
+  alert-service:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args:
+        SERVICE: alert-service
+    container_name: carenest-alert-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3007
+      DATABASE_URL: postgresql://carenest:carenest_dev@postgres:5432/carenest?schema=public
+      KAFKA_BROKERS: kafka:9092
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3007:3007"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
 volumes:
   postgres_data:
   redis_data:
