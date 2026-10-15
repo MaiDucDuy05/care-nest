@@ -187,21 +187,24 @@ frontend/web-buyer/
 
 ## Todo List
 
-- [ ] Install next-intl + socket.io-client + react-leaflet + qrcode
-- [ ] i18n scaffold (vi/en messages + middleware)
-- [ ] Move 5 existing pages to [locale]/
-- [ ] Split api-client into 8 service files
-- [ ] Socket.IO client + 3 hooks
-- [ ] Refactor dashboard to real-time
-- [ ] Build geofence page + map component
-- [ ] Build caregivers page
-- [ ] Build subscription mgmt 3 pages
-- [ ] Build activation wizard 3 steps
-- [ ] Build notification preferences page
-- [ ] Add LocaleSwitcher to header
-- [ ] Update header links
-- [ ] Type-check + build pass
-- [ ] Commit `feat(web-buyer): S10 health dashboard + activation + subscription + geofence + i18n`
+- [x] Install next-intl + socket.io-client + react-leaflet + qrcode
+- [x] i18n scaffold (vi/en messages + middleware)
+- [x] Move 5 existing pages to [locale]/
+- [x] Split api-client into 8 service files
+- [x] Socket.IO client + 3 hooks
+- [x] Refactor dashboard to real-time (basic structure done; hardcoded device/user still TODO)
+- [x] Build geofence page + map component
+- [x] Build caregivers page (data fetch + list rendering done)
+- [x] Build subscription mgmt 3 pages (current + upgrade + payments all real)
+- [x] Build activation wizard 3 steps
+- [x] Build notification preferences page
+- [x] Add LocaleSwitcher to header
+- [x] Update header links (now i18n-aware, locale-prefixed paths)
+- [x] Type-check + build pass
+- [ ] Commit `feat(web-buyer): S10 health dashboard + activation + subscription + geofence + i18n` (split into multiple commits for clarity; S10 final commit = c4d0221)
+- [ ] **PENDING**: replace hardcoded `device-001`/`user-001` in dashboard with auth-context-driven data (requires AuthProvider hook)
+- [ ] **PENDING**: IMEI QR scanner (requires camera permission flow)
+- [ ] **PENDING**: CaregiverList empty-state when fetching returns 0 (currently shows 'noCaregivers' which is fine, but consider skeleton-on-initial-load)
 
 ## Success Criteria
 
