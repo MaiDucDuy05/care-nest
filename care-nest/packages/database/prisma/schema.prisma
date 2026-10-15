@@ -110,6 +110,7 @@ enum NotificationChannel {
   PUSH
   SMS
   EMAIL
+  ZNS
 }
 
 enum NotificationStatus {
