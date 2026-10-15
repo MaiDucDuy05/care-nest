@@ -57,6 +57,7 @@ export const KAFKA_TOPICS = {
 
   // Shipping
   SHIPMENT_CREATED: 'shipment.created',
+  SHIPMENT_STATUS_CHANGED: 'shipment.status_changed',
   SHIPMENT_FAILED: 'shipment.failed',
 
   // Outbound (server → device)
