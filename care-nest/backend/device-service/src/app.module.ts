@@ -3,8 +3,9 @@ import { DevicesModule } from './devices/devices.module.js';
 import { AssignmentsModule } from './assignments/assignments.module.js';
 import { TelemetryModule } from './telemetry/telemetry.module.js';
 import { GeofenceModule } from './geofence/geofence.module.js';
+import { CaregiversModule } from './caregivers/caregivers.module.js';
 
 @Module({
-  imports: [DevicesModule, AssignmentsModule, TelemetryModule, GeofenceModule],
+  imports: [DevicesModule, AssignmentsModule, TelemetryModule, GeofenceModule, CaregiversModule],
 })
 export class AppModule {}
