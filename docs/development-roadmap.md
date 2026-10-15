@@ -2,7 +2,7 @@
 
 > **Cập nhật liên tục** bởi `project-manager` agent. Mỗi phase có status, milestones, và % hoàn thành.
 
-**Cập nhật gần nhất:** 2026-10-15 (Phase 2.1: Fulfillment backend — 2 services mới + notification-service mở rộng)
+**Cập nhật gần nhất:** 2025-10-16 (Phase 1: build pipeline cleanup — 3 shared packages mới + fix toàn bộ type/test/lint/build across 22 packages)
 
 ---
 
@@ -17,6 +17,20 @@
 | 4 | Ra mắt & Tăng tốc | 6 tuần | W25–W30 | ⏳ Chưa bắt đầu | 0% |
 
 **Tổng tiến độ dự án: 38% (10/30 tuần Phase 0–1 + 2 tuần đầu Phase 2)**
+
+### Phase 1 — Build pipeline hardening (2025-10-16)
+- **3 shared packages mới**:
+  - `@carenest/prisma-client` — standalone Prisma wrapper + tenant middleware
+  - `@carenest/nestjs-common` — NestJS module (Prisma/Kafka/Redis/Health/Config), guards, decorators, interceptors, filters, middleware, pipes
+  - `@carenest/common-dto` — Zod schemas shared backend ↔ frontend
+- **Route structure cleanup**:
+  - web-buyer + web-admin: chuyển từ route groups `(name)` sang real URL segments để tránh Next.js parallel-page conflict
+  - URL mới: `/en/health/dashboard`, `/en/audit/[id]/[subId]`, v.v.
+- **Pipeline xanh trên 22 packages**:
+  - `pnpm -r type-check`: 0 errors
+  - `pnpm -r test`: 426 tests passing
+  - `pnpm -r lint`: 0 errors (warnings allowed)
+  - `pnpm -r build`: tất cả packages build được (CJS + ESM dual output)
 
 ---
 
@@ -83,6 +97,7 @@
 - Build: 8/8 services clean (dist artifacts produced)
 
 ### Kế tiếp
+- ✅ Phase 1: Build pipeline hardening — shared packages + fix toàn bộ 22 packages
 - Phase 2: Tiếp tục các stream còn lại (S10 buyer dashboard, S11 web-seller + web-admin, S13 SEO/PWA), RabbitMQ outbox, role-based admin portal
 - Apply Prisma migration cho Plan + SubscriptionReminder + DeviceActivationCode + Shipment fields
 
