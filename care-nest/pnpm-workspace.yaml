@@ -14,7 +14,10 @@ packages:
 # the other. We allow specific native builds here to keep the install
 # non-interactive in CI.
 allowBuilds:
+  '@nestjs/core': true
   '@prisma/client': true
   '@prisma/engines': true
+  bcrypt: true
   esbuild: true
   prisma: true
+  unrs-resolver: true
