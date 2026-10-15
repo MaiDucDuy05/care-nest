@@ -12,11 +12,13 @@ Kiến trúc Backend phân tán theo hướng Microservices, sử dụng **NestJ
 | **`iot-gateway/`** | `18800` | TCP Raw Socket | Xử lý gói tin Wonlex V3.2, giải mã sinh tồn, publish Kafka | ✅ **Scaffolded** (Phase 1) |
 | **`order-service/`** | `3004` | HTTP + Kafka | Multi-vendor cart, state machine đơn hàng, inventory hold, ORDER_CREATED/SHIPPED | ✅ **Scaffolded** (Phase 1) |
 | **`payment-service/`** | `3005` | HTTP + Webhooks | Tích hợp VNPay (HMAC-SHA512), MoMo (HMAC-SHA256), COD; escrow 7 ngày; idempotency | ✅ **Scaffolded** (Phase 1) |
-| **`notification-service/`** | `3006` | HTTP + Kafka | Email/SMS/Push (mock), 11 template tiếng Việt, consumer ORDER_/ALERT_ topics | ✅ **Scaffolded** (Phase 1) |
+| **`notification-service/`** | `3006` | HTTP + Kafka | Email (SES), SMS (ESMS), Push (VAPID), ZNS (Zalo); Handlebars templates; dispatcher ZNS>PUSH>SMS>EMAIL; consumer ORDER_/ALERT_/NOTIFICATION_REQUESTS | ✅ **Phase 2** |
 | **`alert-service/`** | `3007` | HTTP + Kafka + WS | Vitals thresholds, SOS, fall, geofence, low-battery, Socket.IO push <5s | ✅ **Scaffolded** (Phase 1) |
+| **`subscription-service/`** | `3008` | HTTP + Kafka + Cron | Plan catalog CRUD; subscriptions lifecycle; proration calculator (pure fn); 3 cron jobs (renew/remind/expire); device activation bridge (UUID+HMAC) | ✅ **NEW** (Phase 2) |
+| **`shipping-service/`** | `3009` | HTTP + Webhooks | GHN + GHTK adapters (sandbox mode); ShippingProviderFactory; webhook signature verify (HMAC + timingSafeEqual); SHIPMENT_STATUS_CHANGED publisher | ✅ **NEW** (Phase 2) |
 | `inventory-service/` | `3010` | HTTP / Kafka | Quản lý kho đa điểm, giữ hàng tồn | ⏳ Kế hoạch Phase 2 |
-| `health-service/` | `3008` | HTTP + TSDB | Lưu trữ time-series vitals vào TimescaleDB | ⏳ Kế hoạch Phase 2 |
-| `analytics-service/` | `3010` | HTTP / Olap | Phân tích doanh số người bán, xu hướng sức khỏe | ⏳ Kế hoạch Phase 3 |
+| `health-service/` | `3011` | HTTP + TSDB | Lưu trữ time-series vitals vào TimescaleDB | ⏳ Kế hoạch Phase 2 |
+| `analytics-service/` | `3012` | HTTP / Olap | Phân lý doanh số người bán, xu hướng sức khỏe | ⏳ Kế hoạch Phase 3 |
 
 ---
 

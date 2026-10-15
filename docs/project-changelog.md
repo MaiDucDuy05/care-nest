@@ -5,6 +5,110 @@
 
 ---
 
+## [0.3.0] — 2026-10-15 — Phase 2.1: Fulfillment Backend (S9 + S12)
+
+### Added
+- **`subscription-service` (port 3008) — NEW**
+  - Plan catalog CRUD với 3 plan seed: Basic (99k VND/tháng, 1 device), Family (249k VND/tháng, 3 devices), Enterprise (tuỳ biến)
+  - Subscription lifecycle: `create` từ Kafka event `order.paid`, `renew`, `cancel`, `upgrade` (prorated), `downgrade` (next cycle)
+  - **Proration calculator** (`src/proration/proration.ts`) — pure function, **26 edge cases**:
+    - Mid-cycle upgrade / downgrade
+    - Exact cycle boundary (zero proration)
+    - Leap day 29/02
+    - Free plans (priceMonthly = 0)
+    - 24h grace refund
+    - Multiple changes same cycle (cumulative)
+    - Yearly subscription with monthly proration
+  - **3 cron jobs** với `@nestjs/schedule`:
+    - `reminder.job` — 06:00 daily, scan subs expiring trong 30/15/7/3 ngày, INSERT idempotent qua unique `(subscriptionId, reminderType)`
+    - `grace-period.job` — 06:30 daily, mark `PAST_DUE` khi `now > expires_at && now < expires_at + 3d`
+    - `suspend-expired.job` — 07:00 daily, set device `SUSPENDED` cho subs hết hạn + 3d không thanh toán
+  - **Device activation bridge** (`/api/v1/activations/validate|confirm`): UUID v4 + HMAC-SHA256 signed, 30-day TTL, link tới Order + User + Device
+  - Kafka: CONSUMES `order.paid`, `order.delivered`; PRODUCES `subscription.created`, `subscription.cancelled`, `activation.code.created`, `device.activated`, `notification.requests`
+  - **59 unit tests**: proration (26) + DTOs (33)
+
+- **`shipping-service` (port 3009) — NEW**
+  - Adapter pattern: `IShippingProvider` interface (4 methods: `createOrder`, `trackOrder`, `cancelOrder`, `verifyWebhookSignature`)
+  - **GHN primary adapter** + **GHTK backup adapter** — sandbox mode khi thiếu API token (deterministic mock responses)
+  - **`ShippingProviderFactory`** với circuit-breaker:
+    - Track consecutive 5xx errors per provider
+    - Sau 3 lần lỗi liên tiếp → mark `unhealthy` → auto-failover sang provider backup
+    - Health check 5 phút/lần → tự phục hồi khi healthy
+  - HMAC-SHA256 webhook signature verify qua `crypto.timingSafeEqual` cho cả `/api/v1/webhooks/ghn` và `/api/v1/webhooks/ghtk`
+  - Kafka: CONSUMES `order.ready_to_ship` (từ order-service khi seller `PACKING` xong); PRODUCES `order.shipped`, `order.delivered`, `shipment.failed`
+  - Sử dụng `Shipment` model có sẵn (11 fields), không phải thay đổi schema
+  - **45 unit tests**: webhook signature (8) + provider factory (27) + DTOs (10)
+
+- **`notification-service` (port 3006) — EXPAND**
+  - **4 channel thật** (thay vì 3 mock log-to-stdout):
+    - **VAPID Web Push** (`web-push` SDK, public key endpoint `GET /api/v1/notifications/vapid-public-key`)
+    - **ESMS.vn SMS** (HTTP client wrapper `src/sms/esms-client.ts`)
+    - **AWS SES v2 email** (`@aws-sdk/client-sesv2`)
+    - **Zalo ZNS** (template-based)
+  - **`NotificationDispatcher`** (`src/channels/dispatcher.ts`) — channel priority `ZNS > PUSH > SMS > EMAIL`:
+    - `CRITICAL` (SOS / fall / geofence exit) → fan-out đồng thời PUSH + SMS
+    - `HIGH` (order.shipped, payment.failed) → PUSH + EMAIL
+    - `MEDIUM` (order.created, renewal reminder) → EMAIL
+    - Tự động fallback khi channel fail
+  - **Handlebars template engine** với helpers `formatVnd`, `upper`; chuyển 11 inline templates → 8 file `.hbs`:
+    - `order-confirm.hbs`, `kyc-status.hbs`, `activation-guide.hbs`, `renewal-reminder.hbs`
+    - `payment-failed.hbs`, `sos-alert.hbs`, `fall-detected.hbs`, `order-delivered.hbs`
+  - **VAPID keypair** generate lazily trên lần boot đầu, cache trong file `keys/vapid.json` (gitignored)
+  - Kafka consumer cho topic mới `notification.requests` (bounded LRU idempotency cache 10k entries)
+  - Kafka producer `notification.sent` / `notification.failed`
+  - **19 unit tests**: DTOs (3) + dispatcher (7) + templates (9)
+
+- **Schema additions** (Prisma `schema.prisma`):
+  - `Plan` model: code unique, priceMonthly, deviceLimit, caregiverLimit, retentionMonths, features (Json array)
+  - `SubscriptionReminder` model: unique `(subscriptionId, reminderType)` cho idempotency, index `(scheduledFor, sentAt)`
+  - `DeviceActivationCode` model: token UUID v4 + hmac, FK tới Order + User, expiresAt, usedAt, deviceId
+  - `Subscription`: thêm `planId` FK nullable tới `Plan` (giữ enum `plan` cũ cho backward compat) — relation field đặt tên `planRecord`
+  - `Order`: đổi `activationCode` (1-1) → `activationCodes` (1-n) để hỗ trợ re-issue
+  - `NotificationChannel` enum: thêm `ZNS`
+
+- **Kafka topics mới** (`packages/shared-config/src/constants.ts`):
+  - `device.activation.requested` (subscription → device-service)
+  - `shipment.status_changed` (shipping → order-service)
+
+- **Shared utility** (`packages/shared-utils/src/zod-validation.pipe.ts`):
+  - Reusable `ZodValidationPipe` — dùng chung bởi cả 3 service controller, thay thế inline validation
+  - Thêm `@nestjs/common` + `zod` vào peerDeps của shared-utils
+
+- **Docker Compose** (`docker-compose.dev.yml`):
+  - Thêm 2 service mới trong `full` profile: `subscription-service` (port 3008) + `shipping-service` (port 3009)
+  - Env vars: `ACTIVATION_SECRET`, `GHN_TOKEN`, `GHN_SHOP_ID`, `GHTK_TOKEN`, `DEFAULT_PROVIDER`, `CRON_ENABLED`
+
+### Test results
+- **123 unit tests** mới: subscription (59) + shipping (45) + notification (19) — all passing
+- Type-check: 3/3 services clean
+- Build: 3/3 services clean (dist artifacts produced)
+- `pnpm turbo run build type-check test --filter=@carenest/subscription-service --filter=@carenest/shipping-service --filter=@carenest/notification-service` → 0 errors, 0 failures
+
+### Architecture
+- Service matrix giờ là **10/10 services**: auth (3001), catalog (3002), device (3003), iot-gateway (18800), order (3004), payment (3005), notification (3006), alert (3007), subscription (3008), shipping (3009)
+- Phase 1+2 backend đã đủ để wire e2e: order → payment → shipping → subscription → activation → monitoring
+- Pattern: NestJS clean architecture (controller → service → repository → @carenest/database) đồng nhất qua 10 service
+- Idempotency: dùng UNIQUE constraint DB-level (`@@unique([subscriptionId, reminderType])`) + `INSERT … ON CONFLICT DO NOTHING`
+- Adapter pattern: `IShippingProvider` (GHN/GHTK), `NotificationChannelAdapter` (VAPID/ESMS/SES/ZNS)
+- Pure function cho business logic phức tạp: `proration-calculator` (26 edge cases), `order-state` (state machine)
+- HMAC verification: `crypto.timingSafeEqual` chống timing attack, constant-time comparison
+
+### Security
+- ACTIVATION_SECRET dùng cho HMAC-SHA256 ký device activation token (32+ bytes recommended)
+- Webhook signature verify (GHN + GHTK) với `timingSafeEqual` — chống timing attack
+- VAPID keys stored locally, never in git (`keys/vapid.json` gitignored)
+- Tất cả env secrets dùng `${VAR:-default}` placeholder, không hardcode
+
+### Up next (Phase 2.2)
+- S10: web-buyer Health Dashboard + Activation Wizard (frontend)
+- S11: web-seller Portal + web-admin Console (frontend)
+- S13: SEO + PWA + Lighthouse CI
+- Apply Prisma migration cho `Plan`, `SubscriptionReminder`, `DeviceActivationCode` lên staging database
+- Integrate real GHN/GHTK sandbox keys khi có credentials
+- Apply real Zalo ZNS template approval (sau khi Zalo duyệt template)
+
+---
+
 ## [0.2.0] — 2026-10-15 — Phase 1: Core Platform (8 microservices)
 
 ### Added

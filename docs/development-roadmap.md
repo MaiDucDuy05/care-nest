@@ -2,7 +2,7 @@
 
 > **Cập nhật liên tục** bởi `project-manager` agent. Mỗi phase có status, milestones, và % hoàn thành.
 
-**Cập nhật gần nhất:** 2026-10-15 (hoàn thành Phase 1: 8/8 microservices scaffolded)
+**Cập nhật gần nhất:** 2026-10-15 (Phase 2.1: Fulfillment backend — 2 services mới + notification-service mở rộng)
 
 ---
 
@@ -12,11 +12,11 @@
 |-------|-----|-----------|------|--------|---|
 | 0 | Khởi động & R&D (Monorepo + Wonlex codec) | 2 tuần | W01–W02 | ✅ **Hoàn thành** | 100% |
 | 1 | Xây dựng Core Platform | 8 tuần | W03–W10 | ✅ **Hoàn thành** | 100% |
-| 2 | Tích hợp & Hoàn thiện | 8 tuần | W11–W18 | ⏳ Chưa bắt đầu | 0% |
+| 2 | Tích hợp & Hoàn thiện | 8 tuần | W11–W18 | 🚧 **Đang thực hiện** | ~20% |
 | 3 | Thử nghiệm & Thẩm định | 6 tuần | W19–W24 | ⏳ Chưa bắt đầu | 0% |
 | 4 | Ra mắt & Tăng tốc | 6 tuần | W25–W30 | ⏳ Chưa bắt đầu | 0% |
 
-**Tổng tiến độ dự án: 33% (10/30 tuần)**
+**Tổng tiến độ dự án: 38% (10/30 tuần Phase 0–1 + 2 tuần đầu Phase 2)**
 
 ---
 
@@ -83,4 +83,70 @@
 - Build: 8/8 services clean (dist artifacts produced)
 
 ### Kế tiếp
-- Phase 2: Wire cross-service flows end-to-end với real Kafka events, apply Prisma migration cho Geofence model, integrate VNPay/MoMo sandbox keys, build admin portal RBAC UI
+- Phase 2: Tiếp tục các stream còn lại (S10 buyer dashboard, S11 web-seller + web-admin, S13 SEO/PWA), RabbitMQ outbox, role-based admin portal
+- Apply Prisma migration cho Plan + SubscriptionReminder + DeviceActivationCode + Shipment fields
+
+---
+
+## Phase 2 — Tích hợp & Hoàn thiện 🚧 (W11–W18, đang ở W12)
+
+### Mục tiêu
+Đóng kín e2e commerce → fulfillment loop (order → payment → shipping → subscription → activation → monitoring) và mở rộng notification infrastructure thật. Phase 2 được chia thành 5 sprint (S9–S13) theo spec gốc. S9 (Subscription + Device Activation Bridge) và S12 (Shipping Adapter) vừa hoàn thành trong session này.
+
+### Sprint breakdown
+
+| Sprint | Tên | FR-IDs | Trạng thái |
+|--------|-----|--------|------------|
+| **S9** | Subscription service + Device Activation Bridge | FR-2.1 → 2.12 | ✅ Hoàn thành |
+| **S10** | Web-buyer Health Dashboard + Activation Wizard | FR-2.13 → 2.24 | ⏳ Chưa bắt đầu |
+| **S11** | Web-seller Portal + Web-admin Console | FR-2.25 → 2.40 | ⏳ Chưa bắt đầu |
+| **S12** | Shipping adapter (GHN/GHTK) + Webhook + Failover | FR-2.41 → 2.55 | ✅ Hoàn thành |
+| **S13** | SEO + PWA + Lighthouse + Lighthouse CI | FR-2.56 → 2.70 | ⏳ Chưa bắt đầu |
+
+### Phase 2.1 — Fulfillment backend (S9 + S12) ✅
+
+**Stream A — `subscription-service` (port 3008) — NEW**
+- Plan catalog CRUD (seed: Basic 99k VND, Family 249k VND, Enterprise tuỳ biến)
+- Subscription lifecycle: create từ `order.paid`, renew, cancel, upgrade, downgrade
+- **Proration calculator** (pure function) — 26 edge cases: mid-cycle upgrade, downgrade no-refund, leap day (29/02), free plans, exact cycle boundary, 24h grace refund, cumulative changes
+- 3 cron jobs idempotent: `reminder.job` (D-30/15/7/3) với `INSERT … ON CONFLICT DO NOTHING` cho cặp `(subscriptionId, reminderType)`, `grace-period.job` (D+0→D+3 → `PAST_DUE`), `suspend-expired.job` (D+3+ → device SUSPENDED)
+- **Device activation bridge**: UUID v4 + HMAC-SHA256 signed, 30-day TTL, redeem bằng IMEI scan, link tới Order + User + Device
+- Kafka: CONSUMES `order.paid`, `order.delivered`; PRODUCES `subscription.created`, `subscription.cancelled`, `activation.code.created`, `device.activated`, `notification.requests`
+
+**Stream B — `shipping-service` (port 3009) — NEW**
+- Adapter pattern: `IShippingProvider` (createOrder / trackOrder / cancelOrder / verifyWebhookSignature)
+- **GHN primary** + **GHTK backup** với sandbox mode (deterministic mock khi thiếu token)
+- `ShippingProviderFactory` với circuit-breaker: 3 lần 5xx liên tiếp → mark provider unhealthy → auto-failover; health check 5 phút/lần → tự phục hồi
+- HMAC-SHA256 webhook signature verify qua `crypto.timingSafeEqual` cho cả `/webhooks/ghn` và `/webhooks/ghtk`
+- Kafka: CONSUMES `order.ready_to_ship`; PRODUCES `order.shipped`, `order.delivered`, `shipment.failed`
+- Sử dụng `Shipment` model có sẵn (11 fields), không thay đổi schema
+
+**Stream C — `notification-service` (port 3006) — EXPAND**
+- 4 channel thật (thay vì 3 mock log-to-stdout): VAPID Web Push, ESMS SMS HTTP client, AWS SES email, Zalo ZNS
+- `NotificationDispatcher` với channel priority `ZNS > PUSH > SMS > EMAIL`; critical alerts (SOS/FALL) fan-out đồng thời sang cả PUSH + SMS thay vì fallback
+- Handlebars template engine với helpers `formatVnd`, `upper`; chuyển 11 inline templates → 8 file `.hbs` (order-confirm, kyc-status, activation-guide, renewal-reminder, payment-failed, sos-alert, fall-detected, order-delivered)
+- VAPID keypair generate lazily trên lần boot đầu, cache trong file `keys/vapid.json` (gitignored); public key endpoint `GET /api/v1/notifications/vapid-public-key`
+- Kafka consumer cho topic mới `notification.requests` (bounded LRU idempotency 10k entries)
+- Kafka producer `notification.sent` / `notification.failed`
+
+### Schema additions (Phase 2.1)
+- `Plan` model: code unique, priceMonthly, deviceLimit, caregiverLimit, retentionMonths, features (Json)
+- `SubscriptionReminder` model: unique `(subscriptionId, reminderType)` cho idempotency, index `(scheduledFor, sentAt)`
+- `DeviceActivationCode` model: token UUID v4 + hmac, FK tới Order + User, expiresAt, usedAt, deviceId
+- `Subscription`: thêm `planId` FK nullable tới `Plan` (giữ enum cũ cho backward compat)
+- `Order`: đổi `activationCode` (1-1) → `activationCodes` (1-n) để hỗ trợ re-issue
+- `NotificationChannel` enum: thêm `ZNS`
+
+### Kafka topics mới (Phase 2.1)
+- `device.activation.requested` (subscription → device-service)
+- `shipment.status_changed` (shipping → order-service)
+
+### Test results
+- **123 unit tests** across 3 services: subscription (59) + shipping (45) + notification (19) — all passing
+- Type-check: 3/3 services clean
+- Build: 3/3 services clean (dist artifacts produced)
+
+### Kế tiếp (Phase 2.2)
+- S10: web-buyer Health Dashboard + Activation Wizard
+- S11: web-seller Portal + web-admin Console
+- S13: SEO + PWA + Lighthouse CI

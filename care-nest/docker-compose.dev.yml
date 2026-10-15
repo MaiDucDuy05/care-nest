@@ -245,6 +245,59 @@ services:
       kafka:
         condition: service_started
 
+  subscription-service:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args:
+        SERVICE: subscription-service
+    container_name: carenest-subscription-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3008
+      DATABASE_URL: postgresql://carenest:carenest_dev@postgres:5432/carenest?schema=public
+      KAFKA_BROKERS: kafka:9092
+      REDIS_URL: redis://redis:6379
+      ACTIVATION_SECRET: ${ACTIVATION_SECRET:-dev-activation-secret-32bytes-xxxxxx}
+      ACTIVATION_TOKEN_TTL_DAYS: 30
+      CRON_ENABLED: "true"
+    ports:
+      - "3008:3008"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
+  shipping-service:
+    profiles: ["full"]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/Dockerfile.service
+      args:
+        SERVICE: shipping-service
+    container_name: carenest-shipping-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3009
+      DATABASE_URL: postgresql://carenest:carenest_dev@postgres:5432/carenest?schema=public
+      KAFKA_BROKERS: kafka:9092
+      REDIS_URL: redis://redis:6379
+      GHN_TOKEN: ${GHN_TOKEN:-}
+      GHN_SHOP_ID: ${GHN_SHOP_ID:-}
+      GHTK_TOKEN: ${GHTK_TOKEN:-}
+      DEFAULT_PROVIDER: GHN
+    ports:
+      - "3009:3009"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+
 volumes:
   postgres_data:
   redis_data:
