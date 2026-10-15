@@ -7,7 +7,6 @@ import {
   Watch,
   Thermometer,
   Wind,
-  PhoneCall,
   CheckCircle2,
 } from 'lucide-react';
 

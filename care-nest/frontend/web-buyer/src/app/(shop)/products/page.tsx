@@ -1,5 +1,5 @@
-import Link from 'next/link';
-import { Search, Filter, Watch, Activity, Wind, ShoppingCart } from 'lucide-react';
+
+import { Search, Watch, Activity, Wind, ShoppingCart } from 'lucide-react';
 
 export default function ProductsPage() {
   const products = [

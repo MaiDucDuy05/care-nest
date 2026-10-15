@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ShoppingBag, ArrowLeft, Trash2, ShieldCheck, CreditCard } from 'lucide-react';
+import { ArrowLeft, Trash2, ShieldCheck, CreditCard } from 'lucide-react';
 
 export default function CartPage() {
   return (

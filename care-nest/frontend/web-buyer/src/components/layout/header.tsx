@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { HeartPulse, ShoppingBag, ShieldAlert, User, Search, Activity } from 'lucide-react';
+import { HeartPulse, ShoppingBag, User, Activity } from 'lucide-react';
 
 export function Header() {
   return (
