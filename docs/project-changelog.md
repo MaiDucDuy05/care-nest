@@ -5,6 +5,69 @@
 
 ---
 
+## [0.2.0] — 2026-10-15 — Phase 1: Core Platform (8 microservices)
+
+### Added
+- **`auth-service` (port 3001)** — Authentication + authorization
+  - Register/login/refresh with JWT (1h access, 7d refresh)
+  - bcrypt password hashing (10 rounds)
+  - `RolesGuard` + `@Roles()` decorator for 3-level RBAC
+  - **MFA TOTP module** (`/api/v1/mfa/setup|verify|disable`) — RFC 6238 HMAC-SHA1, 6-digit, 30s step, ±1 step window
+  - **Audit log module** (`/api/v1/audit/:entityType/:entityId`) — admin/support only, never blocks caller
+  - Field additions to User: `mfaEnabled`, `mfaSecret`, `lastLoginAt`
+
+- **`catalog-service` (port 3002)** — Products + categories
+  - Product CRUD with Redis caching, categories tree
+  - **KYC module** (`/api/v1/kyc/submit|me|pending|:sellerId/review`) — submit TAX_ID/BUSINESS_LICENSE/BANK_ACCOUNT/ID_CARD documents, admin reviews with APPROVED/REJECTED + reason, transactional state transitions (DRAFT → PENDING_REVIEW → ACTIVE/REJECTED)
+  - Field additions to Product: `isIotDevice`, `iotDeviceModel`, `compareAtPrice`
+
+- **`device-service` (port 3003)** — IoT device management
+  - IMEI registration, user assignment, Kafka telemetry consumer
+  - **Geofence module** (`/api/v1/geofences`) — circular safe zones (50m–5km radius, lat/lon validation, soft delete)
+  - New `Geofence` model with index on `(userId, active)`
+
+- **`order-service` (port 3004)** — Order lifecycle
+  - Redis-backed multi-vendor cart with `groupBySeller()` for split checkout
+  - Pure state machine: `CREATED → CONFIRMED → PACKING → SHIPPED → DELIVERED`, terminal: `CANCELLED`, `RETURNED`, `FAILED`
+  - Inventory hold in Prisma transaction with `quantity - reserved >= requested` guard
+  - Rolls back holds on checkout failure
+  - ORDER_CREATED + ORDER_SHIPPED Kafka events
+
+- **`payment-service` (port 3005)** — Payment gateway integration
+  - **3 adapters**: VNPay (HMAC-SHA512, params sorted alphabetically), MoMo (HMAC-SHA256 canonical string), COD (no-op)
+  - Idempotency by `transactionRef` (Payment table has unique constraint)
+  - 7-day Redis escrow hold
+  - Public webhooks `/api/v1/webhooks/{vnpay,momo,cod/confirm}` with HMAC verification before any state mutation
+  - ORDER_PAID Kafka event after successful payment
+
+- **`notification-service` (port 3006)** — Notification dispatch
+  - 3 channels: Email, SMS, Push (mock — log to stdout in dev)
+  - **11 Vietnamese templates**: `order.created`, `order.paid`, `order.shipped`, `order.delivered`, `kyc.approved`, `kyc.rejected`, `alert.vitals_high`, `alert.vitals_low`, `alert.sos`, `alert.fall`, `geofence.exit`
+  - `send()` flow: render template → persist row → dispatch → mark SENT/FAILED
+  - Kafka consumer for ORDER_CREATED/ORDER_SHIPPED/ALERT_TRIGGERED
+
+- **`alert-service` (port 3007)** — Alert engine
+  - **Vitals threshold rules** (BP high/low, HR high/low, SpO2 low, temp high/low) with clinical ranges
+  - **Haversine geofence** distance check (50m–5km)
+  - SOS / fall / low-battery handlers
+  - **Socket.IO gateway** at `/alerts` path with JWT handshake, real-time push target <5s
+  - Kafka consumer for `IOT_VITALS_RECEIVED`, `IOT_LOCATION_RECEIVED`, `IOT_SOS_RECEIVED`, `IOT_FALL_RECEIVED`, `IOT_HEARTBEAT_RECEIVED`
+  - Publishes ALERT_TRIGGERED for notification-service consumption
+
+- **Docker Compose** — `docker-compose.dev.yml` extended with 4 new services in `full` profile: order-service, payment-service, notification-service, alert-service (with VNPay/MoMo demo env vars, depends_on for postgres healthy + kafka started)
+
+### Test results
+- **62 unit tests** across new services (14 order + 14 payment + 7 notification + 17 alert + 4 auth MFA + 8 catalog KYC)
+- All 8 services pass `pnpm turbo run build type-check test` (35/35 tasks green)
+
+### Architecture
+- Pattern: NestJS clean architecture per service (controller → service → repository → @carenest/database)
+- All services use Zod schemas for DTO validation
+- Kafka producers use `new TypedProducer('service-name')`; consumers use `TypedConsumer` with retry + DLQ
+- TS2742 Prisma type portability: explicit `Promise<any>` return type annotations on methods returning Prisma types
+
+---
+
 ## [0.1.0] — 2026-10-13 — Phase 0: Khởi động & R&D
 
 ### Added
