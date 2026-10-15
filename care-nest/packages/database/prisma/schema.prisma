@@ -212,6 +212,8 @@ model User {
   auditLogs            AuditLog[]
   geofences            Geofence[]
   activationCodes      DeviceActivationCode[]
+  notificationPreference NotificationPreference?
+  pushSubscriptions    PushSubscription[]
 
   @@index([role, status])
   @@index([email])
@@ -775,4 +777,40 @@ model Geofence {
 
   @@index([userId, active])
   @@map("geofences")
+}
+
+// -------------------------------------------------------------------------
+// 24. NotificationPreference — per-user channel toggles by category
+// -------------------------------------------------------------------------
+
+model NotificationPreference {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId    String   @unique @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // 4 channels × 4 categories = 16 booleans, stored as JSON:
+  // { order: { email: true, push: true, sms: false, zns: true }, alert: {...}, subscription: {...}, kyc: {...} }
+  channels  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_preferences")
+}
+
+// -------------------------------------------------------------------------
+// 25. PushSubscription — Web Push VAPID subscription per browser endpoint
+// -------------------------------------------------------------------------
+
+model PushSubscription {
+  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId     String    @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
