@@ -45,4 +45,25 @@ export class UsersRepository {
       data: { lastLoginAt: new Date() },
     });
   }
+
+  async setMfaSecret(id: string, secret: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { mfaSecret: secret },
+    });
+  }
+
+  async enableMfa(id: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { mfaEnabled: true },
+    });
+  }
+
+  async disableMfa(id: string) {
+    return this.prisma.user.update({
+      where: { id },
+      data: { mfaEnabled: false, mfaSecret: null },
+    });
+  }
 }
