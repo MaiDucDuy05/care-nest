@@ -5,6 +5,12 @@ import {
   PaginationInputSchema,
   PaymentMethodSchema,
   AlertSeveritySchema,
+  asPlanId,
+  asSubscriptionId,
+  asShipmentId,
+  asGeofenceId,
+  asCaregiverId,
+  asDeviceAssignmentId,
 } from '../src/index.js';
 
 describe('vnPhoneSchema', () => {
@@ -57,5 +63,55 @@ describe('enums', () => {
     for (const v of ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const) {
       expect(AlertSeveritySchema.parse(v)).toBe(v);
     }
+  });
+});
+
+describe('branded IDs — CUID and UUID', () => {
+  const VALID_CUID = 'clxxxxxxxxxxxxxxxxxxxxxxxx';
+  const VALID_UUID = '0180c19c-0000-4000-8000-000000000001';
+
+  it('asDeviceAssignmentId accepts CUID', () => {
+    expect(asDeviceAssignmentId(VALID_CUID)).toBe(VALID_CUID);
+  });
+  it('asDeviceAssignmentId accepts UUID', () => {
+    expect(asDeviceAssignmentId(VALID_UUID)).toBe(VALID_UUID);
+  });
+  it('asDeviceAssignmentId rejects garbage', () => {
+    expect(() => asDeviceAssignmentId('not-an-id')).toThrow();
+  });
+
+  it('asPlanId accepts UUID', () => {
+    expect(asPlanId(VALID_UUID)).toBe(VALID_UUID);
+  });
+  it('asPlanId rejects garbage', () => {
+    expect(() => asPlanId('xxx')).toThrow();
+  });
+
+  it('asSubscriptionId accepts UUID', () => {
+    expect(asSubscriptionId(VALID_UUID)).toBe(VALID_UUID);
+  });
+  it('asSubscriptionId rejects garbage', () => {
+    expect(() => asSubscriptionId('')).toThrow();
+  });
+
+  it('asShipmentId accepts UUID', () => {
+    expect(asShipmentId(VALID_UUID)).toBe(VALID_UUID);
+  });
+  it('asShipmentId rejects garbage', () => {
+    expect(() => asShipmentId('ship-123')).toThrow();
+  });
+
+  it('asGeofenceId accepts UUID', () => {
+    expect(asGeofenceId(VALID_UUID)).toBe(VALID_UUID);
+  });
+  it('asGeofenceId rejects garbage', () => {
+    expect(() => asGeofenceId('abc')).toThrow();
+  });
+
+  it('asCaregiverId accepts UUID', () => {
+    expect(asCaregiverId(VALID_UUID)).toBe(VALID_UUID);
+  });
+  it('asCaregiverId rejects garbage', () => {
+    expect(() => asCaregiverId('')).toThrow();
   });
 });
