@@ -14,6 +14,8 @@ export const CreateProductSchema = z.object({
   images: z.array(z.string().url()).default([]),
   isIotDevice: z.boolean().default(false),
   iotDeviceModel: z.string().optional(),
+  isMedical: z.boolean().default(false),
+  requiresRx: z.boolean().default(false),
 });
 
 export type CreateProductDto = z.infer<typeof CreateProductSchema>;

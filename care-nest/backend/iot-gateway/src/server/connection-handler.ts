@@ -19,7 +19,7 @@ export function handleConnection(socket: Socket): void {
 
   socket.on('data', async (chunk: Buffer) => {
     try {
-      const extractedPackets = buffer.append(chunk);
+      const extractedPackets = buffer.push(chunk);
       for (const rawPacket of extractedPackets) {
         const parsed = parsePacket(rawPacket);
         if (parsed) {

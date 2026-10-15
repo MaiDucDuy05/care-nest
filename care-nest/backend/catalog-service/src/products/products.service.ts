@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ProductsRepository } from './products.repository.js';
+import type { Product } from '@carenest/database';
+import { ProductsRepository, type PaginatedProducts } from './products.repository.js';
 import { ProductQueryDto } from './dto/product-query.dto.js';
 import { CreateProductDto } from './dto/create-product.dto.js';
 import { UpdateProductDto } from './dto/update-product.dto.js';
@@ -9,11 +10,11 @@ import { cacheGet, cacheSet } from '@carenest/shared-redis';
 export class ProductsService {
   constructor(private readonly productsRepository: ProductsRepository) {}
 
-  async listProducts(query: ProductQueryDto) {
+  async listProducts(query: ProductQueryDto): Promise<PaginatedProducts> {
     return this.productsRepository.findMany(query);
   }
 
-  async getProductById(id: string) {
+  async getProductById(id: string): Promise<any> {
     const cacheKey = `product:${id}`;
     try {
       const cached = await cacheGet<any>(cacheKey);
@@ -28,7 +29,7 @@ export class ProductsService {
     }
 
     try {
-      await cacheSet(cacheKey, product, 300); // 5 min TTL
+      await cacheSet(cacheKey, product, { ttlSeconds: 300 }); // 5 min TTL
     } catch {
       // Ignore cache write error
     }
@@ -36,16 +37,16 @@ export class ProductsService {
     return product;
   }
 
-  async createProduct(dto: CreateProductDto) {
+  async createProduct(dto: CreateProductDto): Promise<Product> {
     return this.productsRepository.create(dto);
   }
 
-  async updateProduct(id: string, dto: UpdateProductDto) {
+  async updateProduct(id: string, dto: UpdateProductDto): Promise<Product> {
     await this.getProductById(id);
     return this.productsRepository.update(id, dto);
   }
 
-  async deleteProduct(id: string) {
+  async deleteProduct(id: string): Promise<Product> {
     await this.getProductById(id);
     return this.productsRepository.softDelete(id);
   }
