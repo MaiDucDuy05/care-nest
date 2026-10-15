@@ -12,3 +12,4 @@ export * from './logger.js';
 export * from './retry.js';
 export * from './timeout.js';
 export * from './pii.js';
+export * from './zod-validation.pipe.js';
