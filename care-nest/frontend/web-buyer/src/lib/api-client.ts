@@ -6,6 +6,10 @@
 const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3001';
 const CATALOG_API = process.env.NEXT_PUBLIC_CATALOG_API_URL || 'http://localhost:3002';
 const DEVICE_API = process.env.NEXT_PUBLIC_DEVICE_API_URL || 'http://localhost:3003';
+const ALERT_API = process.env.NEXT_PUBLIC_ALERT_API_URL || 'http://localhost:3007';
+const SUBSCRIPTION_API = process.env.NEXT_PUBLIC_SUBSCRIPTION_API_URL || 'http://localhost:3008';
+const SHIPPING_API = process.env.NEXT_PUBLIC_SHIPPING_API_URL || 'http://localhost:3009';
+const NOTIFICATION_API = process.env.NEXT_PUBLIC_NOTIFICATION_API_URL || 'http://localhost:3006';
 
 export const apiClient = {
   auth: {
@@ -69,5 +73,30 @@ export const apiClient = {
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
+
+    async getLatestVitals(deviceId: string) {
+      const res = await fetch(`${DEVICE_API}/api/v1/devices/${deviceId}/telemetry/latest`);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+
+    async getTelemetryHistory(deviceId: string, params?: { from?: string; to?: string; limit?: number }) {
+      const query = new URLSearchParams();
+      if (params?.from) query.set('from', params.from);
+      if (params?.to) query.set('to', params.to);
+      if (params?.limit) query.set('limit', params.limit.toString());
+
+      const res = await fetch(`${DEVICE_API}/api/v1/devices/${deviceId}/telemetry?${query.toString()}`);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+
+    async getMyDevices() {
+      const res = await fetch(`${DEVICE_API}/api/v1/devices/me`);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
   },
 };
+
+export { AUTH_API, CATALOG_API, DEVICE_API, ALERT_API, SUBSCRIPTION_API, SHIPPING_API, NOTIFICATION_API };

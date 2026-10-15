@@ -7,18 +7,25 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "lint": "next lint",
+    "lint": "next lint --max-warnings 100",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf .next dist .turbo"
   },
   "dependencies": {
     "@carenest/shared-types": "workspace:*",
+    "@hookform/resolvers": "^3.9.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.453.0",
     "next": "^14.2.15",
+    "next-intl": "^3.20.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.53.0",
+    "react-leaflet": "^4.2.1",
+    "socket.io-client": "^4.7.5"
   },
   "devDependencies": {
+    "@types/leaflet": "^1.9.12",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
