@@ -44,4 +44,10 @@ export class TypedProducer {
     // doesn't widen a freshly built array — cast keeps the call site tidy.
     await p.send(producerRecords as unknown as ProducerRecord);
   }
+
+  /** Disconnect the underlying kafkajs producer. */
+  async disconnect(): Promise<void> {
+    const p = await getProducer();
+    await p.disconnect();
+  }
 }

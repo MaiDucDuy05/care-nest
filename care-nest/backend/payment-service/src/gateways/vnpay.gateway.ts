@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { createHmac, randomBytes } from 'node:crypto';
 import type { CreatePaymentInput, CreatePaymentResult, WebhookPayload, WebhookVerification } from './payment-gateway.js';
 import { PaymentGateway } from './payment-gateway.js';
 
@@ -81,7 +82,7 @@ export class VnpayGateway extends PaymentGateway {
     const sortedKeys = Object.keys(paramsForSign).sort();
     const signData = sortedKeys.map((k) => `${k}=${this.encodeVNPay(paramsForSign[k]!)}`).join('&');
 
-    const crypto = require('crypto') as typeof import('crypto');
+    const crypto = { createHmac, randomBytes } as typeof import('crypto');
     const expected = crypto.createHmac('sha512', this.hashSecret).update(signData).digest('hex');
 
     const isValid = expected.toLowerCase() === receivedHash.toLowerCase();

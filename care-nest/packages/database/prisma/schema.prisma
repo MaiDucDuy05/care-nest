@@ -198,22 +198,22 @@ model User {
   updatedAt       DateTime   @updatedAt
   deletedAt       DateTime?
 
-  seller               Seller?
-  orders               Order[]
-  deviceAssignments    DeviceAssignment[]
-  healthRecords        HealthRecord[]
-  alertsRaised         Alert[]                @relation("AlertSubject")
-  alertsAssigned       Alert[]                @relation("AlertAssignee")
-  subscriptions        Subscription[]
-  notifications        Notification[]
-  careLinksAsUser      Caregiver[]            @relation("CareLinkUser")
-  careLinksAsCaretaker Caregiver[]            @relation("CareLinkCaretaker")
-  payments             Payment[]
-  auditLogs            AuditLog[]
-  geofences            Geofence[]
-  activationCodes      DeviceActivationCode[]
+  seller                 Seller?
+  orders                 Order[]
+  deviceAssignments      DeviceAssignment[]
+  healthRecords          HealthRecord[]
+  alertsRaised           Alert[]                 @relation("AlertSubject")
+  alertsAssigned         Alert[]                 @relation("AlertAssignee")
+  subscriptions          Subscription[]
+  notifications          Notification[]
+  careLinksAsUser        Caregiver[]             @relation("CareLinkUser")
+  careLinksAsCaretaker   Caregiver[]             @relation("CareLinkCaretaker")
+  payments               Payment[]
+  auditLogs              AuditLog[]
+  geofences              Geofence[]
+  activationCodes        DeviceActivationCode[]
   notificationPreference NotificationPreference?
-  pushSubscriptions    PushSubscription[]
+  pushSubscriptions      PushSubscription[]
 
   @@index([role, status])
   @@index([email])
@@ -801,15 +801,15 @@ model NotificationPreference {
 // -------------------------------------------------------------------------
 
 model PushSubscription {
-  id         String    @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  userId     String    @db.Uuid
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  endpoint   String    @unique
+  id         String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint   String   @unique
   p256dh     String
   auth       String
   userAgent  String?
-  createdAt  DateTime  @default(now())
-  lastUsedAt DateTime  @default(now())
+  createdAt  DateTime @default(now())
+  lastUsedAt DateTime @default(now())
 
   @@index([userId])
   @@map("push_subscriptions")

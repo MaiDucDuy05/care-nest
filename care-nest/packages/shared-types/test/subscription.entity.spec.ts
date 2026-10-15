@@ -39,7 +39,8 @@ describe('SubscriptionSchema', () => {
   });
 
   it('rejects missing required fields', () => {
-    const { id, ...rest } = VALID_SUB;
+    const rest = { ...VALID_SUB } as Record<string, unknown>;
+    delete rest['id'];
     expect(SubscriptionSchema.safeParse(rest).success).toBe(false);
   });
 });

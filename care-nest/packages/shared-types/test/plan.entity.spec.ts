@@ -22,7 +22,14 @@ describe('PlanSchema', () => {
   });
 
   it('uses defaults for optional fields', () => {
-    const { description, deviceSlots, features, isActive, ...minimal } = VALID_PLAN;
+    const minimal = {
+      id: VALID_PLAN.id,
+      name: VALID_PLAN.name,
+      priceVnd: VALID_PLAN.priceVnd,
+      interval: VALID_PLAN.interval,
+      createdAt: VALID_PLAN.createdAt,
+      updatedAt: VALID_PLAN.updatedAt,
+    };
     const result = PlanSchema.safeParse(minimal);
     expect(result.success).toBe(true);
     if (result.success) {

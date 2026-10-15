@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Get, UseGuards, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
-import { LoginSchema, LoginDto } from './dto/login.dto.js';
-import { RegisterSchema, RegisterDto } from './dto/register.dto.js';
+import { LoginSchema } from './dto/login.dto.js';
+import { RegisterSchema } from './dto/register.dto.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 
