@@ -1,0 +1,198 @@
+{
+  "app": {
+    "name": "CareNest Seller",
+    "tagline": "Medical Device Seller Portal"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "kyc": "KYC Verification",
+    "products": "Products",
+    "orders": "Orders",
+    "imei": "IMEI Scan",
+    "inventory": "Inventory",
+    "analytics": "Analytics",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "auth": {
+    "loginTitle": "Seller portal login",
+    "registerTitle": "Become a seller",
+    "email": "Email",
+    "password": "Password",
+    "fullName": "Full name",
+    "phone": "Phone number",
+    "submitLogin": "Sign in",
+    "submitRegister": "Register",
+    "noAccount": "No account?",
+    "hasAccount": "Already have an account?",
+    "registerHere": "Register here",
+    "loginHere": "Sign in",
+    "loginFailed": "Login failed",
+    "registerFailed": "Registration failed"
+  },
+  "kyc": {
+    "banner": {
+      "title": "Complete KYC verification before you can sell",
+      "cta": "Start verification"
+    },
+    "wizard": {
+      "title": "Seller identity verification",
+      "step": "Step",
+      "of": "of",
+      "next": "Next",
+      "back": "Back",
+      "submit": "Submit application"
+    },
+    "steps": {
+      "business": "Business info",
+      "documents": "Legal documents",
+      "bank": "Bank account",
+      "review": "Review & submit"
+    },
+    "fields": {
+      "businessName": "Business name",
+      "taxId": "Tax ID",
+      "businessAddress": "Registered address",
+      "businessType": "Business type",
+      "businessPhone": "Business phone",
+      "licenseNumber": "Business license number",
+      "licenseFile": "Business license photo",
+      "idFrontFile": "ID card front",
+      "idBackFile": "ID card back",
+      "bankName": "Bank name",
+      "bankAccount": "Account number",
+      "bankAccountName": "Account holder"
+    },
+    "status": {
+      "title": "KYC status",
+      "notStarted": "Not started",
+      "inReview": "Under review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "missingDocs": "Missing documents",
+      "submittedAt": "Submitted at",
+      "reviewNote": "Admin note"
+    }
+  },
+  "products": {
+    "title": "Products",
+    "addNew": "Add product",
+    "edit": "Edit",
+    "delete": "Delete",
+    "name": "Product name",
+    "sku": "SKU",
+    "price": "Price",
+    "stock": "Stock",
+    "category": "Category",
+    "status": "Status",
+    "actions": "Actions",
+    "active": "Active",
+    "inactive": "Inactive",
+    "draft": "Draft",
+    "empty": "You have no products yet",
+    "create": {
+      "title": "Create new product",
+      "description": "Description",
+      "submit": "Create product",
+      "created": "Product created"
+    },
+    "edit": {
+      "title": "Edit product",
+      "submit": "Save changes",
+      "updated": "Product updated"
+    }
+  },
+  "orders": {
+    "title": "Orders",
+    "id": "Order ID",
+    "buyer": "Buyer",
+    "total": "Total",
+    "status": "Status",
+    "createdAt": "Created at",
+    "actions": "Actions",
+    "empty": "No orders yet",
+    "view": "View",
+    "pack": "Pack",
+    "packing": {
+      "title": "Pack order",
+      "instructions": "Scan or enter IMEI for each product in the order",
+      "submit": "Complete packing",
+      "success": "Order moved to PACKING"
+    },
+    "statuses": {
+      "PENDING": "Pending",
+      "CONFIRMED": "Confirmed",
+      "PACKING": "Packing",
+      "SHIPPED": "Shipped",
+      "DELIVERED": "Delivered",
+      "CANCELLED": "Cancelled"
+    }
+  },
+  "imei": {
+    "title": "IMEI scan",
+    "subtitle": "Use the camera or enter manually to add IMEIs to your inventory",
+    "scan": "Scan",
+    "manual": "Manual",
+    "imei": "IMEI",
+    "product": "Product",
+    "scanned": "Scanned",
+    "assign": "Assign to order",
+    "assignTo": "Assign IMEI to order",
+    "remaining": "Remaining",
+    "success": "IMEI saved"
+  },
+  "inventory": {
+    "title": "Inventory",
+    "imei": "IMEI",
+    "product": "Product",
+    "status": "Status",
+    "assignedTo": "Assigned to",
+    "createdAt": "Created at",
+    "inStock": "In stock",
+    "reserved": "Reserved",
+    "sold": "Sold"
+  },
+  "analytics": {
+    "title": "Sales analytics",
+    "revenue7d": "7-day revenue",
+    "revenue30d": "30-day revenue",
+    "ordersCount": "Orders",
+    "averageOrder": "Avg order value",
+    "topProducts": "Top products",
+    "noData": "No data yet"
+  },
+  "settings": {
+    "title": "Account settings",
+    "profile": "Profile",
+    "storeName": "Store name",
+    "storeSlug": "Store slug",
+    "description": "Store description",
+    "save": "Save",
+    "saved": "Settings saved"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "search": "Search",
+    "yes": "Yes",
+    "no": "No",
+    "vnd": "VND",
+    "language": "Language"
+  },
+  "dashboard": {
+    "title": "Seller dashboard",
+    "welcome": "Welcome back",
+    "pendingOrders": "Pending orders",
+    "todayRevenue": "Today's revenue",
+    "lowStock": "Low stock",
+    "inStock": "IMEI in stock"
+  }
+}

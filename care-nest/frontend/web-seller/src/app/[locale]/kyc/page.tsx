@@ -1,0 +1,306 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from '@/i18n/routing';
+import { useTranslations } from 'next-intl';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { kycService } from '@/lib/services/kyc.service';
+import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+
+const step1Schema = z.object({
+  businessName: z.string().min(2, 'Bắt buộc'),
+  taxId: z.string().min(8, 'Mã số thuế tối thiểu 8 số'),
+  businessAddress: z.string().min(5, 'Bắt buộc'),
+  businessType: z.string().min(2, 'Bắt buộc'),
+  businessPhone: z.string().min(8, 'Bắt buộc'),
+  licenseNumber: z.string().min(3, 'Bắt buộc'),
+});
+
+const step3Schema = z.object({
+  bankName: z.string().min(2, 'Bắt buộc'),
+  bankAccount: z.string().min(6, 'Số tài khoản tối thiểu 6 số'),
+  bankAccountName: z.string().min(2, 'Bắt buộc'),
+});
+
+type Step1Values = z.infer<typeof step1Schema>;
+type Step3Values = z.infer<typeof step3Schema>;
+
+export default function KycPage() {
+  const t = useTranslations('kyc.wizard');
+  const tSteps = useTranslations('kyc.steps');
+  const tFields = useTranslations('kyc.fields');
+  const router = useRouter();
+
+  const [step, setStep] = useState(0);
+  const [step1, setStep1] = useState<Step1Values | null>(null);
+  const [step3, setStep3] = useState<Step3Values | null>(null);
+  const [documents, setDocuments] = useState<{ license?: File; idFront?: File; idBack?: File }>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const step1Form = useForm<Step1Values>({ resolver: zodResolver(step1Schema) });
+  const step3Form = useForm<Step3Values>({ resolver: zodResolver(step3Schema) });
+
+  const stepLabels = [tSteps('business'), tSteps('documents'), tSteps('bank'), tSteps('review')];
+
+  const handleStep1 = (data: Step1Values) => {
+    setStep1(data);
+    setStep(1);
+  };
+
+  const handleStep2 = () => {
+    if (!documents.license || !documents.idFront || !documents.idBack) {
+      setSubmitError('Vui lòng tải lên đầy đủ 3 tài liệu');
+      return;
+    }
+    setSubmitError(null);
+    setStep(2);
+  };
+
+  const handleStep3 = (data: Step3Values) => {
+    setStep3(data);
+    setStep(3);
+  };
+
+  const handleSubmit = async () => {
+    if (!step1 || !step3) return;
+    try {
+      setSubmitting(true);
+      setSubmitError(null);
+      const files = [documents.license!, documents.idFront!, documents.idBack!].filter(Boolean) as File[];
+      await kycService.submit({ ...step1, ...step3 }, files);
+      router.replace('/dashboard');
+    } catch (err) {
+      setSubmitError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 0' }}>
+      <h1 className="text-h2" style={{ marginBottom: 8 }}>
+        {t('title')}
+      </h1>
+      <p className="text-muted" style={{ marginBottom: 24 }}>
+        {t('step')} {step + 1} {t('of')} {stepLabels.length} — {stepLabels[step]}
+      </p>
+
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          marginBottom: 32,
+        }}
+      >
+        {stepLabels.map((label, i) => (
+          <div
+            key={label}
+            style={{
+              flex: 1,
+              padding: 12,
+              borderRadius: 'var(--radius-md)',
+              background: i === step ? 'var(--primary-light)' : i < step ? 'var(--success-light)' : 'var(--bg-card-subtle)',
+              color: i === step ? 'var(--primary)' : i < step ? 'var(--success)' : 'var(--text-muted)',
+              fontSize: 13,
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
+            {i < step ? <Check size={16} /> : <span>{i + 1}</span>}
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="card">
+        {step === 0 && (
+          <form
+            onSubmit={step1Form.handleSubmit(handleStep1)}
+            style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
+            <Field label={tFields('businessName')} reg={step1Form.register('businessName')} err={step1Form.formState.errors.businessName} />
+            <Field label={tFields('taxId')} reg={step1Form.register('taxId')} err={step1Form.formState.errors.taxId} />
+            <Field label={tFields('businessAddress')} reg={step1Form.register('businessAddress')} err={step1Form.formState.errors.businessAddress} />
+            <Field label={tFields('businessType')} reg={step1Form.register('businessType')} err={step1Form.formState.errors.businessType} />
+            <Field label={tFields('businessPhone')} reg={step1Form.register('businessPhone')} err={step1Form.formState.errors.businessPhone} />
+            <Field label={tFields('licenseNumber')} reg={step1Form.register('licenseNumber')} err={step1Form.formState.errors.licenseNumber} />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="submit" className="btn btn-primary">
+                {t('next')} <ChevronRight size={16} />
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <FileField
+              label={tFields('licenseFile')}
+              file={documents.license}
+              onFile={(f) => setDocuments((d) => ({ ...d, license: f }))}
+            />
+            <FileField
+              label={tFields('idFrontFile')}
+              file={documents.idFront}
+              onFile={(f) => setDocuments((d) => ({ ...d, idFront: f }))}
+            />
+            <FileField
+              label={tFields('idBackFile')}
+              file={documents.idBack}
+              onFile={(f) => setDocuments((d) => ({ ...d, idBack: f }))}
+            />
+
+            {submitError && (
+              <div
+                style={{
+                  background: 'var(--danger-light)',
+                  color: 'var(--danger)',
+                  padding: 8,
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: 13,
+                }}
+              >
+                {submitError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setStep(0)}>
+                <ChevronLeft size={16} /> {t('back')}
+              </button>
+              <button type="button" className="btn btn-primary" onClick={handleStep2}>
+                {t('next')} <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <form
+            onSubmit={step3Form.handleSubmit(handleStep3)}
+            style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
+            <Field label={tFields('bankName')} reg={step3Form.register('bankName')} err={step3Form.formState.errors.bankName} />
+            <Field label={tFields('bankAccount')} reg={step3Form.register('bankAccount')} err={step3Form.formState.errors.bankAccount} />
+            <Field label={tFields('bankAccountName')} reg={step3Form.register('bankAccountName')} err={step3Form.formState.errors.bankAccountName} />
+
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setStep(1)}>
+                <ChevronLeft size={16} /> {t('back')}
+              </button>
+              <button type="submit" className="btn btn-primary">
+                {t('next')} <ChevronRight size={16} />
+              </button>
+            </div>
+          </form>
+        )}
+
+        {step === 3 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h3 className="text-h3">Kiểm tra thông tin</h3>
+            <dl style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 12 }}>
+              {step1 && (
+                <>
+                  <SummaryRow label={tFields('businessName')} value={step1.businessName} />
+                  <SummaryRow label={tFields('taxId')} value={step1.taxId} />
+                  <SummaryRow label={tFields('businessAddress')} value={step1.businessAddress} />
+                  <SummaryRow label={tFields('businessType')} value={step1.businessType} />
+                  <SummaryRow label={tFields('businessPhone')} value={step1.businessPhone} />
+                  <SummaryRow label={tFields('licenseNumber')} value={step1.licenseNumber} />
+                </>
+              )}
+              {step3 && (
+                <>
+                  <SummaryRow label={tFields('bankName')} value={step3.bankName} />
+                  <SummaryRow label={tFields('bankAccount')} value={step3.bankAccount} />
+                  <SummaryRow label={tFields('bankAccountName')} value={step3.bankAccountName} />
+                </>
+              )}
+            </dl>
+
+            {submitError && (
+              <div
+                style={{
+                  background: 'var(--danger-light)',
+                  color: 'var(--danger)',
+                  padding: 8,
+                  borderRadius: 'var(--radius-md)',
+                  fontSize: 13,
+                }}
+              >
+                {submitError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setStep(2)}>
+                <ChevronLeft size={16} /> {t('back')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSubmit}
+                disabled={submitting}
+              >
+                {submitting ? <span className="spinner" /> : t('submit')}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  reg,
+  err,
+}: {
+  label: string;
+  reg: ReturnType<ReturnType<typeof useForm>['register']>;
+  err?: { message?: string };
+}) {
+  return (
+    <div>
+      <label className="label">{label}</label>
+      <input className="input" {...reg} />
+      {err?.message && (
+        <p style={{ color: 'var(--danger)', fontSize: 12, marginTop: 4 }}>{err.message}</p>
+      )}
+    </div>
+  );
+}
+
+function FileField({ label, file, onFile }: { label: string; file?: File; onFile: (f: File) => void }) {
+  return (
+    <div>
+      <label className="label">{label}</label>
+      <input
+        type="file"
+        accept="image/*,application/pdf"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onFile(f);
+        }}
+        className="input"
+      />
+      {file && <p className="text-sm text-muted" style={{ marginTop: 4 }}>{file.name}</p>}
+    </div>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <>
+      <dt className="text-muted text-sm">{label}</dt>
+      <dd style={{ fontWeight: 600 }}>{value}</dd>
+    </>
+  );
+}

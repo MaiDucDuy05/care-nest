@@ -1,0 +1,198 @@
+{
+  "app": {
+    "name": "CareNest Seller",
+    "tagline": "Cổng người bán thiết bị y tế"
+  },
+  "nav": {
+    "dashboard": "Tổng quan",
+    "kyc": "Xác minh KYC",
+    "products": "Sản phẩm",
+    "orders": "Đơn hàng",
+    "imei": "Quét IMEI",
+    "inventory": "Kho hàng",
+    "analytics": "Phân tích",
+    "settings": "Cài đặt",
+    "logout": "Đăng xuất"
+  },
+  "auth": {
+    "loginTitle": "Đăng nhập cổng người bán",
+    "registerTitle": "Đăng ký trở thành người bán",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "fullName": "Họ và tên",
+    "phone": "Số điện thoại",
+    "submitLogin": "Đăng nhập",
+    "submitRegister": "Đăng ký",
+    "noAccount": "Chưa có tài khoản?",
+    "hasAccount": "Đã có tài khoản?",
+    "registerHere": "Đăng ký tại đây",
+    "loginHere": "Đăng nhập",
+    "loginFailed": "Đăng nhập thất bại",
+    "registerFailed": "Đăng ký thất bại"
+  },
+  "kyc": {
+    "banner": {
+      "title": "Bạn cần hoàn tất xác minh KYC trước khi bán hàng",
+      "cta": "Bắt đầu xác minh"
+    },
+    "wizard": {
+      "title": "Xác minh danh tính người bán",
+      "step": "Bước",
+      "of": "trên",
+      "next": "Tiếp tục",
+      "back": "Quay lại",
+      "submit": "Gửi hồ sơ"
+    },
+    "steps": {
+      "business": "Thông tin doanh nghiệp",
+      "documents": "Tài liệu pháp lý",
+      "bank": "Tài khoản ngân hàng",
+      "review": "Xem lại & gửi"
+    },
+    "fields": {
+      "businessName": "Tên doanh nghiệp",
+      "taxId": "Mã số thuế",
+      "businessAddress": "Địa chỉ đăng ký kinh doanh",
+      "businessType": "Loại hình",
+      "businessPhone": "Điện thoại doanh nghiệp",
+      "licenseNumber": "Số giấy phép kinh doanh",
+      "licenseFile": "Ảnh giấy phép kinh doanh",
+      "idFrontFile": "Ảnh CMND/CCCD mặt trước",
+      "idBackFile": "Ảnh CMND/CCCD mặt sau",
+      "bankName": "Tên ngân hàng",
+      "bankAccount": "Số tài khoản",
+      "bankAccountName": "Chủ tài khoản"
+    },
+    "status": {
+      "title": "Trạng thái KYC",
+      "notStarted": "Chưa bắt đầu",
+      "inReview": "Đang xét duyệt",
+      "approved": "Đã phê duyệt",
+      "rejected": "Bị từ chối",
+      "missingDocs": "Thiếu tài liệu",
+      "submittedAt": "Gửi lúc",
+      "reviewNote": "Ghi chú của admin"
+    }
+  },
+  "products": {
+    "title": "Sản phẩm",
+    "addNew": "Thêm sản phẩm",
+    "edit": "Sửa",
+    "delete": "Xóa",
+    "name": "Tên sản phẩm",
+    "sku": "Mã SKU",
+    "price": "Giá",
+    "stock": "Tồn kho",
+    "category": "Danh mục",
+    "status": "Trạng thái",
+    "actions": "Hành động",
+    "active": "Đang bán",
+    "inactive": "Ngừng bán",
+    "draft": "Bản nháp",
+    "empty": "Bạn chưa có sản phẩm nào",
+    "create": {
+      "title": "Tạo sản phẩm mới",
+      "description": "Mô tả",
+      "submit": "Tạo sản phẩm",
+      "created": "Tạo sản phẩm thành công"
+    },
+    "edit": {
+      "title": "Sửa sản phẩm",
+      "submit": "Lưu thay đổi",
+      "updated": "Cập nhật thành công"
+    }
+  },
+  "orders": {
+    "title": "Đơn hàng",
+    "id": "Mã đơn",
+    "buyer": "Người mua",
+    "total": "Tổng tiền",
+    "status": "Trạng thái",
+    "createdAt": "Ngày tạo",
+    "actions": "Hành động",
+    "empty": "Chưa có đơn hàng nào",
+    "view": "Xem",
+    "pack": "Đóng gói",
+    "packing": {
+      "title": "Đóng gói đơn hàng",
+      "instructions": "Quét hoặc nhập IMEI cho từng sản phẩm trong đơn",
+      "submit": "Hoàn tất đóng gói",
+      "success": "Đã chuyển trạng thái sang PACKING"
+    },
+    "statuses": {
+      "PENDING": "Chờ xử lý",
+      "CONFIRMED": "Đã xác nhận",
+      "PACKING": "Đang đóng gói",
+      "SHIPPED": "Đã gửi",
+      "DELIVERED": "Đã giao",
+      "CANCELLED": "Đã hủy"
+    }
+  },
+  "imei": {
+    "title": "Quét IMEI",
+    "subtitle": "Quét camera hoặc nhập tay để thêm IMEI vào kho",
+    "scan": "Quét",
+    "manual": "Nhập tay",
+    "imei": "IMEI",
+    "product": "Sản phẩm",
+    "scanned": "Đã quét",
+    "assign": "Gán vào đơn",
+    "assignTo": "Gán IMEI vào đơn hàng",
+    "remaining": "Còn lại",
+    "success": "Đã lưu IMEI"
+  },
+  "inventory": {
+    "title": "Kho hàng",
+    "imei": "IMEI",
+    "product": "Sản phẩm",
+    "status": "Trạng thái",
+    "assignedTo": "Gán cho đơn",
+    "createdAt": "Tạo lúc",
+    "inStock": "Trong kho",
+    "reserved": "Đã đặt",
+    "sold": "Đã bán"
+  },
+  "analytics": {
+    "title": "Phân tích bán hàng",
+    "revenue7d": "Doanh thu 7 ngày",
+    "revenue30d": "Doanh thu 30 ngày",
+    "ordersCount": "Số đơn",
+    "averageOrder": "Giá trị đơn TB",
+    "topProducts": "Sản phẩm bán chạy",
+    "noData": "Chưa có dữ liệu"
+  },
+  "settings": {
+    "title": "Cài đặt tài khoản",
+    "profile": "Hồ sơ",
+    "storeName": "Tên cửa hàng",
+    "storeSlug": "Slug cửa hàng",
+    "description": "Mô tả cửa hàng",
+    "save": "Lưu",
+    "saved": "Đã lưu cài đặt"
+  },
+  "common": {
+    "loading": "Đang tải...",
+    "error": "Có lỗi xảy ra",
+    "retry": "Thử lại",
+    "cancel": "Hủy",
+    "save": "Lưu",
+    "edit": "Sửa",
+    "delete": "Xóa",
+    "back": "Quay lại",
+    "next": "Tiếp tục",
+    "submit": "Gửi",
+    "search": "Tìm kiếm",
+    "yes": "Có",
+    "no": "Không",
+    "vnd": "đ",
+    "language": "Ngôn ngữ"
+  },
+  "dashboard": {
+    "title": "Tổng quan người bán",
+    "welcome": "Chào mừng trở lại",
+    "pendingOrders": "Đơn chờ xử lý",
+    "todayRevenue": "Doanh thu hôm nay",
+    "lowStock": "Sản phẩm sắp hết",
+    "inStock": "IMEI trong kho"
+  }
+}

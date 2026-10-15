@@ -5,6 +5,22 @@
 
 ---
 
+## [0.2.2] — 2025-10-16 — Phase 2.2 Sprint 11 (S11): web-seller NEW app (medical seller portal MVP)
+
+### Added
+- **New app** `frontend/web-seller` at port 3004: dedicated seller portal for medical device vendors on CareNest
+  - Bootstrap: Next.js 14 App Router + TypeScript strict, `next-intl` (vi/en), `lucide-react`, `react-hook-form` + `zod`, `recharts`
+  - Service layer: `authService`, `kycService`, `productsService`, `ordersService`, `inventoryService`, `analyticsService` (with `NEXT_PUBLIC_USE_MOCK_AUTH` dev mode for offline UX)
+  - Pages: `login`, `register`, `kyc` (4-step wizard: business info → documents → bank → review), `dashboard` (KPI cards + recent orders + low stock), `products` (list + create + edit), `orders` (list + detail + PACKING), `imei` (camera + manual), `inventory`, `analytics` (recharts bar chart + top products), `settings`
+  - Shared layout: `Sidebar` (role-aware nav, disabled until KYC approved), `Topbar` (search + notifications + user), `KycBanner` (dismissible status banner)
+  - Localized messages `messages/vi.json` + `messages/en.json` (kyc, products, orders, imei, inventory, analytics, settings)
+- **Pipeline green**: type-check + lint + build all pass; full monorepo pipeline (74 tasks) still passes
+
+### Notes
+- This is a UI/MVP scaffold: service calls run against a mock in-memory store when `NEXT_PUBLIC_USE_MOCK_AUTH=true`; production wiring to auth/catalog/shipping APIs ships behind the same interface in S12+
+
+---
+
 ## [0.2.1] — 2025-10-16 — Phase 2.2 Sprint 10 (S10): web-buyer page completion
 
 ### Changed

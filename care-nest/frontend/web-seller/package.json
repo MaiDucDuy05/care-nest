@@ -1,0 +1,34 @@
+{
+  "name": "@carenest/web-seller",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Next.js seller portal for the CareNest platform (KYC, products, orders PACKING, IMEI scan, analytics)",
+  "scripts": {
+    "dev": "next dev -p 3004",
+    "build": "next build",
+    "start": "next start -p 3004",
+    "lint": "next lint --max-warnings 100",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf .next dist .turbo"
+  },
+  "dependencies": {
+    "@carenest/shared-types": "workspace:*",
+    "@hookform/resolvers": "^3.9.0",
+    "lucide-react": "^0.453.0",
+    "next": "^14.2.15",
+    "next-intl": "^3.20.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.53.0",
+    "recharts": "^2.13.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.1",
+    "@types/react-dom": "^18.3.1",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.15",
+    "typescript": "^5.6.0"
+  }
+}
