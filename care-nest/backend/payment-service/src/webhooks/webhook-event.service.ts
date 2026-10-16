@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { getPrismaClient, PrismaClient } from '@carenest/database';
+import { MetricsService } from '@carenest/nestjs-common';
 
 export interface RecordWebhookEventInput {
   gateway: 'VNPAY' | 'MOMO' | 'COD' | string;
@@ -23,7 +24,7 @@ export class WebhookEventService {
   private prisma: PrismaClient;
   private readonly logger = new Logger(WebhookEventService.name);
 
-  constructor() {
+  constructor(private readonly metrics: MetricsService) {
     this.prisma = getPrismaClient();
   }
 
@@ -33,12 +34,14 @@ export class WebhookEventService {
    * treat the duplicate as a no-op.
    */
   async recordOnce(input: RecordWebhookEventInput): Promise<{ recorded: boolean; existingId?: string }> {
+    const sigLabel = input.signatureValid ? 'true' : 'false';
     if (input.gatewayEventId) {
       const existing = await this.prisma.paymentWebhookEvent.findUnique({
         where: { gateway_gatewayEventId: { gateway: input.gateway, gatewayEventId: input.gatewayEventId } },
         select: { id: true },
       });
       if (existing) {
+        this.metrics.inc('webhook_events_total', { gateway: input.gateway, signature_valid: sigLabel, outcome: 'duplicate' });
         this.logger.debug(
           { gateway: input.gateway, gatewayEventId: input.gatewayEventId, existingId: existing.id },
           'Duplicate webhook event — skipping'
@@ -58,11 +61,13 @@ export class WebhookEventService {
           payload: input.payload as any,
         },
       });
+      this.metrics.inc('webhook_events_total', { gateway: input.gateway, signature_valid: sigLabel, outcome: 'recorded' });
       return { recorded: true, existingId: row.id };
     } catch (err: any) {
       // Race: another request inserted the same (gateway, event_id)
       // between our findUnique and create. Treat as duplicate.
       if (err?.code === 'P2002') {
+        this.metrics.inc('webhook_events_total', { gateway: input.gateway, signature_valid: sigLabel, outcome: 'duplicate' });
         return { recorded: false };
       }
       throw err;

@@ -298,8 +298,45 @@ services:
       kafka:
         condition: service_started
 
+  # ----------------------------------------------------------------
+  # S18 — Observability stack (Prometheus + Grafana)
+  # ----------------------------------------------------------------
+  prometheus:
+    profiles: ["full", "monitoring"]
+    image: prom/prometheus:v2.55.0
+    container_name: carenest-prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=7d"
+    volumes:
+      - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+
+  grafana:
+    profiles: ["full", "monitoring"]
+    image: grafana/grafana:11.3.0
+    container_name: carenest-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./infrastructure/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infrastructure/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3100:3000"
+    depends_on:
+      - prometheus
+
 volumes:
   postgres_data:
   redis_data:
   kafka_data:
   meili_data:
+  prometheus_data:
+  grafana_data:

@@ -145,6 +145,15 @@ const fakePayouts = {
   creditOrderToWallet: vi.fn(),
 };
 
+const fakeMetrics = {
+  inc: vi.fn(),
+  observe: vi.fn(),
+  startTimer: vi.fn(() => () => {}),
+  render: vi.fn(async () => ''),
+  contentType: vi.fn(() => 'text/plain; version=0.0.4'),
+  registry: { getSingleMetric: () => null, registerMetric: vi.fn() },
+};
+
 describe('PaymentsService.refund (S17 orchestration)', () => {
   beforeEach(() => {
     prismaState.payments.clear();
@@ -162,7 +171,7 @@ describe('PaymentsService.refund (S17 orchestration)', () => {
     });
     const svc = new PaymentsService(
       fakePaymentsRepo as any, fakeVnpay as any, fakeMomo as any, fakeCod as any,
-      fakeEscrow as any, { publishOrderRefunded } as any, fakePayouts as any
+      fakeEscrow as any, { publishOrderRefunded } as any, fakePayouts as any, fakeMetrics as any
     );
     await expect(svc.refund('tx-1', { reason: 'x' })).rejects.toThrow(/refund được/);
   });
@@ -170,7 +179,7 @@ describe('PaymentsService.refund (S17 orchestration)', () => {
   it('rejects when payment does not exist', async () => {
     const svc = new PaymentsService(
       fakePaymentsRepo as any, fakeVnpay as any, fakeMomo as any, fakeCod as any,
-      fakeEscrow as any, { publishOrderRefunded } as any, fakePayouts as any
+      fakeEscrow as any, { publishOrderRefunded } as any, fakePayouts as any, fakeMetrics as any
     );
     await expect(svc.refund('missing', { reason: 'x' })).rejects.toThrow(/Không tìm thấy/);
   });
@@ -181,7 +190,7 @@ describe('PaymentsService.refund (S17 orchestration)', () => {
     });
     const svc = new PaymentsService(
       fakePaymentsRepo as any, fakeVnpay as any, fakeMomo as any, fakeCod as any,
-      fakeEscrow as any, { publishOrderRefunded } as any, fakePayouts as any
+      fakeEscrow as any, { publishOrderRefunded } as any, fakePayouts as any, fakeMetrics as any
     );
     const r = await svc.refund('tx-1', { reason: 'x' });
     expect(r.status).toBe('REFUNDED');
@@ -198,7 +207,7 @@ describe('PaymentsService.refund (S17 orchestration)', () => {
     });
     const svc = new PaymentsService(
       fakePaymentsRepo as any, fakeVnpay as any, fakeMomo as any, fakeCod as any,
-      fakeEscrow as any, { publishOrderRefunded } as any, fakePayouts as any
+      fakeEscrow as any, { publishOrderRefunded } as any, fakePayouts as any, fakeMetrics as any
     );
     const r = await svc.refund('tx-1', { reason: 'buyer cancel' });
     expect(r.status).toBe('REFUNDED');
@@ -207,6 +216,9 @@ describe('PaymentsService.refund (S17 orchestration)', () => {
     expect(publishOrderRefunded).toHaveBeenCalledWith(expect.objectContaining({
       orderId: 'o-1', amountVnd: 1_000_000, refundRef: 'VN-REF-1', reason: 'buyer cancel',
     }));
+    // S18: metrics are incremented on a successful refund
+    expect(fakeMetrics.inc).toHaveBeenCalledWith('refunds_total', expect.objectContaining({ method: 'VNPAY' }));
+    expect(fakeMetrics.inc).toHaveBeenCalledWith('payments_total', { method: 'VNPAY', status: 'refunded' });
   });
 
   it('rejects when gateway refund is rejected', async () => {
@@ -216,7 +228,7 @@ describe('PaymentsService.refund (S17 orchestration)', () => {
     fakeVnpay.refund.mockResolvedValueOnce({ refundRef: 'X', accepted: false, message: 'limit exceeded' });
     const svc = new PaymentsService(
       fakePaymentsRepo as any, fakeVnpay as any, fakeMomo as any, fakeCod as any,
-      fakeEscrow as any, { publishOrderRefunded } as any, fakePayouts as any
+      fakeEscrow as any, { publishOrderRefunded } as any, fakePayouts as any, fakeMetrics as any
     );
     await expect(svc.refund('tx-2', { reason: 'r' })).rejects.toThrow(/rejected refund/);
   });

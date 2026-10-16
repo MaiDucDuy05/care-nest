@@ -1,6 +1,7 @@
 import { Module, Controller, Get } from '@nestjs/common';
 import { HealthCheck, HealthCheckService, HealthIndicatorResult } from '@nestjs/terminus';
 import { PrismaService } from './prisma.service.js';
+import { PrismaModule } from './prisma.module.js';
 import { getRedis } from '@carenest/shared-redis';
 
 /**
@@ -8,6 +9,10 @@ import { getRedis } from '@carenest/shared-redis';
  *
  * - GET /healthz   — full check (DB + Redis). Used for k8s readinessProbe.
  * - GET /livez     — liveness only. Always returns OK if the event loop is alive.
+ *
+ * The module is **self-contained** — it imports PrismaModule so the
+ * controller can inject `PrismaService` without the consumer needing
+ * to wire it up.
  */
 @Controller('health')
 export class HealthController {
@@ -43,6 +48,11 @@ export class HealthController {
 }
 
 @Module({
+  // PrismaModule is @Global, but we import it explicitly so the
+  // module is self-contained — removing the @Global annotation
+  // later is a one-line change.
+  imports: [PrismaModule],
   controllers: [HealthController],
+  providers: [HealthCheckService],
 })
 export class HealthModule {}

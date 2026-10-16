@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { MetricsModule, HealthModule, RequestMetricsMiddleware } from '@carenest/nestjs-common';
 import { DevicesModule } from './devices/devices.module.js';
 import { AssignmentsModule } from './assignments/assignments.module.js';
 import { TelemetryModule } from './telemetry/telemetry.module.js';
@@ -8,6 +9,8 @@ import { ActivationModule } from './activation/activation.module.js';
 
 @Module({
   imports: [
+    MetricsModule,
+    HealthModule,
     DevicesModule,
     AssignmentsModule,
     TelemetryModule,
@@ -16,4 +19,8 @@ import { ActivationModule } from './activation/activation.module.js';
     ActivationModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestMetricsMiddleware).forRoutes('*');
+  }
+}

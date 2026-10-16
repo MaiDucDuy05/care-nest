@@ -1,0 +1,34 @@
+# Prometheus scrape config for the CareNest dev stack.
+# Each NestJS service exposes GET /metrics (added in S18 via
+# @carenest/nestjs-common's MetricsModule). The targets use the
+# docker-compose service names, which resolve on the compose network.
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  external_labels:
+    env: dev
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: carenest-services
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - 'auth-service:3001'
+          - 'catalog-service:3002'
+          - 'device-service:3003'
+          - 'order-service:3004'
+          - 'payment-service:3005'
+          - 'notification-service:3006'
+          - 'alert-service:3007'
+          - 'subscription-service:3008'
+          - 'shipping-service:3009'
+    relabel_configs:
+      # Turn 'payment-service:3005' into a clean 'service' label.
+      - source_labels: [__address__]
+        regex: '([^:]+):.*'
+        target_label: service
+        replacement: '$1'

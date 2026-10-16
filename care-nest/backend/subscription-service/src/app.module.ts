@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
+import { MetricsModule, RequestMetricsMiddleware } from '@carenest/nestjs-common';
 import { PlansModule } from './plans/plans.module.js';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module.js';
 import { ProrationModule } from './proration/proration.module.js';
@@ -10,6 +11,7 @@ import { KafkaModule } from './kafka/kafka.module.js';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    MetricsModule,
     KafkaModule,
     ProrationModule,
     PlansModule,
@@ -18,4 +20,8 @@ import { KafkaModule } from './kafka/kafka.module.js';
     CronModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestMetricsMiddleware).forRoutes('*');
+  }
+}

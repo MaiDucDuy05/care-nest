@@ -35,6 +35,16 @@ vi.mock('@carenest/database', () => {
   };
 });
 
+// Minimal MetricsService stub for unit tests
+const stubMetrics = {
+  inc: vi.fn(),
+  observe: vi.fn(),
+  startTimer: vi.fn(() => () => {}),
+  render: vi.fn(async () => ''),
+  contentType: vi.fn(() => 'text/plain; version=0.0.4'),
+  registry: { getSingleMetric: () => null, registerMetric: vi.fn() },
+} as any;
+
 import { WebhookEventService } from '../src/webhooks/webhook-event.service.js';
 
 describe('WebhookEventService (S17)', () => {
@@ -42,7 +52,8 @@ describe('WebhookEventService (S17)', () => {
 
   beforeEach(() => {
     prismaState.events.clear();
-    service = new WebhookEventService();
+    vi.clearAllMocks();
+    service = new WebhookEventService(stubMetrics);
   });
 
   it('records a new event and returns recorded=true', async () => {

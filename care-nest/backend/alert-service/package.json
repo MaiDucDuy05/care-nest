@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@carenest/database": "workspace:*",
+    "@carenest/nestjs-common": "workspace:*",
     "@carenest/shared-config": "workspace:*",
     "@carenest/shared-kafka": "workspace:*",
     "@carenest/shared-types": "workspace:*",

@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PaymentMethod, PaymentStatus } from '@carenest/database';
+import { MetricsService } from '@carenest/nestjs-common';
 import { PaymentsRepository } from './payments.repository.js';
 import { VnpayGateway } from '../gateways/vnpay.gateway.js';
 import { MomoGateway } from '../gateways/momo.gateway.js';
@@ -22,6 +23,7 @@ export class PaymentsService {
     private readonly escrowService: EscrowService,
     private readonly eventPublisher: OrderEventPublisher,
     private readonly payoutsService: PayoutsService,
+    private readonly metrics: MetricsService,
   ) {}
 
   /**
@@ -81,6 +83,8 @@ export class PaymentsService {
     }
 
     const updated = await this.paymentsRepository.markPaid(transactionRef, gatewayResponse);
+
+    this.metrics.inc('payments_total', { method: existing.method, status: 'paid' });
 
     // Schedule escrow 7-day hold
     try {
@@ -163,6 +167,9 @@ export class PaymentsService {
     // 3. Mark the payment refunded.
     const updated = await this.paymentsRepository.markRefunded(transactionRef, refundAmount);
     updated.gatewayResponse = { ...(updated.gatewayResponse as any ?? {}), refundRef: gatewayResult.refundRef };
+
+    this.metrics.inc('refunds_total', { method: payment.method, gateway_accepted: String(gatewayResult.accepted) });
+    this.metrics.inc('payments_total', { method: payment.method, status: 'refunded' });
 
     // 4. Publish ORDER_REFUNDED so order-service can flip the order.
     try {
