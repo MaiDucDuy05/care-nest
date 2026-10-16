@@ -101,4 +101,16 @@ export class PayoutsService {
 
     return { processed: pending.length, paid, failed };
   }
+
+  /**
+   * S17: reverse a seller's credit when the buyer's payment is
+   * refunded. Idempotent. Wraps in a Redis lock so concurrent
+   * refund + payout runs don't race.
+   */
+  async reverseCreditForOrder(input: { orderId: string; reason: string }): Promise<{ reversed: boolean; amountVnd: number }> {
+    return withLock(
+      `wallet-reverse:order:${input.orderId}`,
+      async () => this.repository.reverseCreditForOrder(input)
+    );
+  }
 }

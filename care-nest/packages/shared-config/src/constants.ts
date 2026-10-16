@@ -33,6 +33,7 @@ export const KAFKA_TOPICS = {
   // Internal — order lifecycle
   ORDER_CREATED: 'order.created',
   ORDER_PAID: 'order.paid',
+  ORDER_REFUNDED: 'order.refunded',
   ORDER_READY_TO_SHIP: 'order.ready_to_ship',
   ORDER_SHIPPED: 'order.shipped',
   ORDER_DELIVERED: 'order.delivered',

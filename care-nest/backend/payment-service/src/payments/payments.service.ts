@@ -6,6 +6,8 @@ import { MomoGateway } from '../gateways/momo.gateway.js';
 import { CodGateway } from '../gateways/cod.gateway.js';
 import { EscrowService } from '../escrow/escrow.service.js';
 import { OrderEventPublisher } from '../kafka/order-event.publisher.js';
+import { PayoutsService } from '../payouts/payouts.service.js';
+import type { PaymentGateway } from '../gateways/payment-gateway.js';
 import type { CreatePaymentDto, RefundPaymentDto } from './dto/payment.dto.js';
 
 @Injectable()
@@ -19,6 +21,7 @@ export class PaymentsService {
     private readonly cod: CodGateway,
     private readonly escrowService: EscrowService,
     private readonly eventPublisher: OrderEventPublisher,
+    private readonly payoutsService: PayoutsService,
   ) {}
 
   /**
@@ -101,13 +104,80 @@ export class PaymentsService {
     return updated;
   }
 
+  /**
+   * S17: full refund orchestration.
+   *
+   *   1. Look up the original payment and validate it's PAID.
+   *   2. Push the refund to the gateway (dev stub returns synthetic ref).
+   *   3. Reverse the seller's wallet credit (debit + cancel PENDING Payout).
+   *   4. Mark the payment REFUNDED.
+   *   5. Publish ORDER_REFUNDED so order-service can flip the order.
+   *
+   * If any step fails the operation is half-done: ops needs to see the
+   * partial state in `payment_webhook_events` and the wallet entries.
+   * We log loudly and re-throw — caller decides whether to retry.
+   */
   async refund(transactionRef: string, dto: RefundPaymentDto) {
     const payment = await this.paymentsRepository.findByTransactionRef(transactionRef);
     if (!payment) throw new NotFoundException(`Không tìm thấy payment ${transactionRef}`);
+    if (payment.status === PaymentStatus.REFUNDED) {
+      // Idempotent refund.
+      return payment;
+    }
     if (payment.status !== PaymentStatus.PAID) {
       throw new BadRequestException('Chỉ refund được payment đã PAID');
     }
-    return this.paymentsRepository.markRefunded(transactionRef, dto.amount);
+    if (dto.amount && dto.amount > Number(payment.amount)) {
+      throw new BadRequestException('Số tiền refund vượt quá payment');
+    }
+    // Default to a full refund when no amount is provided.
+    const refundAmount = dto.amount ?? Number(payment.amount);
+
+    // 1. Push refund to gateway. The default impl is a dev-only stub.
+    const gateway = this.pickGateway(payment.method as PaymentMethod);
+    let gatewayResult: { refundRef: string; accepted: boolean; message?: string };
+    try {
+      gatewayResult = await (gateway as PaymentGateway).refund({
+        transactionRef: payment.transactionRef!,
+        amount: refundAmount,
+        reason: dto.reason,
+      });
+    } catch (err: any) {
+      this.logger.error({ err: err.message, transactionRef }, 'Gateway refund failed');
+      throw new BadRequestException(`Gateway refund failed: ${err.message}`);
+    }
+    if (!gatewayResult.accepted) {
+      throw new BadRequestException(`Gateway rejected refund: ${gatewayResult.message}`);
+    }
+
+    // 2. Reverse the seller's wallet credit.
+    const walletResult = await this.payoutsService.reverseCreditForOrder({
+      orderId: payment.orderId,
+      reason: `Refund ${refundAmount}VND for payment ${transactionRef}`,
+    });
+    this.logger.log(
+      { orderId: payment.orderId, reversed: walletResult.reversed, amount: walletResult.amountVnd },
+      'Wallet credit reversed'
+    );
+
+    // 3. Mark the payment refunded.
+    const updated = await this.paymentsRepository.markRefunded(transactionRef, refundAmount);
+    updated.gatewayResponse = { ...(updated.gatewayResponse as any ?? {}), refundRef: gatewayResult.refundRef };
+
+    // 4. Publish ORDER_REFUNDED so order-service can flip the order.
+    try {
+      await this.eventPublisher.publishOrderRefunded({
+        orderId: payment.orderId,
+        paymentId: payment.id,
+        amountVnd: refundAmount,
+        refundRef: gatewayResult.refundRef,
+        reason: dto.reason,
+      });
+    } catch (err: any) {
+      this.logger.warn({ err: err.message }, 'Failed to publish ORDER_REFUNDED');
+    }
+
+    return updated;
   }
 
   private pickGateway(method: PaymentMethod) {

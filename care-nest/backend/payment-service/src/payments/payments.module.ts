@@ -5,10 +5,11 @@ import { PaymentsRepository } from './payments.repository.js';
 import { GatewaysModule } from '../gateways/gateways.module.js';
 import { EscrowModule } from '../escrow/escrow.module.js';
 import { KafkaModule } from '../kafka/kafka.module.js';
+import { PayoutsModule } from '../payouts/payouts.module.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 
 @Module({
-  imports: [GatewaysModule, EscrowModule, KafkaModule],
+  imports: [GatewaysModule, EscrowModule, KafkaModule, PayoutsModule],
   controllers: [PaymentsController],
   providers: [PaymentsService, PaymentsRepository, JwtAuthGuard],
   exports: [PaymentsService, PaymentsRepository],

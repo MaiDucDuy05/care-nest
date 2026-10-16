@@ -514,6 +514,27 @@ model Payment {
 }
 
 // -------------------------------------------------------------------------
+// 11.1 PaymentWebhookEvent — audit log of every webhook attempt (S17)
+// -------------------------------------------------------------------------
+
+model PaymentWebhookEvent {
+  id              String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  gateway         String // 'VNPAY' | 'MOMO' | 'COD' | …
+  gatewayEventId  String? // gateway's idempotency key (vnp_TxnRef, requestId, …)
+  transactionRef  String?
+  signatureValid  Boolean
+  responseCode    String?
+  processedAction String? // 'markPaid' | 'reject' | …
+  payload         Json // raw body or query for audit
+  receivedAt      DateTime @default(now())
+
+  @@unique([gateway, gatewayEventId])
+  @@index([gateway, receivedAt])
+  @@index([transactionRef])
+  @@map("payment_webhook_events")
+}
+
+// -------------------------------------------------------------------------
 // 11. Shipment — fulfillment / logistics
 // -------------------------------------------------------------------------
 

@@ -39,6 +39,18 @@ export interface WebhookVerification {
   message?: string;
 }
 
+export interface RefundInput {
+  transactionRef: string;
+  amount: number; // VND, integer
+  reason?: string;
+}
+
+export interface RefundResult {
+  refundRef: string;
+  accepted: boolean;
+  message?: string;
+}
+
 @Injectable()
 export abstract class PaymentGateway {
   abstract readonly name: 'VNPAY' | 'MOMO' | 'ZALOPAY' | 'COD';
@@ -46,6 +58,24 @@ export abstract class PaymentGateway {
 
   abstract createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult>;
   abstract verifyWebhook(payload: WebhookPayload): WebhookVerification;
+
+  /**
+   * Push the refund to the upstream gateway. The default impl is a
+   * dev-only stub that returns a synthetic refund ref. Gateways
+   * override this in production. We never throw on a failed refund
+   * here — callers decide whether to retry or mark manual.
+   */
+  async refund(_input: RefundInput): Promise<RefundResult> {
+    this.logger.warn(
+      { name: this.name },
+      'Gateway has no real refund() impl — returning synthetic refund ref'
+    );
+    return {
+      refundRef: `dev-refund-${Date.now()}`,
+      accepted: true,
+      message: 'dev-only synthetic refund',
+    };
+  }
 }
 
 /** Helper: SHA-256 HMAC hex */

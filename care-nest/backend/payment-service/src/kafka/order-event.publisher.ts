@@ -9,6 +9,14 @@ export interface OrderPaidEvent {
   method: string;
 }
 
+export interface OrderRefundedEvent {
+  orderId: string;
+  paymentId: string;
+  amountVnd: number;
+  refundRef: string;
+  reason?: string;
+}
+
 @Injectable()
 export class OrderEventPublisher implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OrderEventPublisher.name);
@@ -34,5 +42,10 @@ export class OrderEventPublisher implements OnModuleInit, OnModuleDestroy {
   async publishOrderPaid(event: OrderPaidEvent): Promise<void> {
     if (!this.producer) return;
     await this.producer.publish(KAFKA_TOPICS.ORDER_PAID, event, { key: event.orderId });
+  }
+
+  async publishOrderRefunded(event: OrderRefundedEvent): Promise<void> {
+    if (!this.producer) return;
+    await this.producer.publish(KAFKA_TOPICS.ORDER_REFUNDED, event, { key: event.orderId });
   }
 }

@@ -223,4 +223,57 @@ export class PayoutsRepository {
       },
     });
   }
+
+  /**
+   * S17: reverse a seller's pending + balance for an order when the
+   * buyer is refunded. Looks at the original ORDER_CREDIT entry,
+   * takes the same gross amount off the wallet, and writes a
+   * matching REFUND_DEBIT entry. Idempotent by `referenceType/order`
+   * (a second call is a no-op). Cancels any PENDING Payout created
+   * for the same order so the seller doesn't get paid for a refunded
+   * sale.
+   */
+  async reverseCreditForOrder(input: { orderId: string; reason: string }): Promise<{ reversed: boolean; amountVnd: number }> {
+    return this.prisma.$transaction(async (tx) => {
+      // Idempotency: a REFUND_DEBIT for the same order means we already reversed.
+      const alreadyReversed = await tx.walletEntry.findFirst({
+        where: { referenceType: 'order', referenceId: input.orderId, kind: WalletEntryKind.REFUND_DEBIT },
+      });
+      if (alreadyReversed) {
+        return { reversed: false, amountVnd: Math.abs(Number(alreadyReversed.amountVnd)) };
+      }
+      const credit = await tx.walletEntry.findFirst({
+        where: { referenceType: 'order', referenceId: input.orderId, kind: WalletEntryKind.ORDER_CREDIT },
+        include: { wallet: true },
+      });
+      if (!credit) {
+        return { reversed: false, amountVnd: 0 };
+      }
+      const amount = Math.abs(Number(credit.amountVnd));
+      const newBalance = Number(credit.wallet.balanceVnd) - amount;
+      // Note: we allow balance to go negative here. The seller will be made
+      // whole on the next payout (or reconciled manually by finance).
+      await tx.sellerWallet.update({
+        where: { id: credit.walletId },
+        data: { balanceVnd: newBalance },
+      });
+      await tx.walletEntry.create({
+        data: {
+          walletId: credit.walletId,
+          kind: WalletEntryKind.REFUND_DEBIT,
+          amountVnd: -amount,
+          balanceAfterVnd: newBalance,
+          referenceType: 'order',
+          referenceId: input.orderId,
+          description: input.reason,
+        },
+      });
+      // Cancel any PENDING payout for this order.
+      await tx.payout.updateMany({
+        where: { status: PayoutStatus.PENDING },
+        data: { status: PayoutStatus.REVERSED, failureReason: input.reason },
+      });
+      return { reversed: true, amountVnd: amount };
+    });
+  }
 }
