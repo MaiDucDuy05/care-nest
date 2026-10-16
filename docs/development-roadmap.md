@@ -2,7 +2,7 @@
 
 > **Cập nhật liên tục** bởi `project-manager` agent. Mỗi phase có status, milestones, và % hoàn thành.
 
-**Cập nhật gần nhất:** 2025-10-16 (Phase 1: build pipeline cleanup — 3 shared packages mới + fix toàn bộ type/test/lint/build across 22 packages)
+**Cập nhật gần nhất:** 2025-10-16 (S15 + S16 + S17 hoàn thành: reviews + analytics, IoT activation, payment hardening)
 
 ---
 
@@ -12,11 +12,11 @@
 |-------|-----|-----------|------|--------|---|
 | 0 | Khởi động & R&D (Monorepo + Wonlex codec) | 2 tuần | W01–W02 | ✅ **Hoàn thành** | 100% |
 | 1 | Xây dựng Core Platform | 8 tuần | W03–W10 | ✅ **Hoàn thành** | 100% |
-| 2 | Tích hợp & Hoàn thiện | 8 tuần | W11–W18 | 🚧 **Đang thực hiện** | ~20% |
+| 2 | Tích hợp & Hoàn thiện | 8 tuần | W11–W18 | 🚧 **Đang thực hiện** | ~75% |
 | 3 | Thử nghiệm & Thẩm định | 6 tuần | W19–W24 | ⏳ Chưa bắt đầu | 0% |
 | 4 | Ra mắt & Tăng tốc | 6 tuần | W25–W30 | ⏳ Chưa bắt đầu | 0% |
 
-**Tổng tiến độ dự án: 38% (10/30 tuần Phase 0–1 + 2 tuần đầu Phase 2)**
+**Tổng tiến độ dự án: 60% (10/30 tuần Phase 0–1 + 6 tuần Phase 2)**
 
 ### Phase 1 — Build pipeline hardening (2025-10-16)
 - **3 shared packages mới**:
@@ -113,10 +113,53 @@
 | Sprint | Tên | FR-IDs | Trạng thái |
 |--------|-----|--------|------------|
 | **S9** | Subscription service + Device Activation Bridge | FR-2.1 → 2.12 | ✅ Hoàn thành |
-| **S10** | Web-buyer Health Dashboard + Activation Wizard | FR-2.13 → 2.24 | ⏳ Chưa bắt đầu |
-| **S11** | Web-seller Portal + Web-admin Console | FR-2.25 → 2.40 | ⏳ Chưa bắt đầu |
+| **S10** | Web-buyer Health Dashboard + Activation Wizard | FR-2.13 → 2.24 | ✅ Hoàn thành |
+| **S11** | Web-seller Portal + Web-admin Console | FR-2.25 → 2.40 | ✅ Hoàn thành |
 | **S12** | Shipping adapter (GHN/GHTK) + Webhook + Failover | FR-2.41 → 2.55 | ✅ Hoàn thành |
-| **S13** | SEO + PWA + Lighthouse + Lighthouse CI | FR-2.56 → 2.70 | ⏳ Chưa bắt đầu |
+| **S13** | SEO + PWA + Lighthouse + Lighthouse CI | FR-2.56 → 2.70 | ✅ Hoàn thành |
+| **S14** | Public marketplace + SEO sitemap | FR-2.71 → 2.80 | ✅ Hoàn thành |
+| **S15** | Seller analytics + Buyer reviews | FR-2.81 → 2.90 | ✅ Hoàn thành |
+| **S16** | IoT device onboarding (BE + gateway) | FR-2.91 → 3.00 | ✅ Hoàn thành |
+| **S17** | Payment hardening + webhook audit log | FR-3.01 → 3.10 | ✅ Hoàn thành |
+
+### Phase 2.2 (W11–W18) — tiến độ tổng
+
+| Sprint | PR / commit | Notes |
+|--------|-------------|-------|
+| S9 + S12 | prior session | subscription + shipping adapter |
+| S10 + S11 | prior session | web-buyer + web-seller + web-admin MVP |
+| S13 | prior session | SEO + PWA + Lighthouse |
+| S14 | `7f1e2fd` | public marketplace + sitemap |
+| S15 | `7f1e2fd` | analytics + reviews aggregation |
+| S16 | `1c58338` | IoT device onboarding + activation redemption |
+| S17 BE | `50f187b` | refund orchestration + webhook audit log |
+| S17 UI | `72fb255` | escrow timeline on web-seller payouts page |
+
+### Phase 2.2 — S17 (vừa hoàn thành)
+
+**Backend — payment-service**
+- `PaymentWebhookEvent` model + `payment_webhook_events` table (UNIQUE trên `(gateway, gateway_event_id)` + partial idx `transaction_ref`)
+- `WebhookEventService.recordOnce()`: findUnique short-circuit + P2002-safe create — mọi webhook attempt (valid + invalid signature) đều được audit-log
+- `WebhookRateLimitGuard`: token bucket in-memory, 100 req/min per `(gateway, IP)`; trả 429 khi vượt
+- `PaymentsService.refund()` orchestration đầy đủ: validate → call gateway `refund()` → reverse wallet credit → mark REFUNDED → publish `ORDER_REFUNDED`
+- `PayoutsRepository.reverseCreditForOrder()`: idempotent qua `REFUND_DEBIT` lookup; cancel mọi PENDING Payout cho cùng order
+- Shared-config: thêm `ORDER_REFUNDED` topic + `OrderEventPublisher.publishOrderRefunded()`
+
+**Schema additions (S17)**
+- `PaymentWebhookEvent`: gateway, gatewayEventId, transactionRef, signatureValid, responseCode, processedAction, payload, receivedAt
+- `indexes`: UNIQUE `(gateway, gateway_event_id)` (dedup), partial index `WHERE transaction_ref IS NOT NULL` (replay lookup)
+
+**Test results (S17)**
+- 12 tests mới: `webhook-event.service.spec.ts` (3) + `refund.repository.spec.ts` (4) + `refund.orchestration.spec.ts` (5)
+- Full suite: 94/94 tests green across order (25) + device (35) + payment (30) + iot-gateway (2) + nestjs-common (2)
+- Build: 22 packages type-check + build sạch
+
+### Kế tiếp (Phase 2.3 / 3.0)
+- S18 (Phase 3 mở đầu): observability stack (Prometheus + Grafana + OTel tracing), rate-limit Redis-backed
+- S19: staging deploy + smoke tests
+- S20: security audit + penetration test prep
+- S21: Phase 3 chính thức (real bank partner, Zalo ZNS template approval, real GHN/GHTK keys)
+- S22-S24: load testing, DR plan, on-call runbook
 
 ### Phase 2.1 — Fulfillment backend (S9 + S12) ✅
 

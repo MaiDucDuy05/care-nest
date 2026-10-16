@@ -5,7 +5,75 @@
 
 ---
 
-## [0.2.5] — 2025-10-16 — Phase 2.2 Sprint 14 (S14): public marketplace + SEO
+## [0.2.7] — 2025-10-16 — Phase 2.2 Sprint 17 (S17): payment hardening + webhooks
+
+### Added (backend)
+- **Database** (`@carenest/database`)
+  - `PaymentWebhookEvent` model: full audit log of every gateway hit (valid OR invalid signature)
+  - UNIQUE `(gateway, gateway_event_id)` index for dedup; partial index on `transaction_ref` for replay lookups
+  - Migration: `20260104000000_s17_payment_audit/migration.sql`
+- **payment-service — webhooks hardening**
+  - `WebhookEventService.recordOnce()` — `findUnique` short-circuit + P2002-safe create (every webhook attempt is logged, retries are no-ops)
+  - `WebhookRateLimitGuard` — in-memory token bucket, 100 req/min per `(gateway, IP)`; returns 429 on overflow (S18 will move to Redis)
+  - `webhooks.controller` now logs every attempt BEFORE signature verification (rejected attempts leave an audit trail)
+- **payment-service — refund orchestration**
+  - `PaymentsService.refund()` end-to-end: validate payment state → call gateway `refund()` → reverse seller wallet credit → mark payment REFUNDED → publish `ORDER_REFUNDED`
+  - Idempotent: a second call on an already-REFUNDED payment returns the existing row (no double-debit)
+  - `PayoutsRepository.reverseCreditForOrder()` — finds the original `ORDER_CREDIT`, writes matching `REFUND_DEBIT` (may drive balance negative), cancels any PENDING `Payout` for the same order
+  - Idempotent at the wallet level: a `REFUND_DEBIT` for the same `(orderId)` short-circuits the second call
+- **shared-config** — `ORDER_REFUNDED` Kafka topic
+- **kafka** — `OrderEventPublisher.publishOrderRefunded()` helper
+
+### Added (S17 UI closure — `72fb255`)
+- **payment-service** — `GET /api/v1/seller/payouts/entries?page=&pageSize=&kind=` returns the seller's wallet ledger (every `WalletEntry` row, newest-first, optional `kind` filter) — same response shape as the existing `/payouts` endpoint
+- **web-seller payouts page** — new "Wallet ledger" / "Lịch sử ví" section between the 3-card wallet summary and the existing Payout history
+  - 5 columns: time, kind (color-coded badge), description, signed amount, balance after
+  - Kind badge colors: ORDER_CREDIT (green ↑), COMMISSION_DEBIT (slate ↓), REFUND_DEBIT (red ↓), PAYOUT_DEBIT (indigo ↓), ADJUSTMENT (amber)
+  - Mock data: 6 representative entries (1 full order cycle including a refund that drives the balance to -250k) so the timeline is visible in `USE_MOCK_AUTH=true` dev mode
+- **i18n** — `payouts.timeline`, `payouts.timelineSubtitle`, `payouts.time`, `payouts.kind`, `payouts.description`, `payouts.balance` (vi + en), plus `payouts.kindLabels.{ORDER_CREDIT,COMMISSION_DEBIT,REFUND_DEBIT,PAYOUT_DEBIT,ADJUSTMENT}` (vi + en)
+
+### Tests
+- 12 new tests in S17 backend: `webhook-event.service.spec.ts` (3) + `refund.repository.spec.ts` (4) + `refund.orchestration.spec.ts` (5)
+- 6 new tests in S17 UI closure: `payouts-entries.controller.spec.ts` (covers no-seller, no-wallet, pagination, kind filter, page=2/pageSize=2, invalid kind)
+- Full suite: 100 backend tests green (order 25 + device 35 + payment 36 + iot-gateway 2 + nestjs-common 2)
+
+### Notes
+- **Refunds are admin-only** for S17 (no buyer self-service); the order self-service refund UI in web-buyer remains as-is but is gated behind `@Roles('ADMIN')` for the new orchestration path
+- **Balance may go negative** on a refund-after-escrow-release; we accept the negative balance and let the next payout / finance reconciliation absorb it. Alternative (move to "debt" wallet) is a Phase 3 design decision
+- **Rate limit is per-process** (in-memory) — fine for single-instance dev; production rollout needs Redis-backed limiter (tracked in S18)
+- **Wallet ledger has no date filter** yet (S18 will add a date range picker to scope "this month" / "this quarter" etc.)
+
+---
+
+## [0.2.6] — 2025-10-16 — Phase 2.2 Sprint 16 (S16): IoT device onboarding (BE + gateway)
+
+### Added
+- **device-service — activation module** (`backend/device-service/src/activation/`)
+  - `activation.service.ts` — full lifecycle: `issueToken` (HMAC-SHA256, 30-day TTL), `peekToken` (resolve IMEI list to devices for the buyer without mutating state), `redeemToken` (link token → Device.activatedBy + Order)
+  - `activation.controller.ts` — `POST /api/v1/devices/:id/activate`, `GET /api/v1/activations/:token`, `POST /api/v1/activations/redeem`
+  - `activation.module.ts` — wires `ActivationService` + `DevicesService` + Kafka publisher
+- **device-service — devices module expansion**
+  - `DevicesService.provision()` — first-time activation that creates a `Device` row and stamps `activatedBy`
+  - `DevicesService.issueActivationCode()` — wraps `ActivationService.issueToken`
+  - 2 new endpoints: `POST /api/v1/devices` (provision), `POST /api/v1/devices/:id/activate`
+- **iot-gateway — owner-aware packet handling**
+  - `SessionManager.setOwner()` / `getOwner()` — track which buyer owns each IMEI session
+  - `PacketDispatcher` now resolves the device owner on `LOGIN`, then gates `LK` (heartbeat), `UD` (location), `bphrt` (BP+HR), `oxygen` (SpO2), `btemp2` (temp) on `owner != null` — unactivated devices have their packets dropped silently
+- **web-buyer — activation service** (`frontend/web-buyer/src/services/activation.service.ts`)
+  - Now points to `ACTIVATION_API` (device-service) instead of the auth-service stub
+
+### Tests
+- 18 new tests in `activation.service.spec.ts` — all passing
+- Full suite: 82 backend tests green (order 25 + device 35 + payment 18 + iot-gateway 2 + nestjs-common 2)
+
+### Notes
+- **Activation token format**: `base64url(uuidv4).base64url(hmac_sha256(secret, uuidv4))` — the HMAC lets device-service verify the token is one we issued without a DB lookup, then `redeemToken` flips state in a single `prisma.$transaction`
+- **Owner resolution on gateway**: a single `LOGIN` packet per session is enough — heartbeat / vitals / location packets can be processed at wire-speed without re-resolving owner
+- **Unactivated devices are silent** on the wire (we drop, not reject) — so the device doesn't get stuck retrying
+
+---
+
+## [0.2.5] — 2025-10-16 — Phase 2.2 Sprint 15 (S15): seller analytics + buyer reviews
 
 ### Added
 - **catalog-service — public module** (`backend/catalog-service/src/public/`)
