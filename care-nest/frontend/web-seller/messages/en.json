@@ -157,6 +157,7 @@
     "title": "Sales analytics",
     "revenue7d": "7-day revenue",
     "revenue30d": "30-day revenue",
+    "revenue90d": "90-day revenue",
     "ordersCount": "Orders",
     "averageOrder": "Avg order value",
     "topProducts": "Top products",

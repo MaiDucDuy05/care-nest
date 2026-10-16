@@ -333,6 +333,18 @@
     "subscribePush": "Enable Push Notifications",
     "unsubscribePush": "Disable Push Notifications"
   },
+  "review": {
+    "title": "Rate this order",
+    "subtitle": "Share your experience to help other buyers.",
+    "rating": "Rating",
+    "comment": "Comment (optional)",
+    "commentPlaceholder": "Was the product good? Was the seller responsive?",
+    "ratingRequired": "Please pick a rating.",
+    "submit": "Submit review",
+    "thanks": "Thank you!",
+    "thanksBody": "Your review has been recorded.",
+    "backToShop": "Continue shopping"
+  },
   "errors": {
     "networkError": "Network error. Please check your internet connection.",
     "serverError": "Server error. Please try again later.",

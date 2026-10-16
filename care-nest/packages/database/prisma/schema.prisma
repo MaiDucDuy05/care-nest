@@ -239,6 +239,7 @@ model User {
   activationCodes        DeviceActivationCode[]
   notificationPreference NotificationPreference?
   pushSubscriptions      PushSubscription[]
+  reviews                Review[]
 
   @@index([role, status])
   @@index([email])
@@ -251,23 +252,23 @@ model User {
 // -------------------------------------------------------------------------
 
 model Seller {
-  id             String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  userId         String       @unique @db.Uuid
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  storeName      String
-  storeSlug      String       @unique
-  taxId          String?      @unique
-  status         SellerStatus @default(DRAFT)
-  kycStatus      KycStatus    @default(NOT_STARTED)
-  ratingAvg      Decimal      @default(0) @db.Decimal(3, 2)
-  ratingCount    Int          @default(0)
-  commissionRate Decimal      @default(0.10) @db.Decimal(4, 3)
+  id              String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  userId          String       @unique @db.Uuid
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storeName       String
+  storeSlug       String       @unique
+  taxId           String?      @unique
+  status          SellerStatus @default(DRAFT)
+  kycStatus       KycStatus    @default(NOT_STARTED)
+  ratingAvg       Decimal      @default(0) @db.Decimal(3, 2)
+  ratingCount     Int          @default(0)
+  commissionRate  Decimal      @default(0.10) @db.Decimal(4, 3)
   bankName        String?
   bankAccount     String?
   bankAccountName String?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
-  deletedAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
 
   products      Product[]
   orders        Order[]
@@ -278,6 +279,7 @@ model Seller {
   imeis         ImeiRecord[]
   wallet        SellerWallet?
   payouts       Payout[]
+  reviews       Review[]
 
   @@index([status])
   @@index([storeSlug])
@@ -430,6 +432,7 @@ model Order {
   shipment        Shipment?
   activationCodes DeviceActivationCode[]
   imeis           ImeiRecord[]
+  review          Review?
 
   @@index([buyerId, status])
   @@index([sellerId, status])
@@ -882,15 +885,15 @@ model PushSubscription {
 // -------------------------------------------------------------------------
 
 model SellerWallet {
-  id          String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  sellerId    String        @unique @db.Uuid
-  seller      Seller        @relation(fields: [sellerId], references: [id], onDelete: Cascade)
-  balanceVnd  Decimal       @default(0) @db.Decimal(14, 0) // available for payout
-  pendingVnd  Decimal       @default(0) @db.Decimal(14, 0) // escrow-held, not yet released
-  lifetimeVnd Decimal       @default(0) @db.Decimal(14, 0) // gross ever earned
-  currency    String        @default("VND") @db.Char(3)
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  id          String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  sellerId    String   @unique @db.Uuid
+  seller      Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  balanceVnd  Decimal  @default(0) @db.Decimal(14, 0) // available for payout
+  pendingVnd  Decimal  @default(0) @db.Decimal(14, 0) // escrow-held, not yet released
+  lifetimeVnd Decimal  @default(0) @db.Decimal(14, 0) // gross ever earned
+  currency    String   @default("VND") @db.Char(3)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   entries WalletEntry[]
   payouts Payout[]
@@ -903,16 +906,16 @@ model SellerWallet {
 // -------------------------------------------------------------------------
 
 model WalletEntry {
-  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
-  walletId        String           @db.Uuid
-  wallet          SellerWallet     @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  id              String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  walletId        String          @db.Uuid
+  wallet          SellerWallet    @relation(fields: [walletId], references: [id], onDelete: Cascade)
   kind            WalletEntryKind
-  amountVnd       Decimal          @db.Decimal(14, 0) // signed: +credit, -debit
-  balanceAfterVnd Decimal          @db.Decimal(14, 0)
+  amountVnd       Decimal         @db.Decimal(14, 0) // signed: +credit, -debit
+  balanceAfterVnd Decimal         @db.Decimal(14, 0)
   referenceType   String? // 'order' | 'payout' | 'refund' | 'manual'
-  referenceId     String?          @db.Uuid
+  referenceId     String?         @db.Uuid
   description     String?
-  createdAt       DateTime         @default(now())
+  createdAt       DateTime        @default(now())
 
   @@index([walletId, createdAt(sort: Desc)])
   @@index([referenceType, referenceId])
@@ -943,4 +946,24 @@ model Payout {
   @@index([sellerId, status])
   @@index([status, requestedAt])
   @@map("payouts")
+}
+
+// -------------------------------------------------------------------------
+// Reviews — one review per order, aggregates into seller.rating/ reviewCount
+// -------------------------------------------------------------------------
+
+model Review {
+  id        String   @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  orderId   String   @unique @db.Uuid
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sellerId  String   @db.Uuid
+  seller    Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  buyerId   String   @db.Uuid
+  buyer     User     @relation(fields: [buyerId], references: [id], onDelete: Restrict)
+  rating    Int // 1..5, validated in service
+  comment   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([sellerId, createdAt])
+  @@map("reviews")
 }

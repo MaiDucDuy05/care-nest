@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { Star, Shield, ShoppingCart, ChevronLeft, MapPin, BadgeCheck } from 'lucide-react';
-import { publicCatalogService } from '@/lib/services/public-catalog.service';
+import { Star, Shield, ShoppingCart, ChevronLeft, MapPin, BadgeCheck, Quote } from 'lucide-react';
+import { publicCatalogService, type PublicProduct } from '@/lib/services/public-catalog.service';
+import { reviewsService } from '@/lib/services/reviews.service';
 import { sellerMetadata, type Locale } from '@/lib/seo';
 import { Link } from '@/i18n/routing';
 
@@ -32,6 +33,18 @@ export default async function SellerPage({ params, searchParams }: PageProps) {
   }
 
   const { seller, products, total, hasMore } = storefront;
+
+  // Recent reviews — pulled in parallel; if the reviews service
+  // is unreachable (e.g. backend still warming up) we just hide
+  // the section. Public storefronts should never break because
+  // reviews are down.
+  let reviews: Awaited<ReturnType<typeof reviewsService.listForSeller>> | null = null;
+  try {
+    reviews = await reviewsService.listForSeller(seller.id, 5, 0);
+  } catch {
+    reviews = null;
+  }
+
 
   return (
     <div className="container" style={{ paddingTop: '24px', paddingBottom: '60px' }}>
@@ -90,6 +103,59 @@ export default async function SellerPage({ params, searchParams }: PageProps) {
         </div>
       </header>
 
+      {reviews && reviews.items.length > 0 && (
+        <section style={{ marginBottom: 32 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
+            {locale === 'vi' ? 'Đánh giá từ khách hàng' : 'Customer reviews'} ({reviews.ratingCount})
+          </h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+            {reviews.items.map((r) => (
+              <article key={r.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: '50%',
+                      background: 'var(--primary-light, #e0f2fe)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      color: 'var(--primary, #0369a1)',
+                    }}
+                  >
+                    {r.buyerName.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{r.buyerName}</div>
+                    <div style={{ display: 'flex', gap: 2 }}>
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                          key={i}
+                          size={12}
+                          fill={i < r.rating ? 'var(--warning, #d97706)' : 'transparent'}
+                          color="var(--warning, #d97706)"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                {r.comment && (
+                  <div style={{ fontSize: 14, color: 'var(--text-main)', lineHeight: 1.5, display: 'flex', gap: 6 }}>
+                    <Quote size={14} style={{ flexShrink: 0, opacity: 0.4 }} />
+                    <span>{r.comment}</span>
+                  </div>
+                )}
+                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                  {new Date(r.createdAt).toLocaleDateString(locale === 'vi' ? 'vi-VN' : 'en-US')}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
       <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>
         {locale === 'vi' ? 'Sản phẩm' : 'Products'} ({total})
       </h2>
@@ -124,7 +190,7 @@ export default async function SellerPage({ params, searchParams }: PageProps) {
   );
 }
 
-function ProductCard({ product, locale }: { product: any; locale: Locale }) {
+function ProductCard({ product, locale: _locale }: { product: PublicProduct; locale: Locale }) {
   const path = `/shop/products/${product.slug || product.id}`;
   const image = product.images[0]?.url;
   return (

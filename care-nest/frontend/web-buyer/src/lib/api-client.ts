@@ -6,6 +6,8 @@
 const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3001';
 const CATALOG_API = process.env.NEXT_PUBLIC_CATALOG_API_URL || 'http://localhost:3002';
 const DEVICE_API = process.env.NEXT_PUBLIC_DEVICE_API_URL || 'http://localhost:3003';
+const ORDER_API = process.env.NEXT_PUBLIC_ORDER_API_URL || 'http://localhost:3003';
+const PAYMENT_API = process.env.NEXT_PUBLIC_PAYMENT_API_URL || 'http://localhost:3005';
 const ALERT_API = process.env.NEXT_PUBLIC_ALERT_API_URL || 'http://localhost:3007';
 const SUBSCRIPTION_API = process.env.NEXT_PUBLIC_SUBSCRIPTION_API_URL || 'http://localhost:3008';
 const SHIPPING_API = process.env.NEXT_PUBLIC_SHIPPING_API_URL || 'http://localhost:3009';
@@ -99,4 +101,23 @@ export const apiClient = {
   },
 };
 
-export { AUTH_API, CATALOG_API, DEVICE_API, ALERT_API, SUBSCRIPTION_API, SHIPPING_API, NOTIFICATION_API };
+export { AUTH_API, CATALOG_API, DEVICE_API, ORDER_API, PAYMENT_API, ALERT_API, SUBSCRIPTION_API, SHIPPING_API, NOTIFICATION_API };
+
+/**
+ * Read the buyer auth token from localStorage. Web-buyer stores the
+ * token issued by /auth/login under this key.
+ */
+export function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return window.localStorage.getItem('buyer_token');
+}
+
+export function setToken(token: string): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem('buyer_token', token);
+}
+
+export function clearToken(): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem('buyer_token');
+}

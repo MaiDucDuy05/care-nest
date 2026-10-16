@@ -333,6 +333,18 @@
     "subscribePush": "Đăng ký thông báo đẩy",
     "unsubscribePush": "Hủy đăng ký"
   },
+  "review": {
+    "title": "Đánh giá đơn hàng",
+    "subtitle": "Chia sẻ trải nghiệm của bạn để giúp người mua khác.",
+    "rating": "Mức đánh giá",
+    "comment": "Nhận xét (tuỳ chọn)",
+    "commentPlaceholder": "Sản phẩm có tốt không? Người bán có nhiệt tình không?",
+    "ratingRequired": "Vui lòng chọn số sao.",
+    "submit": "Gửi đánh giá",
+    "thanks": "Cảm ơn bạn!",
+    "thanksBody": "Đánh giá của bạn đã được ghi nhận.",
+    "backToShop": "Tiếp tục mua sắm"
+  },
   "errors": {
     "networkError": "Lỗi kết nối mạng. Vui lòng kiểm tra internet.",
     "serverError": "Lỗi máy chủ. Vui lòng thử lại sau.",

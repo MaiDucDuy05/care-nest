@@ -1,4 +1,4 @@
-import { CATALOG_API, apiFetch, getToken } from '../api-client';
+import { ORDER_API, apiFetch, getToken } from '../api-client';
 import type { AnalyticsSummary } from '../types';
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true';
@@ -28,6 +28,6 @@ export const analyticsService = {
     if (USE_MOCK) return { ...MOCK_ANALYTICS, rangeDays: days };
     const token = getToken();
     if (!token) throw new Error('not authenticated');
-    return apiFetch<AnalyticsSummary>(`${CATALOG_API}/api/v1/seller/analytics?days=${days}`, { token });
+    return apiFetch<AnalyticsSummary>(`${ORDER_API}/api/v1/orders/analytics?days=${days}`, { token });
   },
 };

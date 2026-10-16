@@ -38,6 +38,7 @@ export default function AnalyticsPage() {
         <select className="select" style={{ width: 160 }} value={days} onChange={(e) => setDays(Number(e.target.value))}>
           <option value={7}>{t('revenue7d')}</option>
           <option value={30}>{t('revenue30d')}</option>
+          <option value={90}>{t('revenue90d')}</option>
         </select>
       </div>
 
