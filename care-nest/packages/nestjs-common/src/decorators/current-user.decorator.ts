@@ -1,21 +1,35 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
 
+export interface JwtUser {
+  id: string;
+  sub: string;
+  userId?: string;
+  roles: string[];
+  role?: string;
+  email?: string;
+  tenantId?: string | null;
+  sessionId?: string;
+  [key: string]: unknown;
+}
+
 /**
- * Inject the authenticated user. The shape is whatever `JwtStrategy.validate`
- * returned; by convention it matches `JwtPayload & { sub: string }`.
+ * Inject the authenticated user or a specific field of the user.
+ *
+ * @example
+ *   @Get('me')
+ *   getMe(@CurrentUser() user: JwtUser)
+ *
+ * @example
+ *   @Get('id')
+ *   getId(@CurrentUser('id') id: string)
  */
 export const CurrentUser = createParamDecorator(
-  (_data: unknown, ctx: ExecutionContext): JwtUser | undefined => {
+  (data: string | undefined, ctx: ExecutionContext) => {
     const req = ctx.switchToHttp().getRequest<Request & { user?: JwtUser }>();
-    return req.user;
+    const user = req.user;
+    if (!user) return undefined;
+    return data ? (user as Record<string, unknown>)[data] : user;
   },
 );
 
-export interface JwtUser {
-  sub: string;
-  tenantId: string | null;
-  roles: string[];
-  email?: string;
-  sessionId?: string;
-}
