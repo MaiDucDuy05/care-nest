@@ -213,6 +213,20 @@
     "bankInfo": "Bank account",
     "status": "Status",
     "requested": "Requested at",
-    "paid": "Paid at"
+    "paid": "Paid at",
+    "timeline": "Wallet ledger",
+    "timelineSubtitle": "Every wallet credit and debit over time",
+    "time": "Time",
+    "kind": "Type",
+    "description": "Description",
+    "balance": "Balance after",
+    "emptyLedger": "No transactions yet",
+    "kindLabels": {
+      "ORDER_CREDIT": "Order credit",
+      "COMMISSION_DEBIT": "Commission",
+      "REFUND_DEBIT": "Refund",
+      "PAYOUT_DEBIT": "Bank payout",
+      "ADJUSTMENT": "Adjustment"
+    }
   }
 }

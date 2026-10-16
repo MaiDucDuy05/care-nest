@@ -10,6 +10,12 @@ const ListQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+const EntriesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
+  kind: z.enum(['ORDER_CREDIT', 'COMMISSION_DEBIT', 'REFUND_DEBIT', 'PAYOUT_DEBIT', 'ADJUSTMENT']).optional(),
+});
+
 @Controller('api/v1/seller/payouts')
 @UseGuards(JwtAuthGuard)
 export class PayoutsController {
@@ -54,6 +60,55 @@ export class PayoutsController {
       lifetimeVnd: Number(wallet.lifetimeVnd),
       currency: wallet.currency,
     };
+  }
+
+  /**
+   * S17: Wallet ledger for the seller — every in/out (ORDER_CREDIT,
+   * COMMISSION_DEBIT, REFUND_DEBIT, PAYOUT_DEBIT, ADJUSTMENT) in
+   * reverse-chronological order. Powers the "Escrow timeline" UI
+   * on the seller payouts page.
+   *
+   * Optional `kind` filter scopes the query to a single entry type
+   * (e.g. `?kind=REFUND_DEBIT` to audit refunds only).
+   */
+  @Get('entries')
+  async listEntries(
+    @CurrentUser() user: { id: string },
+    @Query() query: unknown
+  ): Promise<{ items: unknown[]; total: number; page: number; pageSize: number; hasMore: boolean }> {
+    const parsed = EntriesQuerySchema.safeParse(query);
+    if (!parsed.success) throw new BadRequestException(parsed.error.errors);
+    const prisma = (await import('@carenest/database')).getPrismaClient();
+    const seller = await prisma.seller.findUnique({ where: { userId: user.id } });
+    if (!seller) return { items: [], total: 0, page: 1, pageSize: 50, hasMore: false };
+    const wallet = await prisma.sellerWallet.findUnique({ where: { sellerId: seller.id } });
+    if (!wallet) return { items: [], total: 0, page: 1, pageSize: 50, hasMore: false };
+    const { page, pageSize, kind } = parsed.data;
+    const skip = (page - 1) * pageSize;
+    const where = {
+      walletId: wallet.id,
+      ...(kind ? { kind } : {}),
+    };
+    const [rows, total] = await Promise.all([
+      prisma.walletEntry.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: pageSize,
+      }),
+      prisma.walletEntry.count({ where }),
+    ]);
+    const items = rows.map((r) => ({
+      id: r.id,
+      kind: r.kind,
+      amountVnd: Number(r.amountVnd),
+      balanceAfterVnd: Number(r.balanceAfterVnd),
+      referenceType: r.referenceType,
+      referenceId: r.referenceId,
+      description: r.description,
+      createdAt: r.createdAt,
+    }));
+    return { items, total, page, pageSize, hasMore: skip + items.length < total };
   }
 
   /**

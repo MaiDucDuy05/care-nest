@@ -213,6 +213,20 @@
     "bankInfo": "Tài khoản",
     "status": "Trạng thái",
     "requested": "Yêu cầu lúc",
-    "paid": "Thanh toán lúc"
+    "paid": "Thanh toán lúc",
+    "timeline": "Lịch sử ví",
+    "timelineSubtitle": "Mọi giao dịch vào/ra ví theo thời gian",
+    "time": "Thời gian",
+    "kind": "Loại",
+    "description": "Mô tả",
+    "balance": "Số dư sau",
+    "emptyLedger": "Chưa có giao dịch nào",
+    "kindLabels": {
+      "ORDER_CREDIT": "Cộng đơn hàng",
+      "COMMISSION_DEBIT": "Trừ hoa hồng",
+      "REFUND_DEBIT": "Hoàn tiền",
+      "PAYOUT_DEBIT": "Rút về NH",
+      "ADJUSTMENT": "Điều chỉnh"
+    }
   }
 }

@@ -2,15 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Wallet, CheckCircle2, Clock, XCircle, RefreshCw } from 'lucide-react';
+import { Wallet, CheckCircle2, Clock, XCircle, RefreshCw, ArrowUpRight, ArrowDownRight, ListOrdered } from 'lucide-react';
 import { payoutsService } from '@/lib/services/payouts.service';
-import type { Payout, PayoutStatus, SellerWallet } from '@/lib/types';
+import type { Payout, PayoutStatus, SellerWallet, WalletEntry, WalletEntryKind } from '@/lib/types';
 
-const formatVnd = (n: number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
+const formatVnd = (n: number) => new Intl.NumberFormat('vi-VN').format(Math.abs(n)) + ' đ';
+
+const formatSignedVnd = (n: number) => (n >= 0 ? '+' : '−') + formatVnd(n);
 
 const STATUS_BADGE: Record<PayoutStatus, string> = {
   PENDING: 'badge-amber',
-  PROCESSING: 'badge-blue',
+  PROCESSING: 'badge-indigo',
   PAID: 'badge-green',
   FAILED: 'badge-red',
   REVERSED: 'badge-slate',
@@ -24,11 +26,20 @@ const STATUS_ICON: Record<PayoutStatus, JSX.Element> = {
   REVERSED: <XCircle size={14} />,
 };
 
+const ENTRY_BADGE: Record<WalletEntryKind, string> = {
+  ORDER_CREDIT: 'badge-green',
+  COMMISSION_DEBIT: 'badge-slate',
+  REFUND_DEBIT: 'badge-red',
+  PAYOUT_DEBIT: 'badge-indigo',
+  ADJUSTMENT: 'badge-amber',
+};
+
 export default function PayoutsPage() {
   const t = useTranslations('payouts');
   const tCommon = useTranslations('common');
   const [wallet, setWallet] = useState<SellerWallet | null>(null);
   const [payouts, setPayouts] = useState<Payout[]>([]);
+  const [entries, setEntries] = useState<WalletEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,10 +47,15 @@ export default function PayoutsPage() {
     let mounted = true;
     (async () => {
       try {
-        const [w, p] = await Promise.all([payoutsService.listWallet(), payoutsService.list({ pageSize: 50 })]);
+        const [w, p, e] = await Promise.all([
+          payoutsService.listWallet(),
+          payoutsService.list({ pageSize: 50 }),
+          payoutsService.listEntries({ pageSize: 50 }),
+        ]);
         if (!mounted) return;
         setWallet(w);
         setPayouts(p.items);
+        setEntries(e.items);
       } catch (err) {
         if (mounted) setError((err as Error).message);
       } finally {
@@ -98,6 +114,69 @@ export default function PayoutsPage() {
           />
         </div>
       )}
+
+      <div className="card" style={{ padding: 0 }}>
+        <div style={{ padding: 16, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ListOrdered size={18} color="var(--text-muted)" />
+          <h2 className="text-h3" style={{ margin: 0 }}>{t('timeline')}</h2>
+        </div>
+        <div style={{ padding: '0 16px 8px', color: 'var(--text-muted)', fontSize: 13 }}>
+          {t('timelineSubtitle')}
+        </div>
+        {entries.length === 0 ? (
+          <div style={{ padding: 48, textAlign: 'center', color: 'var(--text-muted)' }}>{t('emptyLedger')}</div>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: 160 }}>{t('time')}</th>
+                <th style={{ width: 140 }}>{t('kind')}</th>
+                <th>{t('description')}</th>
+                <th style={{ textAlign: 'right', width: 140 }}>{t('amount')}</th>
+                <th style={{ textAlign: 'right', width: 140 }}>{t('balance')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e) => {
+                const positive = e.amountVnd >= 0;
+                const labelKey = `kindLabels.${e.kind}` as const;
+                return (
+                  <tr key={e.id}>
+                    <td className="text-sm text-muted">
+                      {new Date(e.createdAt).toLocaleString('vi-VN')}
+                    </td>
+                    <td>
+                      <span
+                        className={`badge ${ENTRY_BADGE[e.kind]}`}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                      >
+                        {positive ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                        {t(labelKey)}
+                      </span>
+                    </td>
+                    <td className="text-sm">
+                      {e.description || '—'}
+                    </td>
+                    <td
+                      style={{
+                        textAlign: 'right',
+                        fontFamily: 'monospace',
+                        color: positive ? 'var(--success)' : 'var(--danger)',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {formatSignedVnd(e.amountVnd)}
+                    </td>
+                    <td style={{ textAlign: 'right', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+                      {formatVnd(e.balanceAfterVnd)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       <div className="card" style={{ padding: 0 }}>
         <div style={{ padding: 16, borderBottom: '1px solid var(--border)' }}>

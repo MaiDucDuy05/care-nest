@@ -164,3 +164,16 @@ export interface SellerWallet {
   lifetimeVnd: number;
   currency: string;
 }
+
+export type WalletEntryKind = 'ORDER_CREDIT' | 'COMMISSION_DEBIT' | 'REFUND_DEBIT' | 'PAYOUT_DEBIT' | 'ADJUSTMENT';
+
+export interface WalletEntry {
+  id: string;
+  kind: WalletEntryKind;
+  amountVnd: number; // signed: +credit, -debit
+  balanceAfterVnd: number;
+  referenceType: string | null;
+  referenceId: string | null;
+  description: string | null;
+  createdAt: string;
+}
