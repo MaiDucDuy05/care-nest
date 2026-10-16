@@ -12,11 +12,12 @@
 
 const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
 
-const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3001';
-const CATALOG_API = process.env.NEXT_PUBLIC_CATALOG_API_URL || 'http://localhost:3002';
-const ORDER_API = process.env.NEXT_PUBLIC_ORDER_API_URL || 'http://localhost:3003';
-const PAYMENT_API = process.env.NEXT_PUBLIC_PAYMENT_API_URL || 'http://localhost:3005';
-const SHIPPING_API = process.env.NEXT_PUBLIC_SHIPPING_API_URL || 'http://localhost:3009';
+const AUTH_API = API_GATEWAY || process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3001';
+const CATALOG_API = API_GATEWAY || process.env.NEXT_PUBLIC_CATALOG_API_URL || 'http://localhost:3002';
+const ORDER_API = API_GATEWAY || process.env.NEXT_PUBLIC_ORDER_API_URL || 'http://localhost:3004';
+const PAYMENT_API = API_GATEWAY || process.env.NEXT_PUBLIC_PAYMENT_API_URL || 'http://localhost:3005';
+const SHIPPING_API = API_GATEWAY || process.env.NEXT_PUBLIC_SHIPPING_API_URL || 'http://localhost:3009';
+
 
 export { AUTH_API, CATALOG_API, ORDER_API, PAYMENT_API, SHIPPING_API, API_GATEWAY };
 

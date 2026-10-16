@@ -4,6 +4,7 @@ export * from './modules/config.module.js';
 export * from './modules/kafka.module.js';
 export * from './modules/redis.module.js';
 export * from './modules/prisma.module.js';
+export * from './middleware/index.js';
 export * from './middleware/request-metrics.middleware.js';
 export * from './guards/redis-throttler.guard.js';
 export * from './guards/jwt-auth.guard.js';

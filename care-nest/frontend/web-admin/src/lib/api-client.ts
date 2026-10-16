@@ -2,11 +2,14 @@
  * Admin API client — wraps HTTP calls to all backend microservices.
  */
 
-const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3001';
-const CATALOG_API = process.env.NEXT_PUBLIC_CATALOG_API_URL || 'http://localhost:3002';
-const ALERT_API = process.env.NEXT_PUBLIC_ALERT_API_URL || 'http://localhost:3007';
-const SUBSCRIPTION_API = process.env.NEXT_PUBLIC_SUBSCRIPTION_API_URL || 'http://localhost:3008';
-const SHIPPING_API = process.env.NEXT_PUBLIC_SHIPPING_API_URL || 'http://localhost:3009';
+const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
+
+const AUTH_API = API_GATEWAY || process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3001';
+const CATALOG_API = API_GATEWAY || process.env.NEXT_PUBLIC_CATALOG_API_URL || 'http://localhost:3002';
+const ALERT_API = API_GATEWAY || process.env.NEXT_PUBLIC_ALERT_API_URL || 'http://localhost:3007';
+const SUBSCRIPTION_API = API_GATEWAY || process.env.NEXT_PUBLIC_SUBSCRIPTION_API_URL || 'http://localhost:3008';
+const SHIPPING_API = API_GATEWAY || process.env.NEXT_PUBLIC_SHIPPING_API_URL || 'http://localhost:3009';
+
 
 function authHeaders(token?: string) {
   return {

@@ -5,7 +5,7 @@ Kiến trúc Backend phân tán theo hướng Microservices, sử dụng **NestJ
 ## Trạng Thái Các Dịch Vụ
 
 | Service | Port | Giao Thức | Trách Nhiệm | Trạng Thái |
-|---|---|---|---|---|
+| **`api-gateway/`** | `8080` | HTTP / Reverse Proxy | Unified API Gateway: routing, W3C OTel tracecontext, metrics & CORS | ✅ **NEW** (Phase 3) |
 | **`auth-service/`** | `3001` | HTTP / REST | Đăng ký, đăng nhập, JWT tokens, RBAC, MFA TOTP, audit log, KYC verification | ✅ **Scaffolded** (Phase 1) |
 | **`catalog-service/`** | `3002` | HTTP / REST | Quản lý sản phẩm, danh mục y tế, KYC seller onboarding, Redis Caching | ✅ **Scaffolded** (Phase 1) |
 | **`device-service/`** | `3003` | HTTP + Kafka | Đăng ký IMEI Wonlex, gán thiết bị, geofence, theo dõi telemetry | ✅ **Scaffolded** (Phase 1) |

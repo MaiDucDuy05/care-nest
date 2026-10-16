@@ -3,17 +3,20 @@
  * Wraps HTTP calls to the backend microservices.
  */
 
-const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3001';
-const CATALOG_API = process.env.NEXT_PUBLIC_CATALOG_API_URL || 'http://localhost:3002';
-const DEVICE_API = process.env.NEXT_PUBLIC_DEVICE_API_URL || 'http://localhost:3003';
-const ORDER_API = process.env.NEXT_PUBLIC_ORDER_API_URL || 'http://localhost:3003';
-const PAYMENT_API = process.env.NEXT_PUBLIC_PAYMENT_API_URL || 'http://localhost:3005';
-const ALERT_API = process.env.NEXT_PUBLIC_ALERT_API_URL || 'http://localhost:3007';
-const SUBSCRIPTION_API = process.env.NEXT_PUBLIC_SUBSCRIPTION_API_URL || 'http://localhost:3008';
-const SHIPPING_API = process.env.NEXT_PUBLIC_SHIPPING_API_URL || 'http://localhost:3009';
-const NOTIFICATION_API = process.env.NEXT_PUBLIC_NOTIFICATION_API_URL || 'http://localhost:3006';
+const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
+
+const AUTH_API = API_GATEWAY || process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3001';
+const CATALOG_API = API_GATEWAY || process.env.NEXT_PUBLIC_CATALOG_API_URL || 'http://localhost:3002';
+const DEVICE_API = API_GATEWAY || process.env.NEXT_PUBLIC_DEVICE_API_URL || 'http://localhost:3003';
+const ORDER_API = API_GATEWAY || process.env.NEXT_PUBLIC_ORDER_API_URL || 'http://localhost:3004';
+const PAYMENT_API = API_GATEWAY || process.env.NEXT_PUBLIC_PAYMENT_API_URL || 'http://localhost:3005';
+const ALERT_API = API_GATEWAY || process.env.NEXT_PUBLIC_ALERT_API_URL || 'http://localhost:3007';
+const SUBSCRIPTION_API = API_GATEWAY || process.env.NEXT_PUBLIC_SUBSCRIPTION_API_URL || 'http://localhost:3008';
+const SHIPPING_API = API_GATEWAY || process.env.NEXT_PUBLIC_SHIPPING_API_URL || 'http://localhost:3009';
+const NOTIFICATION_API = API_GATEWAY || process.env.NEXT_PUBLIC_NOTIFICATION_API_URL || 'http://localhost:3006';
 // Activation codes are issued and redeemed by device-service (S16).
-const ACTIVATION_API = process.env.NEXT_PUBLIC_DEVICE_API_URL || 'http://localhost:3003';
+const ACTIVATION_API = API_GATEWAY || process.env.NEXT_PUBLIC_DEVICE_API_URL || 'http://localhost:3003';
+
 
 export const apiClient = {
   auth: {

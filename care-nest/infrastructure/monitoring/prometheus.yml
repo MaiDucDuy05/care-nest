@@ -17,6 +17,7 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets:
+          - 'api-gateway:8080'
           - 'auth-service:3001'
           - 'catalog-service:3002'
           - 'device-service:3003'
