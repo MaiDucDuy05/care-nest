@@ -5,6 +5,45 @@
 
 ---
 
+## [0.3.1] — 2025-10-16 — Phase 3 Sprint 18 (S18): observability + Redis rate limit
+
+### Added (shared — `@carenest/nestjs-common`)
+- **`MetricsModule` + `MetricsService`** — thin `prom-client` wrapper over a single process-wide `Registry`. Default Node.js metrics (CPU, event-loop lag, heap) auto-registered. Typed API: `inc(name, labels)`, `observe(name, value, labels)`, `startTimer(name, labels)`. Serves `GET /metrics` in Prometheus text exposition format.
+- **`RequestMetricsMiddleware`** — records `http_request_duration_seconds` histogram on every response (labels: method, route template, status). Buckets span 5ms → 10s.
+- **`RedisThrottlerGuard`** — atomic Redis `INCR` + `PEXPIRE` rate limiter, configurable `windowMs` / `max` / `keyFn`. **Fails open** (allows + logs WARN) when Redis is unreachable, trading a brief abuse window for availability.
+- **`HealthModule` fix** — now imports `PrismaModule` so the controller's `PrismaService` injection resolves (was relying implicitly on `@Global`; made explicit + self-contained).
+- **`src/index.ts` export surface** — now re-exports the full public API (modules, guards, middleware, decorators, filters, interceptors, pipes, tokens, types). Previously only `bootstrapHttp` + 5 modules were exported; the per-directory barrel files were dead code.
+
+### Added (payment-service)
+- Webhook rate limiter (`WebhookRateLimitGuard`) now **extends `RedisThrottlerGuard`** (100 req/min per gateway+IP, across replicas) — replaces the S17 in-process `Map`.
+- `payments.service` increments `payments_total{method,status}` on paid + refunded, and `refunds_total{method,gateway_accepted}` on refund.
+- `webhook-event.service` increments `webhook_events_total{gateway,signature_valid,outcome}` on every record attempt (recorded / duplicate).
+
+### Added (all 9 NestJS services)
+- `MetricsModule` + `RequestMetricsMiddleware` wired into every service's `AppModule` → `/metrics` everywhere.
+- The 6 request-serving services (auth, catalog, device, order, notification, payment) also got `HealthModule` → `/health/healthz` (DB + Redis deep check) + `/health/livez`.
+- Added `@carenest/nestjs-common` as a workspace dependency to all 9 services (previously none consumed it).
+
+### Added (infra — observability stack)
+- `docker-compose.dev.yml` — `prometheus` (v2.55.0, port 9090, 7-day retention) + `grafana` (11.3.0, host port 3100) under `full` + `monitoring` profiles.
+- `infrastructure/monitoring/prometheus.yml` — 30s scrape of all 9 services by compose-network name; relabels `address` → clean `service` label.
+- `infrastructure/monitoring/grafana/provisioning/` — auto-provisions the Prometheus datasource + dashboard loader.
+- `infrastructure/monitoring/grafana/dashboards/payment-service.json` — starter dashboard: request rate by service, p95 latency by route, payments by status, refunds by method, webhook events by gateway+outcome, 429 rate, Node heap.
+
+### Tests
+- `@carenest/nestjs-common`: +5 `RedisThrottlerGuard` (window, limit, 429, per-key isolation, fail-open) + 5 `MetricsService` (default metrics, counter, histogram, timer, content-type) = 12 total.
+- `payment-service`: refund orchestration test now asserts `payments_total` + `refunds_total` increments. 36 tests total.
+- **Full backend suite: 294 tests green** (nestjs-common 12, auth 4, catalog 19, order 25, device 35, notification 40, payment 36, subscription 59, shipping 45, alert 17, iot-gateway 2).
+
+### Notes
+- **Grafana on host port 3100** (not 3000) to avoid colliding with the Next.js dev apps.
+- **`/metrics` is unauthenticated** — internal-only; put behind a reverse proxy / firewall in prod. Documented as a known risk.
+- **Redis fail-open**: an attacker could exploit a Redis outage to bypass the limit. Accepted for S18; mitigation is alerting on the WARN log volume (fail-closed would 503 legitimate traffic during a blip).
+- **Deferred to S19**: OpenTelemetry distributed tracing (pairs with API gateway work), Alertmanager rules, custom per-seller business metrics.
+- **Pre-existing type-check strictness** in device/catalog/order/notification test files (from earlier sprints) is unrelated to S18 — build + vitest pass; left untouched to keep the sprint scoped.
+
+---
+
 ## [0.2.7] — 2025-10-16 — Phase 2.2 Sprint 17 (S17): payment hardening + webhooks
 
 ### Added (backend)

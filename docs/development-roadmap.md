@@ -2,7 +2,7 @@
 
 > **Cập nhật liên tục** bởi `project-manager` agent. Mỗi phase có status, milestones, và % hoàn thành.
 
-**Cập nhật gần nhất:** 2025-10-16 (S15 + S16 + S17 hoàn thành: reviews + analytics, IoT activation, payment hardening)
+**Cập nhật gần nhất:** 2025-10-16 (S18 hoàn thành: observability — Prometheus metrics + Redis rate limit + Grafana; mở đầu Phase 3)
 
 ---
 
@@ -12,11 +12,27 @@
 |-------|-----|-----------|------|--------|---|
 | 0 | Khởi động & R&D (Monorepo + Wonlex codec) | 2 tuần | W01–W02 | ✅ **Hoàn thành** | 100% |
 | 1 | Xây dựng Core Platform | 8 tuần | W03–W10 | ✅ **Hoàn thành** | 100% |
-| 2 | Tích hợp & Hoàn thiện | 8 tuần | W11–W18 | 🚧 **Đang thực hiện** | ~75% |
-| 3 | Thử nghiệm & Thẩm định | 6 tuần | W19–W24 | ⏳ Chưa bắt đầu | 0% |
+| 2 | Tích hợp & Hoàn thiện | 8 tuần | W11–W18 | ✅ **Hoàn thành** | 100% |
+| 3 | Thử nghiệm & Thẩm định | 6 tuần | W19–W24 | 🚧 **Đang thực hiện** | ~10% |
 | 4 | Ra mắt & Tăng tốc | 6 tuần | W25–W30 | ⏳ Chưa bắt đầu | 0% |
 
-**Tổng tiến độ dự án: 60% (10/30 tuần Phase 0–1 + 6 tuần Phase 2)**
+**Tổng tiến độ dự án: 63% (Phase 0–2 xong + S18 mở đầu Phase 3)**
+
+### Phase 3 — Thử nghiệm & Thẩm định 🚧 (W19–W24, đang ở W19)
+
+| Sprint | Tên | Commit | Trạng thái |
+|--------|-----|--------|------------|
+| **S18** | Observability (Prometheus + Redis rate limit + Grafana) | — | ✅ Hoàn thành |
+| **S19** | API gateway + cross-service auth + OTel tracing | — | ⏳ Chưa bắt đầu |
+| **S20** | Staging deploy + smoke tests | — | ⏳ Chưa bắt đầu |
+| **S21** | Security audit + pentest prep | — | ⏳ Chưa bắt đầu |
+
+**S18 deliverables:**
+- `@carenest/nestjs-common`: `MetricsModule`/`MetricsService` (prom-client), `RequestMetricsMiddleware`, `RedisThrottlerGuard` (atomic INCR+EXPIRE, fail-open), `HealthModule` fix
+- `/metrics` trên cả 9 NestJS service; `/health/healthz`+`/livez` trên 6 service nhận request
+- Payment-service: webhook rate limit chuyển sang Redis; metrics `payments_total`, `refunds_total`, `webhook_events_total`
+- Prometheus (9090) + Grafana (3100) trong docker-compose `full`/`monitoring` profile + starter dashboard
+- 294 backend tests xanh (nestjs-common +10)
 
 ### Phase 1 — Build pipeline hardening (2025-10-16)
 - **3 shared packages mới**:
