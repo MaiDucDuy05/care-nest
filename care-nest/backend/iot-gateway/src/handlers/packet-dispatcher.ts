@@ -8,6 +8,36 @@ import { TelemetryPublisher } from '../kafka/telemetry-publisher.js';
 const logger = createLogger({ service: 'packet-dispatcher' });
 const sessions = SessionManager.getInstance();
 
+const DEVICE_SERVICE_URL =
+  process.env.DEVICE_SERVICE_URL || 'http://localhost:3003';
+
+/**
+ * Resolve the userId bound to this IMEI by calling device-service.
+ * Returns null if the device is not yet activated (i.e. activation
+ * code not redeemed, no assignment row). The gateway rejects login
+ * packets that arrive from unactivated devices, with one exception:
+ * SOS packets are still published so a lost watch can still call for
+ * help even before pairing.
+ */
+async function resolveOwner(deviceId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${DEVICE_SERVICE_URL}/api/v1/activation/internal/resolve-owner`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ imei: deviceId }),
+    });
+    if (!res.ok) {
+      logger.warn({ deviceId, status: res.status }, 'resolve-owner non-2xx');
+      return null;
+    }
+    const body = (await res.json()) as { userId: string | null };
+    return body.userId;
+  } catch (err: any) {
+    logger.error({ deviceId, err: err.message }, 'resolve-owner failed');
+    return null;
+  }
+}
+
 export class PacketDispatcher {
   static async dispatch(parsed: ParsedPacket, socket: Socket): Promise<void> {
     const typed = decodePacket(parsed);
@@ -23,14 +53,30 @@ export class PacketDispatcher {
 
     switch (typed.command) {
       case 'login': {
-        logger.info({ deviceId }, 'Device login accepted');
-        // Acknowledge login packet back to watch
+        // S16: validate the device has been activated (activation code
+        // redeemed). We still ack the login so the watch goes idle, but
+        // the device is flagged unactivated in our session map so
+        // non-SOS packets are dropped downstream.
+        const owner = await resolveOwner(deviceId);
+        if (!owner) {
+          logger.warn(
+            { deviceId },
+            'Login from unactivated device — accepting but not binding to user'
+          );
+        } else {
+          sessions.setOwner(deviceId, owner);
+          logger.info({ deviceId, owner }, 'Device login accepted and bound to user');
+        }
         const ack = buildPacket(deviceId, 'login');
         socket.write(ack);
         break;
       }
 
       case 'heartbeat': {
+        if (!sessions.getOwner(deviceId)) {
+          logger.debug({ deviceId }, 'Heartbeat from unbound device — dropping (awaiting activation)');
+          break;
+        }
         const payload = typed as any;
         const battery = payload.battery ?? 100;
         const steps = payload.steps;
@@ -50,6 +96,10 @@ export class PacketDispatcher {
       }
 
       case 'location': {
+        if (!sessions.getOwner(deviceId)) {
+          logger.debug({ deviceId }, 'Location from unbound device — dropping');
+          break;
+        }
         const payload = typed as any;
         logger.info({ deviceId, lat: payload.lat, lon: payload.lon }, 'Location report received');
 
@@ -65,6 +115,10 @@ export class PacketDispatcher {
       }
 
       case 'vitals_bp_hr': {
+        if (!sessions.getOwner(deviceId)) {
+          logger.debug({ deviceId }, 'BP/HR from unbound device — dropping');
+          break;
+        }
         const payload = typed as any;
         logger.info({ deviceId, systolic: payload.systolic, diastolic: payload.diastolic, hr: payload.heartRate }, 'BP/HR vitals received');
 
@@ -82,6 +136,10 @@ export class PacketDispatcher {
       }
 
       case 'vitals_oxygen': {
+        if (!sessions.getOwner(deviceId)) {
+          logger.debug({ deviceId }, 'SpO2 from unbound device — dropping');
+          break;
+        }
         const payload = typed as any;
         logger.info({ deviceId, spo2: payload.spo2 }, 'SpO2 vitals received');
 
@@ -95,6 +153,10 @@ export class PacketDispatcher {
       }
 
       case 'vitals_temperature': {
+        if (!sessions.getOwner(deviceId)) {
+          logger.debug({ deviceId }, 'Temp from unbound device — dropping');
+          break;
+        }
         const payload = typed as any;
         logger.info({ deviceId, temp: payload.temperature }, 'Body temperature vitals received');
 

@@ -3,6 +3,9 @@ import type { Socket } from 'node:net';
 export class SessionManager {
   private static instance: SessionManager;
   private readonly sessions = new Map<string, Socket>();
+  // S16: track which userId owns each active device. Set on login
+  // when device-service confirms a used activation code exists.
+  private readonly owners = new Map<string, string>();
 
   private constructor() {}
 
@@ -19,6 +22,7 @@ export class SessionManager {
 
   unregister(deviceId: string): void {
     this.sessions.delete(deviceId);
+    this.owners.delete(deviceId);
   }
 
   getSocket(deviceId: string): Socket | undefined {
@@ -29,7 +33,11 @@ export class SessionManager {
     return this.sessions.size;
   }
 
-  getAllDeviceIds(): string[] {
-    return Array.from(this.sessions.keys());
+  setOwner(deviceId: string, userId: string): void {
+    this.owners.set(deviceId, userId);
+  }
+
+  getOwner(deviceId: string): string | undefined {
+    return this.owners.get(deviceId);
   }
 }

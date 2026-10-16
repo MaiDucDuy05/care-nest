@@ -12,6 +12,8 @@ const ALERT_API = process.env.NEXT_PUBLIC_ALERT_API_URL || 'http://localhost:300
 const SUBSCRIPTION_API = process.env.NEXT_PUBLIC_SUBSCRIPTION_API_URL || 'http://localhost:3008';
 const SHIPPING_API = process.env.NEXT_PUBLIC_SHIPPING_API_URL || 'http://localhost:3009';
 const NOTIFICATION_API = process.env.NEXT_PUBLIC_NOTIFICATION_API_URL || 'http://localhost:3006';
+// Activation codes are issued and redeemed by device-service (S16).
+const ACTIVATION_API = process.env.NEXT_PUBLIC_DEVICE_API_URL || 'http://localhost:3003';
 
 export const apiClient = {
   auth: {
@@ -101,7 +103,7 @@ export const apiClient = {
   },
 };
 
-export { AUTH_API, CATALOG_API, DEVICE_API, ORDER_API, PAYMENT_API, ALERT_API, SUBSCRIPTION_API, SHIPPING_API, NOTIFICATION_API };
+export { AUTH_API, CATALOG_API, DEVICE_API, ORDER_API, PAYMENT_API, ALERT_API, SUBSCRIPTION_API, SHIPPING_API, NOTIFICATION_API, ACTIVATION_API };
 
 /**
  * Read the buyer auth token from localStorage. Web-buyer stores the

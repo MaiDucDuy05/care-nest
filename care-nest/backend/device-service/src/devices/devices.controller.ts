@@ -35,4 +35,34 @@ export class DevicesController {
     }
     return this.devicesService.registerDevice(parsed.data);
   }
+
+  /**
+   * Admin-only provisioning endpoint. S16: this is the entry point
+   * for onboarding a new IMEI into the system.
+   */
+  @Post()
+  async provision(@Body() body: { deviceId: string; model?: string; firmware?: string }) {
+    if (!body?.deviceId) throw new BadRequestException('deviceId is required');
+    return this.devicesService.provision(body.deviceId, body.model, body.firmware);
+  }
+
+  /**
+   * Issue an activation code for a delivered order. The buyer redeems
+   * the returned token from the activation page.
+   */
+  @Post(':id/activate')
+  async issueActivation(
+    @Param('id') _id: string,
+    @Body() body: { orderId: string; userId: string; imeiList: string[] }
+  ): Promise<{ id: string; token: string; expiresAt: string }> {
+    if (!body?.orderId || !body?.userId || !Array.isArray(body.imeiList)) {
+      throw new BadRequestException('orderId, userId, and imeiList are required');
+    }
+    const code = await this.devicesService.issueActivationCode(body.orderId, body.userId, body.imeiList);
+    return {
+      id: code.id,
+      token: code.token,
+      expiresAt: code.expiresAt.toISOString(),
+    };
+  }
 }
