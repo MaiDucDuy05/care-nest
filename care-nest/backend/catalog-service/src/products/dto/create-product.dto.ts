@@ -16,6 +16,7 @@ export const CreateProductSchema = z.object({
   iotDeviceModel: z.string().optional(),
   isMedical: z.boolean().default(false),
   requiresRx: z.boolean().default(false),
+  requiresImei: z.boolean().default(true),
 });
 
 export type CreateProductDto = z.infer<typeof CreateProductSchema>;

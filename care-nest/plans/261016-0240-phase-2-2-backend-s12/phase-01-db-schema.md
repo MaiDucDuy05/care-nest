@@ -1,0 +1,160 @@
+# Phase 01 — DB schema: IMEI + Payout + SellerWallet
+
+**Priority:** P0 (blocker for all other phases)
+**Status:** pending
+**Effort:** ~1.5 hours
+
+## Context
+
+`packages/database/prisma/schema.prisma` is the single source of truth for
+all 19 entities. The migration `20260101000000_init` is already applied.
+S12 adds 3 new models + 2 enums. They are not in the init migration — we
+ship a new `20260102000000_s12_imei_payout` migration.
+
+## Schema additions
+
+### New enums
+
+```prisma
+enum ImeiStatus {
+  IN_STOCK
+  RESERVED
+  SHIPPED
+  ACTIVATED
+  RETURNED
+  FAULTY
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REVERSED
+}
+
+enum WalletEntryKind {
+  ORDER_CREDIT      // + gross order amount
+  COMMISSION_DEBIT  // - platform commission
+  REFUND_DEBIT      // - refund to buyer
+  PAYOUT_DEBIT      // - transferred to bank
+  ADJUSTMENT        // manual correction
+}
+```
+
+### New models
+
+```prisma
+model ImeiRecord {
+  id           String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  imei         String       @unique @db.Char(15)
+  productId    String       @db.Uuid
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  sellerId     String       @db.Uuid
+  seller       Seller       @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  status       ImeiStatus   @default(IN_STOCK)
+  orderId      String?      @db.Uuid
+  order        Order?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderItemId  String?      @db.Uuid
+  orderItem    OrderItem?   @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  activatedAt  DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([sellerId, status])
+  @@index([orderId])
+  @@index([productId, status])
+  @@map("imei_records")
+}
+
+model SellerWallet {
+  id              String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  sellerId        String        @unique @db.Uuid
+  seller          Seller        @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  balanceVnd      Decimal       @default(0) @db.Decimal(14, 0)  // available for payout
+  pendingVnd      Decimal       @default(0) @db.Decimal(14, 0)  // escrow-held, not yet releasable
+  lifetimeVnd     Decimal       @default(0) @db.Decimal(14, 0)  // gross ever earned
+  currency        String        @default("VND") @db.Char(3)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  entries         WalletEntry[]
+
+  @@map("seller_wallets")
+}
+
+model WalletEntry {
+  id              String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  walletId        String           @db.Uuid
+  wallet          SellerWallet     @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  kind            WalletEntryKind
+  amountVnd       Decimal          @db.Decimal(14, 0)  // signed: +credit, -debit
+  balanceAfterVnd Decimal          @db.Decimal(14, 0)  // snapshot for audit
+  referenceType   String?          // 'order' | 'payout' | 'refund' | 'manual'
+  referenceId     String?          @db.Uuid
+  description     String?
+  createdAt       DateTime         @default(now())
+
+  @@index([walletId, createdAt])
+  @@index([referenceType, referenceId])
+  @@map("wallet_entries")
+}
+
+model Payout {
+  id              String       @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  sellerId        String       @db.Uuid
+  seller          Seller       @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  walletId        String       @db.Uuid
+  wallet          SellerWallet @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  amountVnd       Decimal      @db.Decimal(14, 0)
+  status          PayoutStatus @default(PENDING)
+  bankName        String
+  bankAccount     String
+  bankAccountName String
+  transferRef     String?      // bank's transaction ref once paid
+  failureReason   String?
+  requestedAt     DateTime     @default(now())
+  processedAt     DateTime?
+  paidAt          DateTime?
+
+  @@index([sellerId, status])
+  @@index([status, requestedAt])
+  @@map("payouts")
+}
+```
+
+### Relation updates
+
+- `Seller`: add `wallets SellerWallet[]`, `payouts Payout[]`, `imeis ImeiRecord[]`
+- `Product`: add `imeis ImeiRecord[]`
+- `Order`: add `imeis ImeiRecord[]`
+- `OrderItem`: add `imeis ImeiRecord[]`
+
+## Migration
+
+Create `packages/database/prisma/migrations/20260102000000_s12_imei_payout/migration.sql`
+manually (Prisma's `migrate dev` is not available in this environment). Use
+the same `pg_uuidv7()` default pattern as the init migration.
+
+Then run `pnpm --filter @carenest/database db:generate` to regenerate the
+client and `@carenest/database` build artifact.
+
+## Files
+
+- **Modify:** `packages/database/prisma/schema.prisma`
+- **Create:** `packages/database/prisma/migrations/20260102000000_s12_imei_payout/migration.sql`
+- **Auto-gen:** `packages/database/dist/*` (regenerated by tsup + prisma)
+
+## Success criteria
+
+- `pnpm --filter @carenest/database build` regenerates without errors
+- The `ImeiRecord`, `SellerWallet`, `WalletEntry`, `Payout` models are
+  importable from `@carenest/database` (consumers can do `import { ImeiStatus } from '@carenest/database'`)
+- Migration file is syntactically valid SQL (lint by hand; PG not running)
+
+## Risk
+
+- **Schema drift**: if other services use the `@carenest/database` export,
+  they will pull in new enums. Mitigation: existing enums unchanged;
+  new exports are additive.
+- **Decimal arithmetic**: Postgres `Decimal(14, 0)` holds up to 999,999,999,999,99 (trillions), which covers all VND orders.

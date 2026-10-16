@@ -97,6 +97,7 @@ export class ProductsRepository {
         isIotDevice: data.isIotDevice || false,
         iotDeviceModel: data.iotDeviceModel,
         requiresRx: data.requiresRx || false,
+        requiresImei: data.requiresImei ?? true,
       },
     });
     return created as unknown as Product;

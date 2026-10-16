@@ -5,6 +5,52 @@
 
 ---
 
+## [0.2.3] — 2025-10-16 — Phase 2.2 Sprint 12 (S12): IMEI lifecycle + seller payouts
+
+### Added
+- **Database** (`@carenest/database`)
+  - 3 enums: `ImeiStatus` (IN_STOCK, RESERVED, SHIPPED, ACTIVATED, RETURNED, FAULTY), `PayoutStatus` (PENDING, PROCESSING, PAID, FAILED, REVERSED), `WalletEntryKind` (ORDER_CREDIT, COMMISSION_DEBIT, REFUND_DEBIT, PAYOUT_DEBIT, ADJUSTMENT)
+  - 4 new models with proper indexes + check constraints: `ImeiRecord`, `SellerWallet`, `WalletEntry`, `Payout`
+  - `requiresImei` boolean on `Product` (default TRUE)
+  - Optional bank info on `Seller` (`bankName`, `bankAccount`, `bankAccountName`)
+  - Migration: `20260102000000_s12_imei_payout/migration.sql`
+- **catalog-service — IMEI module** (`backend/catalog-service/src/imei/`)
+  - `imei-luhn.ts` — Luhn-15 algorithm with `isValidImei` + `computeImeiCheckDigit` pure functions (11 unit tests)
+  - `imei.repository.ts` — bulkImport (Luhn-validated), allocate ($transaction with row-level updates), release, markShipped, findByOrder
+  - `imei.service.ts` — wraps allocate/release in `withLock('imei-allocate:orderId')` for concurrency safety
+  - `imei.controller.ts` — 5 endpoints:
+    - `POST /api/v1/seller/imeis/bulk` — import with Luhn validation
+    - `GET /api/v1/seller/imeis` — list with status filter
+    - `POST /api/v1/seller/imeis/allocate` — reserve IMEIs for an order
+    - `POST /api/v1/seller/imeis/release` — return to IN_STOCK
+    - `POST /api/v1/seller/imeis/:orderId/ship` — bulk-mark SHIPPED
+  - `imei-event.publisher.ts` — publishes `IMEI_ALLOCATED` + `IMEI_SHIPPED` Kafka events
+- **order-service — IMEI guard**
+  - `orders.service.assertImeisReady()` — throws `BadRequestException` with per-item breakdown if any IMEI-required item is short
+  - On `SHIPPED` transition: `prisma.imeiRecord.updateMany` marks RESERVED → SHIPPED (best-effort)
+  - `OrderShippedEvent` now carries the IMEIs payload (so downstream services see which units shipped)
+- **payment-service — payouts module** (`backend/payment-service/src/payouts/`)
+  - `payouts.repository.ts` — `creditOrderToWallet` does gross-credit + commission-debit + pending→balance in one `$transaction`; `markPaid` debits wallet and writes PAYOUT_DEBIT entry; `markFailed`
+  - `payouts.service.ts` — `creditOrderToWallet` is idempotent (Redis lock + WalletEntry lookup); `processPendingPayouts` is a stub bank transfer (90% success, real partner in Phase 3)
+  - `escrow-release.worker.ts` — `@Cron(EVERY_5_MINUTES)` that scans `escrow:*` keys in Redis, looks up matching Order + Seller, calls `creditOrderToWallet`
+  - `payout-event.publisher.ts` — publishes `PAYOUT_REQUESTED` / `PAYOUT_PAID` / `PAYOUT_FAILED`
+  - `payouts.controller.ts` — `GET /api/v1/seller/payouts` (list), `GET /api/v1/seller/payouts/wallet`, `POST /api/v1/seller/payouts/process` (admin), `POST /api/v1/seller/payouts/release-pending` (admin)
+- **shared-config** — 7 new Kafka topics: `IMEI_ALLOCATED`, `IMEI_SHIPPED`, `IMEI_ACTIVATED`, `IMEI_RETURNED`, `PAYOUT_REQUESTED`, `PAYOUT_PAID`, `PAYOUT_FAILED`
+- **payment-service deps** — added `@nestjs/schedule ^4.1.0` (cron support)
+
+### Pipeline status
+- ✅ Type-check: 0 errors across 22 packages
+- ✅ Lint: 0 errors (47 pre-existing warnings)
+- ✅ Tests: 78 passing (+4 new payout tests, +11 Luhn tests, 63 unchanged)
+- ✅ Build: all packages compile
+
+### Notes
+- **Cross-service DB access (option A)**: order-service writes to catalog's `imei_records` table directly. Faster but bypasses the catalog service boundary. To be revisited in Phase 3 (BFF / gRPC).
+- **Bank transfer stub**: 90% success rate today. Phase 3 will wire a real partner (e.g. Vietcombank, Momo B2B).
+- **Wallet operations use `Decimal(14,0)`** to avoid float drift on VND amounts; all reads through `Number()` for arithmetic in service code.
+
+---
+
 ## [0.2.2] — 2025-10-16 — Phase 2.2 Sprint 11 (S11): web-seller NEW app (medical seller portal MVP)
 
 ### Added

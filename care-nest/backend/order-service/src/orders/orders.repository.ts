@@ -20,7 +20,11 @@ export class OrdersRepository {
   async findById(id: string): Promise<any> {
     return this.prisma.order.findUnique({
       where: { id },
-      include: { items: true, payment: true, shipment: true },
+      include: {
+        items: { include: { product: { select: { id: true, name: true, requiresImei: true } } } },
+        payment: true,
+        shipment: true,
+      },
     });
   }
 

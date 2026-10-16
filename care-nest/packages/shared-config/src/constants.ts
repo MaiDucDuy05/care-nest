@@ -60,6 +60,17 @@ export const KAFKA_TOPICS = {
   SHIPMENT_STATUS_CHANGED: 'shipment.status_changed',
   SHIPMENT_FAILED: 'shipment.failed',
 
+  // IMEI lifecycle (S12)
+  IMEI_ALLOCATED: 'imei.allocated',
+  IMEI_SHIPPED: 'imei.shipped',
+  IMEI_ACTIVATED: 'imei.activated',
+  IMEI_RETURNED: 'imei.returned',
+
+  // Seller payouts (S12)
+  PAYOUT_REQUESTED: 'payout.requested',
+  PAYOUT_PAID: 'payout.paid',
+  PAYOUT_FAILED: 'payout.failed',
+
   // Outbound (server → device)
   IOT_DEVICE_COMMAND: 'iot.device.command',
 } as const;

@@ -1,5 +1,5 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { OrderStatus } from '@carenest/database';
+import { OrderStatus, ImeiStatus, getPrismaClient } from '@carenest/database';
 import { OrdersRepository } from './orders.repository.js';
 import { CartService } from '../cart/cart.service.js';
 import { InventoryService } from '../inventory/inventory.service.js';
@@ -108,6 +108,12 @@ export class OrdersService {
 
     assertTransition(order.status, dto.status);
 
+    // S12 IMEI guard: SHIPPED requires every IMEI-required item to have
+    // its allocated IMEIs present and reserved.
+    if (dto.status === OrderStatus.SHIPPED) {
+      await this.assertImeisReady(orderId, order.items);
+    }
+
     const updated = await this.ordersRepository.updateStatus(orderId, dto.status);
 
     // On cancel: release held stock
@@ -117,23 +123,89 @@ export class OrdersService {
       }
     }
 
-    // On shipped: commit stock
+    // On shipped: commit stock + mark IMEIs SHIPPED
     if (dto.status === OrderStatus.SHIPPED) {
       for (const item of order.items) {
         try { await this.inventoryService.commit(item.productId, item.quantity); } catch { /* swallow */ }
+      }
+      // Mark IMEIs as SHIPPED via the catalog-service. Best-effort: if
+      // this fails, the order still ships (the next allocation cycle will
+      // resync), but we log the failure.
+      try {
+        const prisma = getPrismaClient();
+        await prisma.imeiRecord.updateMany({
+          where: { orderId, status: ImeiStatus.RESERVED },
+          data: { status: ImeiStatus.SHIPPED },
+        });
+      } catch (err: any) {
+        this.logger.warn({ orderId, err: err.message }, 'Failed to mark IMEIs SHIPPED — continuing');
       }
     }
 
     // Publish event
     try {
       if (dto.status === OrderStatus.SHIPPED) {
-        await this.eventPublisher.publishOrderShipped({ orderId: updated.id, orderNumber: updated.orderNumber, buyerId: updated.buyerId });
+        // S12: include IMEI list in the event for downstream consumers
+        const imeis = await this.loadShippedImeis(orderId);
+        await this.eventPublisher.publishOrderShipped({
+          orderId: updated.id,
+          orderNumber: updated.orderNumber,
+          buyerId: updated.buyerId,
+          sellerId: updated.sellerId,
+          imeis: imeis.map((i) => ({
+            imei: i.imei,
+            productId: i.productId,
+            orderItemId: i.orderItemId ?? '',
+          })),
+        });
       }
     } catch (err: any) {
       this.logger.warn({ err: err.message }, 'Failed to publish status event');
     }
 
     return updated;
+  }
+
+  /**
+   * S12: for every order item whose product requires IMEI, verify that
+   * the required number of IMEIs have been RESERVED for the order.
+   * Throws BadRequestException with a per-item breakdown if not.
+   */
+  private async assertImeisReady(
+    orderId: string,
+    items: Array<{ id: string; productId: string; quantity: number; product?: { requiresImei?: boolean; name: string } }>
+  ): Promise<void> {
+    const prisma = getPrismaClient();
+    const reserved = await prisma.imeiRecord.findMany({
+      where: { orderId, status: ImeiStatus.RESERVED },
+      select: { orderItemId: true, imei: true, productId: true },
+    });
+    const countsByItem = new Map<string, number>();
+    for (const r of reserved) {
+      if (!r.orderItemId) continue;
+      countsByItem.set(r.orderItemId, (countsByItem.get(r.orderItemId) ?? 0) + 1);
+    }
+    const missing: string[] = [];
+    for (const item of items) {
+      if (!item.product?.requiresImei) continue;
+      const have = countsByItem.get(item.id) ?? 0;
+      if (have < item.quantity) {
+        missing.push(`${item.product.name}: ${have}/${item.quantity} IMEI`);
+      }
+    }
+    if (missing.length > 0) {
+      throw new BadRequestException(
+        `Không thể SHIPPED — thiếu IMEI: ${missing.join('; ')}`
+      );
+    }
+  }
+
+  private async loadShippedImeis(orderId: string) {
+    const prisma = getPrismaClient();
+    return prisma.imeiRecord.findMany({
+      where: { orderId, status: ImeiStatus.SHIPPED },
+      select: { imei: true, productId: true, orderItemId: true },
+    });
   }
 
   /**

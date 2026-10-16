@@ -15,6 +15,7 @@
   "dependencies": {
     "@carenest/database": "workspace:*",
     "@carenest/shared-config": "workspace:*",
+    "@carenest/shared-kafka": "workspace:*",
     "@carenest/shared-redis": "workspace:*",
     "@carenest/shared-types": "workspace:*",
     "@carenest/shared-utils": "workspace:*",

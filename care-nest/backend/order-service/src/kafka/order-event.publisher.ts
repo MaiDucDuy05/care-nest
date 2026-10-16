@@ -15,6 +15,9 @@ export interface OrderShippedEvent {
   orderId: string;
   orderNumber: string;
   buyerId: string;
+  sellerId: string;
+  /** S12: IMEIs that shipped with this order. Empty array for non-IMEI items. */
+  imeis: { imei: string; productId: string; orderItemId: string }[];
 }
 
 @Injectable()
