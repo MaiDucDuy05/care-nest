@@ -5,6 +5,42 @@
 
 ---
 
+## [0.2.5] — 2025-10-16 — Phase 2.2 Sprint 14 (S14): public marketplace + SEO
+
+### Added
+- **catalog-service — public module** (`backend/catalog-service/src/public/`)
+  - `GET /api/v1/public/sellers/:slug` — public seller info (KYC-approved + ACTIVE only; no bank/tax/PII)
+  - `GET /api/v1/public/sellers/:slug/storefront` — paginated active products for the seller's storefront
+  - `GET /api/v1/public/products/:idOrSlug` — public product lookup by id or slug
+  - `GET /api/v1/public/sitemap/sellers` + `/sitemap/products` — lightweight lists for sitemap generation
+- **web-buyer — public catalog service** (`frontend/web-buyer/src/lib/services/public-catalog.service.ts`)
+  - Unauthenticated reads with 5-minute `next.revalidate` for fresh SEO
+  - Typed `PublicProduct`, `PublicSeller`, `PublicStorefront`
+- **web-buyer — SEO helpers** (`frontend/web-buyer/src/lib/seo.ts`)
+  - `productMetadata()` + `productJsonLd()` for product pages
+  - `sellerMetadata()` for storefront pages
+  - `storeListMetadata()` for the products list
+  - `siteUrl()` from `NEXT_PUBLIC_SITE_URL` env var
+- **web-buyer — products list page** (`/shop/products`) — rewritten as server-rendered, real catalog data, search via `?search=`, locale-aware copy
+- **web-buyer — product detail page** (`/shop/products/[id]`) — new server-rendered page with full SEO metadata, JSON-LD `Product` structured data, breadcrumbs, image gallery, seller card, CareNest guarantee list
+- **web-buyer — seller profile page** (`/shop/sellers/[slug]`) — new public storefront with avatar (init), KYC badge, rating, product grid, pagination
+- **web-buyer — sitemap** (`/sitemap.xml`) — dynamic; lists home + product list + every public product + every active seller with full hreflang alternates
+- **web-buyer — robots.txt** (`/robots.txt`) — allows `/`, `/vi/`, `/en/`, `/vi/shop/`, `/en/shop/`; disallows `/auth/`, `/health/`, `/settings/`, `/subscription/`
+
+### Pipeline status
+- ✅ Type-check: 0 errors across 22 packages
+- ✅ Lint: 0 errors (47 pre-existing warnings unchanged)
+- ✅ Tests: 78 passing
+- ✅ Build: web-buyer builds, 19 routes including new `/shop/products/[id]`, `/shop/sellers/[slug]`, `/sitemap.xml`, `/robots.txt`
+
+### Notes
+- **Public endpoints are read-only and unauthenticated**; no rate limiting yet (Phase 2.3 observability stack will add Prometheus metrics that can drive throttling)
+- **JSON-LD format**: `Product` schema with `Offer`, `Brand`, `Seller`; renders inline in `<script type="application/ld+json">` — verifiable in Google's Rich Results Test
+- **Caching**: products use the existing 5-min Redis cache in catalog-service; sellers and storefronts are uncached (low volume)
+- **Hreflang alternates** are emitted in: `<link rel="alternate" hreflang>` (page metadata), XML sitemap `<xhtml:link>` entries, and OpenGraph `locale`
+
+---
+
 ## [0.2.4] — 2025-10-16 — Phase 2.2 Sprint 13 (S13): web-seller live wire-up + payouts page
 
 ### Changed
