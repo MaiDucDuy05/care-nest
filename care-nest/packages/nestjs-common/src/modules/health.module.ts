@@ -1,5 +1,5 @@
 import { Module, Controller, Get } from '@nestjs/common';
-import { HealthCheck, HealthCheckService, HealthIndicatorResult } from '@nestjs/terminus';
+import { HealthCheck, HealthCheckService, HealthIndicatorResult, TerminusModule } from '@nestjs/terminus';
 import { PrismaService } from './prisma.service.js';
 import { PrismaModule } from './prisma.module.js';
 import { getRedis } from '@carenest/shared-redis';
@@ -48,11 +48,8 @@ export class HealthController {
 }
 
 @Module({
-  // PrismaModule is @Global, but we import it explicitly so the
-  // module is self-contained — removing the @Global annotation
-  // later is a one-line change.
-  imports: [PrismaModule],
+  imports: [PrismaModule, TerminusModule],
   controllers: [HealthController],
-  providers: [HealthCheckService],
+  exports: [TerminusModule],
 })
 export class HealthModule {}

@@ -39,6 +39,9 @@ export class AnalyticsController {
       if (!seller) throw new BadRequestException('No seller record for this user');
       resolvedSellerId = seller.id;
     }
+    if (!resolvedSellerId) {
+      throw new BadRequestException('Seller ID required');
+    }
     return this.analyticsService.getSellerAnalytics(resolvedSellerId, days);
   }
 }

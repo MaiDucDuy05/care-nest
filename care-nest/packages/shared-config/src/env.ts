@@ -6,7 +6,40 @@
  * validated.
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import { z } from 'zod';
+
+function loadDotEnvIfNeeded(): void {
+  let dir = process.cwd();
+  for (let i = 0; i < 5; i++) {
+    const candidate = path.join(dir, '.env');
+    if (fs.existsSync(candidate)) {
+      try {
+        const content = fs.readFileSync(candidate, 'utf8');
+        for (const rawLine of content.split(/\r?\n/)) {
+          const line = rawLine.trim();
+          if (!line || line.startsWith('#')) continue;
+          const eqIdx = line.indexOf('=');
+          if (eqIdx > 0) {
+            const key = line.slice(0, eqIdx).trim();
+            const val = line.slice(eqIdx + 1).trim().replace(/^["']|["']$/g, '');
+            if (process.env[key] === undefined) {
+              process.env[key] = val;
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+      break;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+}
+loadDotEnvIfNeeded();
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

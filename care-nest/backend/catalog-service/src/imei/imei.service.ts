@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException, BadRequestException, ConflictExc
 import { withLock } from '@carenest/shared-redis';
 import type { ImeiRecord, Product } from '@carenest/database';
 import { ImeiRepository, type BulkImportResult, type PaginatedImei } from './imei.repository.js';
-import type { ImeiEventPublisher } from './imei-event.publisher.js';
+import { ImeiEventPublisher } from './imei-event.publisher.js';
 import { isValidImei } from './imei-luhn.js';
 import type {
   AllocateImeiDto,
