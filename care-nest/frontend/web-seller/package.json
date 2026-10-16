@@ -4,9 +4,9 @@
   "private": true,
   "description": "Next.js seller portal for the CareNest platform (KYC, products, orders PACKING, IMEI scan, analytics)",
   "scripts": {
-    "dev": "next dev -p 3004",
+    "dev": "next dev -p 3020",
     "build": "next build",
-    "start": "next start -p 3004",
+    "start": "next start -p 3020",
     "lint": "next lint --max-warnings 100",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf .next dist .turbo"
