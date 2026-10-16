@@ -10,6 +10,7 @@
     "orders": "Orders",
     "imei": "IMEI Scan",
     "inventory": "Inventory",
+    "payouts": "Wallet & Payouts",
     "analytics": "Analytics",
     "settings": "Settings",
     "logout": "Logout"
@@ -194,5 +195,23 @@
     "todayRevenue": "Today's revenue",
     "lowStock": "Low stock",
     "inStock": "IMEI in stock"
+  },
+  "payouts": {
+    "title": "Wallet & Payouts",
+    "subtitle": "Available balance, pending escrow, and payout history",
+    "balance": "Available balance",
+    "balanceHint": "Available to withdraw to bank account",
+    "pending": "Pending escrow",
+    "pendingHint": "Escrow not yet released (orders < 7 days old)",
+    "lifetime": "Lifetime revenue",
+    "lifetimeHint": "Total order value since the start",
+    "history": "Payout history",
+    "empty": "No payouts yet",
+    "id": "ID",
+    "amount": "Amount",
+    "bankInfo": "Bank account",
+    "status": "Status",
+    "requested": "Requested at",
+    "paid": "Paid at"
   }
 }

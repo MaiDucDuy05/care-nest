@@ -18,6 +18,7 @@ const schema = z.object({
   categoryId: z.string().min(1, 'Bắt buộc'),
   stock: z.coerce.number().int().min(0, 'Tồn kho phải >= 0'),
   status: z.enum(['DRAFT', 'ACTIVE', 'INACTIVE']),
+  requiresImei: z.boolean().default(true),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -34,7 +35,7 @@ export default function NewProductPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { status: 'DRAFT', stock: 0, priceVnd: 0 },
+    defaultValues: { status: 'DRAFT', stock: 0, priceVnd: 0, requiresImei: true },
   });
 
   const onSubmit = async (data: FormValues) => {
@@ -75,6 +76,28 @@ export default function NewProductPage() {
               <option value="INACTIVE">{t('inactive')}</option>
             </select>
           </div>
+        </div>
+
+        <div>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              padding: 12,
+              background: 'var(--bg-card-subtle)',
+              borderRadius: 'var(--radius-md)',
+            }}
+          >
+            <input type="checkbox" {...register('requiresImei')} />
+            <div>
+              <div style={{ fontWeight: 500 }}>Sản phẩm yêu cầu IMEI</div>
+              <div className="text-sm text-muted">
+                Bật cho thiết bị điện tử (máy đo huyết áp, nhiệt kế, ...). Tắt cho phụ kiện / vật tư tiêu hao.
+              </div>
+            </div>
+          </label>
         </div>
 
         {submitError && (

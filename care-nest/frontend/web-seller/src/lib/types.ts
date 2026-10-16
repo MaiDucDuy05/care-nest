@@ -55,6 +55,7 @@ export interface Product {
   categoryName?: string;
   stock: number;
   status: ProductStatus;
+  requiresImei?: boolean;
   images: string[];
   createdAt: string;
   updatedAt: string;
@@ -91,7 +92,7 @@ export interface Order {
   updatedAt: string;
 }
 
-export type IMEIStatus = 'IN_STOCK' | 'RESERVED' | 'SOLD';
+export type IMEIStatus = 'IN_STOCK' | 'RESERVED' | 'SHIPPED' | 'ACTIVATED' | 'RETURNED' | 'FAULTY';
 
 export interface IMEIRecord {
   id: string;
@@ -99,8 +100,10 @@ export interface IMEIRecord {
   productId: string;
   productName?: string;
   status: IMEIStatus;
-  assignedOrderId: string | null;
+  orderId?: string | null;
+  orderItemId?: string | null;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface DailyRevenue {
@@ -136,4 +139,28 @@ export interface SellerProfile {
   storeSlug: string;
   description: string;
   createdAt: string;
+}
+
+export type PayoutStatus = 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED' | 'REVERSED';
+
+export interface Payout {
+  id: string;
+  sellerId: string;
+  amountVnd: number;
+  status: PayoutStatus;
+  bankName: string;
+  bankAccount: string;
+  bankAccountName: string;
+  transferRef?: string | null;
+  failureReason?: string | null;
+  requestedAt: string;
+  processedAt?: string | null;
+  paidAt?: string | null;
+}
+
+export interface SellerWallet {
+  balanceVnd: number;
+  pendingVnd: number;
+  lifetimeVnd: number;
+  currency: string;
 }

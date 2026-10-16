@@ -16,6 +16,7 @@ let MOCK_PRODUCTS: Product[] = [
     categoryName: 'Máy đo huyết áp',
     stock: 25,
     status: 'ACTIVE' as ProductStatus,
+    requiresImei: true,
     images: [],
     createdAt: '2025-10-15T10:00:00Z',
     updatedAt: '2025-10-15T10:00:00Z',
@@ -32,6 +33,7 @@ let MOCK_PRODUCTS: Product[] = [
     categoryName: 'Nhiệt kế',
     stock: 3,
     status: 'ACTIVE' as ProductStatus,
+    requiresImei: false,
     images: [],
     createdAt: '2025-10-15T10:00:00Z',
     updatedAt: '2025-10-15T10:00:00Z',
@@ -46,6 +48,15 @@ export interface ProductInput {
   categoryId: string;
   stock: number;
   status: ProductStatus;
+  requiresImei?: boolean;
+}
+
+interface ProductListResponse {
+  items: Product[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
 }
 
 export const productsService = {
@@ -66,7 +77,11 @@ export const productsService = {
     const query = new URLSearchParams();
     if (params?.search) query.set('search', params.search);
     if (params?.status) query.set('status', params.status);
-    return apiFetch<Product[]>(`${CATALOG_API}/api/v1/seller/products?${query.toString()}`, { token });
+    const res = await apiFetch<ProductListResponse>(
+      `${CATALOG_API}/api/v1/products?${query.toString()}`,
+      { token }
+    );
+    return res.items;
   },
 
   async getById(id: string): Promise<Product> {
@@ -77,7 +92,7 @@ export const productsService = {
     }
     const token = getToken();
     if (!token) throw new Error('not authenticated');
-    return apiFetch<Product>(`${CATALOG_API}/api/v1/seller/products/${id}`, { token });
+    return apiFetch<Product>(`${CATALOG_API}/api/v1/products/${id}`, { token });
   },
 
   async create(input: ProductInput): Promise<Product> {
@@ -97,7 +112,7 @@ export const productsService = {
     }
     const token = getToken();
     if (!token) throw new Error('not authenticated');
-    return apiFetch<Product>(`${CATALOG_API}/api/v1/seller/products`, {
+    return apiFetch<Product>(`${CATALOG_API}/api/v1/products`, {
       method: 'POST',
       body: JSON.stringify(input),
       token,
@@ -113,8 +128,8 @@ export const productsService = {
     }
     const token = getToken();
     if (!token) throw new Error('not authenticated');
-    return apiFetch<Product>(`${CATALOG_API}/api/v1/seller/products/${id}`, {
-      method: 'PATCH',
+    return apiFetch<Product>(`${CATALOG_API}/api/v1/products/${id}`, {
+      method: 'PUT',
       body: JSON.stringify(input),
       token,
     });
@@ -127,7 +142,7 @@ export const productsService = {
     }
     const token = getToken();
     if (!token) throw new Error('not authenticated');
-    return apiFetch<void>(`${CATALOG_API}/api/v1/seller/products/${id}`, {
+    return apiFetch<void>(`${CATALOG_API}/api/v1/products/${id}`, {
       method: 'DELETE',
       token,
     });

@@ -18,6 +18,7 @@ const schema = z.object({
   categoryId: z.string().min(1),
   stock: z.coerce.number().int().min(0),
   status: z.enum(['DRAFT', 'ACTIVE', 'INACTIVE']),
+  requiresImei: z.boolean().default(false),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -50,6 +51,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
           categoryId: p.categoryId,
           stock: p.stock,
           status: p.status,
+          requiresImei: p.requiresImei ?? false,
         });
       } catch (err) {
         if (mounted) setSubmitError((err as Error).message);
@@ -108,6 +110,28 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
               <option value="INACTIVE">{t('inactive')}</option>
             </select>
           </div>
+        </div>
+
+        <div>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              cursor: 'pointer',
+              padding: 12,
+              background: 'var(--bg-card-subtle)',
+              borderRadius: 'var(--radius-md)',
+            }}
+          >
+            <input type="checkbox" {...register('requiresImei')} />
+            <div>
+              <div style={{ fontWeight: 500 }}>Sản phẩm yêu cầu IMEI</div>
+              <div className="text-sm text-muted">
+                Bật cho thiết bị điện tử (máy đo huyết áp, nhiệt kế, ...). Tắt cho phụ kiện / vật tư tiêu hao.
+              </div>
+            </div>
+          </label>
         </div>
 
         {submitError && (

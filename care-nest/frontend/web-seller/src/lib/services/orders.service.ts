@@ -1,4 +1,4 @@
-import { SHIPPING_API, apiFetch, getToken } from '../api-client';
+import { ORDER_API, apiFetch, getToken } from '../api-client';
 import type { Order, OrderStatus } from '../types';
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true';
@@ -34,37 +34,24 @@ const MOCK_ORDERS: Order[] = [
     createdAt: '2025-10-15T08:30:00Z',
     updatedAt: '2025-10-15T08:30:00Z',
   },
-  {
-    id: 'o-1002',
-    orderNumber: 'CN-202510-0002',
-    buyerId: 'buyer-2',
-    buyerName: 'Lê Văn C',
-    sellerId: 'seller-mock-1',
-    status: 'CONFIRMED' as OrderStatus,
-    totalVnd: 2490000,
-    items: [
-      {
-        id: 'oi-3',
-        productId: 'p-1',
-        productName: 'Máy đo huyết áp Omron HEM-7156T',
-        quantity: 1,
-        priceVnd: 2490000,
-        imeis: [],
-      },
-    ],
-    shippingAddress: '45 Lê Lợi, Quận 1, TP.HCM',
-    createdAt: '2025-10-15T09:15:00Z',
-    updatedAt: '2025-10-15T09:15:00Z',
-  },
 ];
 
-export interface PackOrderInput {
-  orderId: string;
-  imeis: Record<string, string[]>; // productId -> imeis
+interface OrderListResponse {
+  items: Order[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
 }
 
 export const ordersService = {
-  async list(params?: { status?: OrderStatus }): Promise<Order[]> {
+  /**
+   * List orders for the current seller. Pass the sellerId (the User
+   * id mapped to the seller record) so order-service filters by it.
+   * If no sellerId is given, returns the buyer's own orders — useful
+   * for pages that don't yet have the seller context loaded.
+   */
+  async list(sellerId?: string, params?: { status?: OrderStatus }): Promise<Order[]> {
     if (USE_MOCK) {
       let result = [...MOCK_ORDERS];
       if (params?.status) result = result.filter((o) => o.status === params.status);
@@ -73,8 +60,13 @@ export const ordersService = {
     const token = getToken();
     if (!token) return [];
     const query = new URLSearchParams();
+    if (sellerId) query.set('sellerId', sellerId);
     if (params?.status) query.set('status', params.status);
-    return apiFetch<Order[]>(`${SHIPPING_API}/api/v1/seller/orders?${query.toString()}`, { token });
+    const res = await apiFetch<OrderListResponse>(
+      `${ORDER_API}/api/v1/orders?${query.toString()}`,
+      { token }
+    );
+    return res.items;
   },
 
   async getById(id: string): Promise<Order> {
@@ -85,30 +77,30 @@ export const ordersService = {
     }
     const token = getToken();
     if (!token) throw new Error('not authenticated');
-    return apiFetch<Order>(`${SHIPPING_API}/api/v1/seller/orders/${id}`, { token });
+    return apiFetch<Order>(`${ORDER_API}/api/v1/orders/${id}`, { token });
   },
 
-  async pack(input: PackOrderInput): Promise<Order> {
+  /**
+   * Move an order to a new status. For SHIPPED, the seller must
+   * first allocate IMEIs (via imeiService.allocate) and the server
+   * will run the assertImeisReady guard.
+   */
+  async updateStatus(orderId: string, status: OrderStatus): Promise<Order> {
     if (USE_MOCK) {
-      const idx = MOCK_ORDERS.findIndex((o) => o.id === input.orderId);
+      const idx = MOCK_ORDERS.findIndex((o) => o.id === orderId);
       if (idx === -1) throw new Error('order not found');
-      const items = MOCK_ORDERS[idx].items.map((it) => ({
-        ...it,
-        imeis: input.imeis[it.productId] ?? [],
-      }));
       MOCK_ORDERS[idx] = {
         ...MOCK_ORDERS[idx],
-        status: 'PACKING' as OrderStatus,
-        items,
+        status,
         updatedAt: new Date().toISOString(),
       };
       return MOCK_ORDERS[idx];
     }
     const token = getToken();
     if (!token) throw new Error('not authenticated');
-    return apiFetch<Order>(`${SHIPPING_API}/api/v1/seller/orders/${input.orderId}/pack`, {
+    return apiFetch<Order>(`${ORDER_API}/api/v1/orders/${orderId}/status`, {
       method: 'POST',
-      body: JSON.stringify(input.imeis),
+      body: JSON.stringify({ status }),
       token,
     });
   },

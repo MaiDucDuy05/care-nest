@@ -5,7 +5,41 @@
 
 ---
 
-## [0.2.3] — 2025-10-16 — Phase 2.2 Sprint 12 (S12): IMEI lifecycle + seller payouts
+## [0.2.4] — 2025-10-16 — Phase 2.2 Sprint 13 (S13): web-seller live wire-up + payouts page
+
+### Changed
+- **api-client.ts** — added `ORDER_API` (port 3003) and `PAYMENT_API` (port 3005) exports; per-service URL convention documented
+- **products.service.ts** — switched from `api/v1/seller/products` to public `api/v1/products` (the real endpoint); handles paginated `{items,total,page,pageSize,hasMore}` response
+- **orders.service.ts** — switched from `SHIPPING_API` to `ORDER_API`; calls `POST /api/v1/orders/:id/status` (replaces ad-hoc `pack` action — server now runs the IMEI guard); kept `sellerId` filter param for the seller portal
+- **inventory.service.ts** — removed; replaced by `imei.service.ts` with the new S12 contract (Luhn-validated bulk import, allocate, release, markOrderShipped)
+- **dashboard, inventory, imei pages** — now consume `imeiService` instead of `inventoryService`
+- **pack page** — two-step flow: (1) `imeiService.allocate` per item, (2) `ordersService.updateStatus('PACKING')`; client-side Luhn pre-validation; red border on invalid IMEIs
+- **products form** — new `requiresImei` checkbox (default ON) on both create and edit pages; description + visual grouping
+
+### Added
+- **`imei.service.ts`** — wraps the new catalog IMEI endpoints; exports `isValidImei()` (client-side Luhn-15) for fast feedback
+- **`payouts.service.ts`** — wraps the new payment-service payout endpoints (listWallet, list); typed against `Payout` + `SellerWallet`
+- **types.ts** — `requiresImei` on `Product`; full `IMEIStatus` enum (6 states); `PayoutStatus`, `Payout`, `SellerWallet` types
+- **`/payouts` page** — 3-card wallet (balance / pending / lifetime) + payout history table with status badges + bank account + failure reasons
+- **Sidebar nav** — new "Wallet & Payouts" entry (gated by KYC approved)
+- **i18n keys** — `nav.payouts` + full `payouts` section in `vi.json` and `en.json`
+
+### Removed
+- **`inventory.service.ts`** — obsolete; replaced by `imei.service.ts` with the S12 contract
+- **`ordersService.pack()`** — replaced by `imeiService.allocate` + `ordersService.updateStatus('PACKING')` (the server runs the IMEI guard)
+
+### Pipeline status
+- ✅ Type-check: 0 errors across 22 packages
+- ✅ Lint: 0 errors (47 pre-existing warnings unchanged)
+- ✅ Tests: 78 passing (no new tests; web-seller has no test infrastructure yet — covered in S14)
+- ✅ Build: web-seller builds, 17 routes including new `/payouts`
+
+### Notes
+- **Mock default preserved**: `NEXT_PUBLIC_USE_MOCK_AUTH=true` still works for offline dev. To go live, leave it unset/false and configure `NEXT_PUBLIC_*_API_URL` env vars
+- **Order state machine**: PACKING transition now requires allocated IMEIs (server-side `assertImeisReady` guard). Server will return 400 with per-item breakdown if any IMEI-required item is short
+- **Wallet history**: page shows the full Payout timeline including `failureReason` for failed rows; paid timestamps render in `vi-VN` locale
+
+---
 
 ### Added
 - **Database** (`@carenest/database`)
@@ -48,6 +82,47 @@
 - **Cross-service DB access (option A)**: order-service writes to catalog's `imei_records` table directly. Faster but bypasses the catalog service boundary. To be revisited in Phase 3 (BFF / gRPC).
 - **Bank transfer stub**: 90% success rate today. Phase 3 will wire a real partner (e.g. Vietcombank, Momo B2B).
 - **Wallet operations use `Decimal(14,0)`** to avoid float drift on VND amounts; all reads through `Number()` for arithmetic in service code.
+
+---
+
+## [0.2.3] — 2025-10-16 — Phase 2.2 Sprint 12 (S12): IMEI lifecycle + seller payouts (BE)
+
+### Added
+- **Database** (`@carenest/database`)
+  - 3 enums: `ImeiStatus` (IN_STOCK, RESERVED, SHIPPED, ACTIVATED, RETURNED, FAULTY), `PayoutStatus` (PENDING, PROCESSING, PAID, FAILED, REVERSED), `WalletEntryKind` (ORDER_CREDIT, COMMISSION_DEBIT, REFUND_DEBIT, PAYOUT_DEBIT, ADJUSTMENT)
+  - 4 new models with proper indexes + check constraints: `ImeiRecord`, `SellerWallet`, `WalletEntry`, `Payout`
+  - `requiresImei` boolean on `Product` (default TRUE)
+  - Optional bank info on `Seller` (`bankName`, `bankAccount`, `bankAccountName`)
+  - Migration: `20260102000000_s12_imei_payout/migration.sql`
+- **catalog-service — IMEI module** (`backend/catalog-service/src/imei/`)
+  - `imei-luhn.ts` — Luhn-15 algorithm with `isValidImei` + `computeImeiCheckDigit` pure functions (11 unit tests)
+  - `imei.repository.ts` — bulkImport (Luhn-validated), allocate ($transaction with row-level updates), release, markShipped, findByOrder
+  - `imei.service.ts` — wraps allocate/release in `withLock('imei-allocate:orderId')` for concurrency safety
+  - `imei.controller.ts` — 5 endpoints: bulk import, list, allocate, release, ship
+  - `imei-event.publisher.ts` — publishes `IMEI_ALLOCATED` + `IMEI_SHIPPED` Kafka events
+- **order-service — IMEI guard**
+  - `orders.service.assertImeisReady()` — throws `BadRequestException` with per-item breakdown if any IMEI-required item is short
+  - On `SHIPPED` transition: `prisma.imeiRecord.updateMany` marks RESERVED → SHIPPED (best-effort)
+  - `OrderShippedEvent` now carries the IMEIs payload
+- **payment-service — payouts module** (`backend/payment-service/src/payouts/`)
+  - `payouts.repository.ts` — `creditOrderToWallet` does gross-credit + commission-debit + pending→balance in one `$transaction`; `markPaid` debits wallet and writes PAYOUT_DEBIT entry; `markFailed`
+  - `payouts.service.ts` — `creditOrderToWallet` is idempotent (Redis lock + WalletEntry lookup); `processPendingPayouts` is a stub bank transfer (90% success, real partner in Phase 3)
+  - `escrow-release.worker.ts` — `@Cron(EVERY_5_MINUTES)` that scans `escrow:*` keys in Redis, looks up matching Order + Seller, calls `creditOrderToWallet`
+  - `payout-event.publisher.ts` — publishes `PAYOUT_REQUESTED` / `PAYOUT_PAID` / `PAYOUT_FAILED`
+  - `payouts.controller.ts` — seller payouts list, wallet, admin endpoints
+- **shared-config** — 7 new Kafka topics: `IMEI_ALLOCATED`, `IMEI_SHIPPED`, `IMEI_ACTIVATED`, `IMEI_RETURNED`, `PAYOUT_REQUESTED`, `PAYOUT_PAID`, `PAYOUT_FAILED`
+- **payment-service deps** — added `@nestjs/schedule ^4.1.0` (cron support)
+
+### Pipeline status
+- ✅ Type-check: 0 errors across 22 packages
+- ✅ Lint: 0 errors (47 pre-existing warnings)
+- ✅ Tests: 78 passing (+4 new payout tests, +11 Luhn tests, 63 unchanged)
+- ✅ Build: all packages compile
+
+### Notes
+- **Cross-service DB access (option A)**: order-service writes to catalog's `imei_records` table directly. To be revisited in Phase 3 (BFF / gRPC).
+- **Bank transfer stub**: 90% success rate today. Phase 3 will wire a real partner (e.g. Vietcombank, Momo B2B).
+- **Wallet operations use `Decimal(14,0)`** to avoid float drift on VND amounts
 
 ---
 

@@ -2,51 +2,76 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Camera, Plus, ScanLine } from 'lucide-react';
-import { inventoryService } from '@/lib/services/inventory.service';
+import { Camera, ScanLine, Upload } from 'lucide-react';
+import { imeiService, isValidImei } from '@/lib/services/imei.service';
 import { productsService } from '@/lib/services/products.service';
-import type { Product, IMEIRecord } from '@/lib/types';
+import type { Product, IMEIRecord, IMEIStatus } from '@/lib/types';
+
+const STATUS_BADGE: Record<IMEIStatus, string> = {
+  IN_STOCK: 'badge-green',
+  RESERVED: 'badge-amber',
+  SHIPPED: 'badge-blue',
+  ACTIVATED: 'badge-slate',
+  RETURNED: 'badge-slate',
+  FAULTY: 'badge-red',
+};
 
 export default function ImeiPage() {
   const t = useTranslations('imei');
   const tCommon = useTranslations('common');
   const [products, setProducts] = useState<Product[]>([]);
   const [imeis, setImeis] = useState<IMEIRecord[]>([]);
-  const [scannerOn, setScannerOn] = useState(false);
-  const [imei, setImei] = useState('');
   const [productId, setProductId] = useState('');
+  const [imeiText, setImeiText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [scannerOn, setScannerOn] = useState(false);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [p, i] = await Promise.all([productsService.list(), inventoryService.list()]);
+      const [p, i] = await Promise.all([productsService.list(), imeiService.list()]);
       if (!mounted) return;
       setProducts(p);
       setImeis(i);
-      if (p.length > 0 && !productId) setProductId(p[0].id);
+      if (p.length > 0) setProductId((cur) => cur || p[0].id);
     })();
     return () => {
       mounted = false;
     };
-  }, [productId]);
+  }, []);
 
-  const handleAdd = async () => {
-    if (!imei.trim() || !productId) {
-      setError('Vui lòng nhập IMEI và chọn sản phẩm');
+  const handleImport = async () => {
+    if (!productId) {
+      setError('Vui lòng chọn sản phẩm');
       return;
     }
-    if (!/^\d{15}$/.test(imei.trim())) {
-      setError('IMEI phải có 15 chữ số');
+    // Accept newline, comma, or space separated. Strip empties.
+    const imeis = imeiText
+      .split(/[\s,;\n]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (imeis.length === 0) {
+      setError('Vui lòng nhập ít nhất một IMEI (mỗi dòng / phẩy / khoảng trắng)');
+      return;
+    }
+    // Client-side Luhn check first
+    const invalid = imeis.filter((i) => !isValidImei(i));
+    if (invalid.length > 0) {
+      setError(`${invalid.length} IMEI không hợp lệ: ${invalid.slice(0, 3).join(', ')}${invalid.length > 3 ? '…' : ''}`);
       return;
     }
     try {
       setSubmitting(true);
       setError(null);
-      const created = await inventoryService.add(imei.trim(), productId);
-      setImeis((prev) => [created, ...prev]);
-      setImei('');
+      setSuccess(null);
+      const res = await imeiService.bulkImport({ productId, imeis });
+      setSuccess(`Đã nhập ${res.imported} IMEI${res.skipped > 0 ? `, bỏ qua ${res.skipped}` : ''}`);
+      setImeiText('');
+      // refresh list
+      const fresh = await imeiService.list({ productId });
+      setImeis(fresh);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -89,20 +114,9 @@ export default function ImeiPage() {
           >
             <Camera size={32} />
             <p style={{ marginTop: 8 }}>Camera scanner (qr-scanner integration stub)</p>
-            <p className="text-sm">Nhập IMEI thủ công bên dưới trong khi chờ tích hợp</p>
+            <p className="text-sm">Quét từng IMEI hoặc nhập thủ công bên dưới</p>
           </div>
         ) : null}
-
-        <div>
-          <label className="label">{t('imei')}</label>
-          <input
-            className="input"
-            placeholder="352099001761481"
-            value={imei}
-            onChange={(e) => setImei(e.target.value)}
-            maxLength={15}
-          />
-        </div>
 
         <div>
           <label className="label">{t('product')}</label>
@@ -111,9 +125,21 @@ export default function ImeiPage() {
             {products.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} ({p.sku})
+                {p.requiresImei ? ' · IMEI' : ''}
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="label">{t('imei')} (mỗi dòng một IMEI, hoặc phân cách bằng dấu phẩy)</label>
+          <textarea
+            className="textarea"
+            rows={6}
+            placeholder={'352099001761488\n490154203237518\n...'}
+            value={imeiText}
+            onChange={(e) => setImeiText(e.target.value)}
+          />
         </div>
 
         {error && (
@@ -129,14 +155,27 @@ export default function ImeiPage() {
             {error}
           </div>
         )}
+        {success && (
+          <div
+            style={{
+              background: 'var(--success-light, #ecfdf5)',
+              color: 'var(--success, #047857)',
+              padding: 8,
+              borderRadius: 'var(--radius-md)',
+              fontSize: 13,
+            }}
+          >
+            {success}
+          </div>
+        )}
 
         <button
           type="button"
           className="btn btn-primary"
-          onClick={handleAdd}
+          onClick={handleImport}
           disabled={submitting}
         >
-          {submitting ? <span className="spinner" /> : <><Plus size={16} /> {t('success')}</>}
+          {submitting ? <span className="spinner" /> : <><Upload size={16} /> {t('success')}</>}
         </button>
       </div>
 
@@ -163,11 +202,7 @@ export default function ImeiPage() {
                   <td style={{ fontFamily: 'monospace' }}>{i.imei}</td>
                   <td>{i.productName ?? i.productId}</td>
                   <td>
-                    <span
-                      className={`badge ${i.status === 'IN_STOCK' ? 'badge-green' : i.status === 'RESERVED' ? 'badge-amber' : 'badge-slate'}`}
-                    >
-                      {i.status}
-                    </span>
+                    <span className={`badge ${STATUS_BADGE[i.status]}`}>{i.status}</span>
                   </td>
                   <td className="text-sm text-muted">{new Date(i.createdAt).toLocaleString('vi-VN')}</td>
                 </tr>

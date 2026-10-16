@@ -2,8 +2,27 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { inventoryService } from '@/lib/services/inventory.service';
+import { imeiService } from '@/lib/services/imei.service';
 import type { IMEIRecord, IMEIStatus } from '@/lib/types';
+
+const STATUS_FILTERS: Array<{ value: IMEIStatus | ''; key: string }> = [
+  { value: '', key: 'all' },
+  { value: 'IN_STOCK', key: 'inStock' },
+  { value: 'RESERVED', key: 'reserved' },
+  { value: 'SHIPPED', key: 'shipped' },
+  { value: 'ACTIVATED', key: 'activated' },
+  { value: 'RETURNED', key: 'returned' },
+  { value: 'FAULTY', key: 'faulty' },
+];
+
+const STATUS_BADGE: Record<IMEIStatus, string> = {
+  IN_STOCK: 'badge-green',
+  RESERVED: 'badge-amber',
+  SHIPPED: 'badge-blue',
+  ACTIVATED: 'badge-slate',
+  RETURNED: 'badge-slate',
+  FAULTY: 'badge-red',
+};
 
 export default function InventoryPage() {
   const t = useTranslations('inventory');
@@ -16,7 +35,7 @@ export default function InventoryPage() {
     let mounted = true;
     (async () => {
       try {
-        const data = await inventoryService.list({ status: filter || undefined });
+        const data = await imeiService.list({ status: filter || undefined });
         if (mounted) setItems(data);
       } finally {
         if (mounted) setLoading(false);
@@ -38,10 +57,11 @@ export default function InventoryPage() {
           value={filter}
           onChange={(e) => setFilter(e.target.value as IMEIStatus | '')}
         >
-          <option value="">Tất cả</option>
-          <option value="IN_STOCK">{t('inStock')}</option>
-          <option value="RESERVED">{t('reserved')}</option>
-          <option value="SOLD">{t('sold')}</option>
+          {STATUS_FILTERS.map((f) => (
+            <option key={f.value || 'all'} value={f.value}>
+              {t(f.key as 'all' | 'inStock' | 'reserved' | 'shipped' | 'activated' | 'returned' | 'faulty')}
+            </option>
+          ))}
         </select>
       </div>
 
@@ -67,13 +87,9 @@ export default function InventoryPage() {
                   <td style={{ fontFamily: 'monospace' }}>{i.imei}</td>
                   <td>{i.productName ?? i.productId}</td>
                   <td>
-                    <span
-                      className={`badge ${i.status === 'IN_STOCK' ? 'badge-green' : i.status === 'RESERVED' ? 'badge-amber' : 'badge-slate'}`}
-                    >
-                      {i.status === 'IN_STOCK' ? t('inStock') : i.status === 'RESERVED' ? t('reserved') : t('sold')}
-                    </span>
+                    <span className={`badge ${STATUS_BADGE[i.status]}`}>{i.status}</span>
                   </td>
-                  <td className="text-sm text-muted">{i.assignedOrderId ?? '—'}</td>
+                  <td className="text-sm text-muted">{i.orderId ?? '—'}</td>
                   <td className="text-sm text-muted">{new Date(i.createdAt).toLocaleString('vi-VN')}</td>
                 </tr>
               ))}

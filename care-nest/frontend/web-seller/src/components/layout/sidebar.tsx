@@ -10,6 +10,7 @@ import {
   ScanLine,
   Boxes,
   TrendingUp,
+  Wallet,
   Settings,
   LogOut,
 } from 'lucide-react';
@@ -30,6 +31,7 @@ export function Sidebar({ kycApproved, onLogout }: SidebarProps) {
     { href: '/orders' as const, label: t('orders'), icon: ShoppingCart, enabled: kycApproved },
     { href: '/imei' as const, label: t('imei'), icon: ScanLine, enabled: kycApproved },
     { href: '/inventory' as const, label: t('inventory'), icon: Boxes, enabled: kycApproved },
+    { href: '/payouts' as const, label: t('payouts'), icon: Wallet, enabled: kycApproved },
     { href: '/analytics' as const, label: t('analytics'), icon: TrendingUp, enabled: kycApproved },
     { href: '/settings' as const, label: t('settings'), icon: Settings, enabled: true },
   ];

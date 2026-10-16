@@ -10,6 +10,7 @@
     "orders": "Đơn hàng",
     "imei": "Quét IMEI",
     "inventory": "Kho hàng",
+    "payouts": "Ví & Đối soát",
     "analytics": "Phân tích",
     "settings": "Cài đặt",
     "logout": "Đăng xuất"
@@ -194,5 +195,23 @@
     "todayRevenue": "Doanh thu hôm nay",
     "lowStock": "Sản phẩm sắp hết",
     "inStock": "IMEI trong kho"
+  },
+  "payouts": {
+    "title": "Ví & Đối soát",
+    "subtitle": "Số dư khả dụng, đang chờ đối soát và lịch sử thanh toán",
+    "balance": "Số dư khả dụng",
+    "balanceHint": "Có thể yêu cầu rút về tài khoản ngân hàng",
+    "pending": "Đang chờ đối soát",
+    "pendingHint": "Escrow chưa giải ngân (đơn chưa qua 7 ngày)",
+    "lifetime": "Tổng doanh thu",
+    "lifetimeHint": "Tổng giá trị đơn hàng từ trước đến nay",
+    "history": "Lịch sử thanh toán",
+    "empty": "Chưa có thanh toán nào",
+    "id": "Mã",
+    "amount": "Số tiền",
+    "bankInfo": "Tài khoản",
+    "status": "Trạng thái",
+    "requested": "Yêu cầu lúc",
+    "paid": "Thanh toán lúc"
   }
 }

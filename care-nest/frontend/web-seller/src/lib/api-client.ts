@@ -1,15 +1,24 @@
 /**
  * Seller-side API client base. Reads NEXT_PUBLIC_API_GATEWAY_URL if present,
  * else falls back to the per-service URLs in dev.
+ *
+ * Per-service ports (dev defaults match docker-compose):
+ *   - AUTH:     3001
+ *   - CATALOG:  3002
+ *   - ORDER:    3003
+ *   - PAYMENT:  3005
+ *   - SHIPPING: 3009
  */
 
 const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
 
 const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3001';
 const CATALOG_API = process.env.NEXT_PUBLIC_CATALOG_API_URL || 'http://localhost:3002';
+const ORDER_API = process.env.NEXT_PUBLIC_ORDER_API_URL || 'http://localhost:3003';
+const PAYMENT_API = process.env.NEXT_PUBLIC_PAYMENT_API_URL || 'http://localhost:3005';
 const SHIPPING_API = process.env.NEXT_PUBLIC_SHIPPING_API_URL || 'http://localhost:3009';
 
-export { AUTH_API, CATALOG_API, SHIPPING_API, API_GATEWAY };
+export { AUTH_API, CATALOG_API, ORDER_API, PAYMENT_API, SHIPPING_API, API_GATEWAY };
 
 export type ApiError = Error & { status?: number };
 

@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Link } from '@/i18n/routing';
 import { ordersService } from '@/lib/services/orders.service';
 import { productsService } from '@/lib/services/products.service';
-import { inventoryService } from '@/lib/services/inventory.service';
+import { imeiService } from '@/lib/services/imei.service';
 import { analyticsService } from '@/lib/services/analytics.service';
 import { ShoppingCart, TrendingUp, AlertTriangle, Boxes } from 'lucide-react';
 import type { Order, Product, IMEIRecord, AnalyticsSummary } from '@/lib/types';
@@ -29,7 +29,7 @@ export default function DashboardPage() {
         const [o, p, i, a] = await Promise.all([
           ordersService.list(),
           productsService.list(),
-          inventoryService.list(),
+          imeiService.list(),
           analyticsService.summary(1),
         ]);
         if (!mounted) return;

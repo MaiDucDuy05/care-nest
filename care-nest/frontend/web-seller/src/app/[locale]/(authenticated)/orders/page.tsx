@@ -28,7 +28,7 @@ export default function OrdersListPage() {
     let mounted = true;
     (async () => {
       try {
-        const data = await ordersService.list({ status: statusFilter || undefined });
+        const data = await ordersService.list(undefined, { status: statusFilter || undefined });
         if (mounted) setItems(data);
       } finally {
         if (mounted) setLoading(false);
