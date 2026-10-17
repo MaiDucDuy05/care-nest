@@ -3,6 +3,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { AdminShell } from '@/components/layout/admin-shell';
 import { AuthGuard } from '@/components/auth/auth-guard';
+import { AuthProvider } from '@/lib/hooks/use-auth';
 
 export const metadata: Metadata = {
   title: {
@@ -26,9 +27,11 @@ export default async function LocaleLayout({
       </head>
       <body>
         <NextIntlClientProvider messages={messages}>
-          <AuthGuard>
-            <AdminShell>{children}</AdminShell>
-          </AuthGuard>
+          <AuthProvider>
+            <AuthGuard>
+              <AdminShell>{children}</AdminShell>
+            </AuthGuard>
+          </AuthProvider>
         </NextIntlClientProvider>
       </body>
     </html>
