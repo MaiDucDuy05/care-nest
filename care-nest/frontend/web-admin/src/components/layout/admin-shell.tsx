@@ -1,10 +1,23 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { usePathname } from 'next/navigation';
 import { TopNav } from './top-nav';
 import { Toaster } from '@/components/ui/toast';
 
 export function AdminShell({ children }: { children: ReactNode }) {
+  const pathname = usePathname() || '';
+  const isAuthPage = pathname.includes('/auth/');
+
+  if (isAuthPage) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'var(--bg-page)' }}>
+        {children}
+        <Toaster />
+      </div>
+    );
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-page)', display: 'flex', flexDirection: 'column' }}>
       <TopNav />

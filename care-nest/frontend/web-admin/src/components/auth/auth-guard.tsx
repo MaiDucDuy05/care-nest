@@ -1,21 +1,17 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 
 export function AuthGuard({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname() || '';
 
-  if (!isLoading && !user) {
-    router.push('/login');
-    return null;
-  }
-
-  if (!isLoading && user && user.role !== 'ADMIN' && user.role !== 'SUPPORT' && user.role !== 'MEDICAL_REVIEWER') {
-    router.push('/forbidden');
-    return null;
+  // Skip guarding on auth pages
+  if (pathname.includes('/auth/login') || pathname.includes('/auth/forbidden') || pathname.endsWith('/login')) {
+    return <>{children}</>;
   }
 
   if (isLoading) {
@@ -24,6 +20,18 @@ export function AuthGuard({ children }: { children: ReactNode }) {
         <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>Loading...</div>
       </div>
     );
+  }
+
+  if (!user) {
+    const locale = pathname.startsWith('/en') ? 'en' : 'vi';
+    router.push(`/${locale}/auth/login`);
+    return null;
+  }
+
+  if (user.role !== 'ADMIN' && user.role !== 'SUPPORT' && user.role !== 'MEDICAL_REVIEWER') {
+    const locale = pathname.startsWith('/en') ? 'en' : 'vi';
+    router.push(`/${locale}/auth/forbidden`);
+    return null;
   }
 
   return <>{children}</>;
