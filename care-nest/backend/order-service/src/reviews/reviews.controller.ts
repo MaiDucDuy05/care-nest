@@ -16,7 +16,7 @@ import { CurrentUser } from '../cart/decorators/current-user.decorator.js';
  *   POST /api/v1/orders/:orderId/reviews   — buyer writes a review (auth required)
  *   GET  /api/v1/orders/reviews?sellerId=  — list a seller's reviews (public)
  */
-@Controller('api/v1/orders')
+@Controller('orders')
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 

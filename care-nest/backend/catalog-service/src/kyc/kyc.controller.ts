@@ -4,7 +4,7 @@ import { SubmitKycSchema, ReviewKycSchema } from './kyc.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 
-@Controller('api/v1/kyc')
+@Controller('kyc')
 @UseGuards(JwtAuthGuard)
 export class KycController {
   constructor(private readonly kycService: KycService) {}

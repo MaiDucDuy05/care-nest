@@ -5,7 +5,7 @@ import { CheckoutSchema, UpdateOrderStatusSchema } from './dto/order.dto.js';
 import { JwtAuthGuard } from '../cart/guards/jwt-auth.guard.js';
 import { CurrentUser } from '../cart/decorators/current-user.decorator.js';
 
-@Controller('api/v1/orders')
+@Controller('orders')
 @UseGuards(JwtAuthGuard)
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}

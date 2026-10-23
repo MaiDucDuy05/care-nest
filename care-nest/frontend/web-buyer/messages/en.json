@@ -126,7 +126,8 @@
       "hrRange": "60 - 90 bpm",
       "bpRange": "< 120/80 mmHg",
       "spo2Range": "95% - 100%",
-      "tempRange": "36.5 - 37.2 °C"
+      "tempRange": "36.5 - 37.2 °C",
+      "loading": "Measuring..."
     },
     "alerts": {
       "title": "Alert History",

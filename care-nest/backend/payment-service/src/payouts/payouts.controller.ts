@@ -16,7 +16,7 @@ const EntriesQuerySchema = z.object({
   kind: z.enum(['ORDER_CREDIT', 'COMMISSION_DEBIT', 'REFUND_DEBIT', 'PAYOUT_DEBIT', 'ADJUSTMENT']).optional(),
 });
 
-@Controller('api/v1/seller/payouts')
+@Controller('seller/payouts')
 @UseGuards(JwtAuthGuard)
 export class PayoutsController {
   constructor(

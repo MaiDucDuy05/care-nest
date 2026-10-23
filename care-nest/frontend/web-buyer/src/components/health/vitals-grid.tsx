@@ -50,12 +50,7 @@ export function VitalsGrid({ vitals }: VitalsGridProps) {
   const t = useTranslations('health.vitals');
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-      gap: '20px',
-      marginBottom: '32px',
-    }}>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
       <VitalCard
         type="heartRate"
         value={vitals?.heartRate ?? null}
@@ -65,7 +60,13 @@ export function VitalsGrid({ vitals }: VitalsGridProps) {
       />
       <VitalCard
         type="bloodPressure"
-        value={vitals?.bloodPressureSystolic ?? null}
+        value={
+          vitals?.bloodPressureSystolic != null
+            ? vitals.bloodPressureDiastolic != null
+              ? `${vitals.bloodPressureSystolic}/${vitals.bloodPressureDiastolic}`
+              : vitals.bloodPressureSystolic
+            : null
+        }
         unit={t('mmhg')}
         status={getBpStatus(vitals?.bloodPressureSystolic)}
         safeRange={t('bpRange')}

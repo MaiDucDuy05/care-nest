@@ -2,13 +2,23 @@ import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 
+import { RealtimeGateway } from './realtime/realtime.gateway.js';
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableCors();
 
+  const apiPrefix = process.env.API_PREFIX || 'api/v1';
+  app.setGlobalPrefix(apiPrefix, {
+    exclude: ['metrics', 'health', 'healthz'],
+  });
+
+  const realtimeGateway = app.get(RealtimeGateway);
+  realtimeGateway.attach(app.getHttpServer());
+
   const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 3007;
   await app.listen(port);
-  console.log(`🚨 [alert-service] running on http://localhost:${port}`);
+  console.log(`🚨 [alert-service] running on http://localhost:${port}/${apiPrefix}`);
 }
 
 bootstrap().catch((err) => {

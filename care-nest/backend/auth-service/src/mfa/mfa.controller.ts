@@ -6,7 +6,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 
 const MfaCodeSchema = z.object({ code: z.string().regex(/^\d{6}$/, 'Mã MFA phải gồm 6 chữ số') });
 
-@Controller('api/v1/mfa')
+@Controller('mfa')
 @UseGuards(JwtAuthGuard)
 export class MfaController {
   constructor(private readonly mfaService: MfaService) {}

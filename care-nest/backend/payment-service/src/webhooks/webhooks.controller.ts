@@ -15,7 +15,7 @@ import { WebhookRateLimitGuard } from './webhook-rate-limit.guard.js';
  *
  * S17: rate-limited to 100 requests/minute per (gateway, IP).
  */
-@Controller('api/v1/webhooks')
+@Controller('webhooks')
 @UseGuards(WebhookRateLimitGuard)
 export class WebhooksController {
   private readonly logger = new Logger(WebhooksController.name);

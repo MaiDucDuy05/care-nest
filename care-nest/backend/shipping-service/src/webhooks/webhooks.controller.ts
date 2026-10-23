@@ -38,7 +38,7 @@ interface NormalizedStatusChange {
  * the same JSON, which is fine for testing. Phase 3 will mount a raw-body
  * middleware on these routes.
  */
-@Controller('api/v1/webhooks/shipping')
+@Controller('webhooks/shipping')
 export class WebhooksController {
   private readonly logger = new Logger(WebhooksController.name);
 

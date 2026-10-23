@@ -2,7 +2,7 @@ import { Controller, Get, Param, Query, NotFoundException } from '@nestjs/common
 import { PublicService } from './public.service.js';
 import { ProductsService } from '../products/products.service.js';
 
-@Controller('api/v1/public')
+@Controller('public')
 export class PublicController {
   constructor(
     private readonly publicService: PublicService,

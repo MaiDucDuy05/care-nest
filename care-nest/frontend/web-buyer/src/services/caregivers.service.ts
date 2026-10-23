@@ -1,7 +1,7 @@
 /**
  * Caregivers service — invite and manage caregivers.
  */
-import { DEVICE_API } from '../lib/api-client';
+import { DEVICE_API, getToken } from '../lib/api-client';
 
 export interface Caregiver {
   id: string;
@@ -15,17 +15,30 @@ export interface Caregiver {
   revokedAt?: string;
 }
 
+function getAuthHeaders(): Record<string, string> {
+  const token = getToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 export const caregiversService = {
   async list(): Promise<Caregiver[]> {
-    const res = await fetch(`${DEVICE_API}/api/v1/caregivers`);
-    if (!res.ok) throw new Error(await res.text());
+    const res = await fetch(`${DEVICE_API}/api/v1/caregivers`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      if (res.status === 401) return [];
+      throw new Error(await res.text());
+    }
     return res.json();
   },
 
   async invite(email: string, role?: 'CARETAKER' | 'VIEWER') {
     const res = await fetch(`${DEVICE_API}/api/v1/caregivers`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ email, role: role ?? 'CARETAKER' }),
     });
     if (!res.ok) throw new Error(await res.text());
@@ -35,6 +48,7 @@ export const caregiversService = {
   async revoke(caregiverId: string) {
     const res = await fetch(`${DEVICE_API}/api/v1/caregivers/${caregiverId}`, {
       method: 'DELETE',
+      headers: getAuthHeaders(),
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
@@ -43,6 +57,7 @@ export const caregiversService = {
   async resendInvite(caregiverId: string) {
     const res = await fetch(`${DEVICE_API}/api/v1/caregivers/${caregiverId}/resend`, {
       method: 'POST',
+      headers: getAuthHeaders(),
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();

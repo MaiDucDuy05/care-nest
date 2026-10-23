@@ -13,7 +13,10 @@
       "require": "./dist/index.js"
     }
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -47,6 +50,7 @@
   },
   "devDependencies": {
     "@nestjs/testing": "^10.4.0",
+    "@swc/core": "^1.16.18",
     "@types/express": "^4.17.21",
     "@types/node": "^22.0.0",
     "@types/passport-jwt": "^4.0.1",

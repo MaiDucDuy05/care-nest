@@ -12,7 +12,7 @@ const VALID_DAYS = [1, 7, 30, 90];
  * self-serve case — the controller looks up the seller's sellerId
  * from their JWT user-id.
  */
-@Controller('api/v1/orders/analytics')
+@Controller('orders/analytics')
 @UseGuards(JwtAuthGuard)
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}

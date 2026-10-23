@@ -13,7 +13,10 @@
       "require": "./dist/index.js"
     }
   },
-  "files": ["dist", "README.md"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
@@ -25,7 +28,11 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:format": "prisma format",
+    "db:seed": "node --env-file=../../.env dist/seed.js",
     "clean": "rm -rf dist .turbo coverage"
+  },
+  "prisma": {
+    "seed": "node --env-file=../../.env dist/seed.js"
   },
   "dependencies": {
     "@carenest/shared-config": "workspace:*",
@@ -39,6 +46,7 @@
     "eslint": "^8.57.0",
     "prisma": "^5.20.0",
     "tsup": "^8.3.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.6.0",
     "vitest": "^2.1.0"
   }

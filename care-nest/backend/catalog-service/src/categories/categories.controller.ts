@@ -2,7 +2,7 @@ import { Controller, Get, Post, Param, Body, BadRequestException } from '@nestjs
 import { CategoriesService } from './categories.service.js';
 import { CreateCategorySchema } from './dto/category.dto.js';
 
-@Controller('api/v1/categories')
+@Controller('categories')
 export class CategoriesController {
   constructor(private readonly categoriesService: CategoriesService) {}
 

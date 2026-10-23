@@ -23,7 +23,7 @@ interface AuthedUser {
  *
  * Provisioning is exposed on /api/v1/devices (devices.controller).
  */
-@Controller('api/v1/activation')
+@Controller('activation')
 export class ActivationController {
   constructor(private readonly activationService: ActivationService) {}
 

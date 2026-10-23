@@ -13,7 +13,7 @@ import { ZodValidationPipe } from '@carenest/shared-utils';
 import { ShipmentsService } from './shipments.service.js';
 import { QuoteFeeSchema, CreateShipmentSchema } from './dto/shipments.dto.js';
 
-@Controller('api/v1/shipments')
+@Controller('shipments')
 @UseGuards(JwtAuthGuard)
 export class ShipmentsController {
   constructor(private readonly shipmentsService: ShipmentsService) {}

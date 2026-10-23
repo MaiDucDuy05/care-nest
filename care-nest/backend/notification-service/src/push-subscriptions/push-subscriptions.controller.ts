@@ -4,7 +4,7 @@ import { PushSubscriptionCreateSchema } from './dto/push-subscription.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 
-@Controller('api/v1/push/subscriptions')
+@Controller('push/subscriptions')
 @UseGuards(JwtAuthGuard)
 export class PushSubscriptionsController {
   constructor(private readonly pushSubscriptionsService: PushSubscriptionsService) {}

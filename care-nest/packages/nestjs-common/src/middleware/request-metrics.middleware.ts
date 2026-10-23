@@ -1,4 +1,4 @@
-import { Injectable, NestMiddleware } from '@nestjs/common';
+import { Inject, Injectable, NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { MetricsService } from '../modules/metrics.module.js';
 
@@ -18,7 +18,7 @@ import { MetricsService } from '../modules/metrics.module.js';
  */
 @Injectable()
 export class RequestMetricsMiddleware implements NestMiddleware {
-  constructor(private readonly metrics: MetricsService) {}
+  constructor(@Inject(MetricsService) private readonly metrics: MetricsService) {}
 
   use(req: Request, res: Response, next: NextFunction): void {
     const start = process.hrtime.bigint();

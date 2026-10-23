@@ -13,7 +13,7 @@ import { ZodValidationPipe } from '@carenest/shared-utils';
 import { CreateActivationCodeSchema, RedeemActivationCodeSchema } from './dto/activation.dto.js';
 import { SubscriptionEventPublisher } from '../kafka/subscription-event.publisher.js';
 
-@Controller('api/v1/activation')
+@Controller('activation')
 export class ActivationController {
   constructor(
     private readonly activationService: ActivationService,

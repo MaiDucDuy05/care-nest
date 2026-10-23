@@ -26,6 +26,12 @@ export function useRealtimeVitals({ deviceId, userId, authToken, initialVitals }
   }, [socketConnected]);
 
   useEffect(() => {
+    if (initialVitals) {
+      setVitals((prev) => (prev ? { ...initialVitals, ...prev } : initialVitals));
+    }
+  }, [initialVitals]);
+
+  useEffect(() => {
     if (!deviceId || !userId) return;
 
     const room = `subject:${userId}`;

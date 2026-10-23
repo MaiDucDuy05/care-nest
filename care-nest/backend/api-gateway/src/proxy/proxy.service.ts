@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import http from 'node:http';
-import https from 'node:https';
+import * as http from 'node:http';
+import * as https from 'node:https';
 import { randomBytes } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { resolveTargetUrl } from './gateway-routes.js';

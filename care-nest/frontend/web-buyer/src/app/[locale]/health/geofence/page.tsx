@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
-import { MapPin, Plus } from 'lucide-react';
+import { MapPin, Plus, Loader2 } from 'lucide-react';
 import { GeofenceList } from '@/components/geofence/geofence-list';
 import { GeofenceForm } from '@/components/geofence/geofence-form';
 import type { Geofence } from '@/lib/types';
@@ -31,10 +31,32 @@ const GeofenceMap = dynamic(() => import('@/components/geofence/geofence-map').t
 export default function GeofencePage() {
   const t = useTranslations('geofence');
   const [geofences, setGeofences] = useState<Geofence[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function loadGeofences() {
+      try {
+        setIsLoading(true);
+        const data = await devicesService.getGeofences();
+        if (isMounted && Array.isArray(data)) {
+          setGeofences(data);
+        }
+      } catch (err) {
+        console.error('Failed to load geofences:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    }
+    loadGeofences();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleMapClick = useCallback((lat: number, lng: number) => {
     setPendingLocation({ lat, lng });

@@ -19,9 +19,9 @@ interface HypertableSpec {
 }
 
 const HYPERTABLES: readonly HypertableSpec[] = [
-  { table: 'health_records', timeColumn: 'measured_at', chunkInterval: '1 day' },
-  { table: 'alerts', timeColumn: 'received_at', chunkInterval: '7 days' },
-  { table: 'audit_logs', timeColumn: 'occurred_at', chunkInterval: '30 days' },
+  { table: 'health_records', timeColumn: 'measuredAt', chunkInterval: '1 day' },
+  { table: 'alerts', timeColumn: 'receivedAt', chunkInterval: '7 days' },
+  { table: 'audit_logs', timeColumn: 'occurredAt', chunkInterval: '30 days' },
 ];
 
 async function ensureHypertable(spec: HypertableSpec): Promise<void> {

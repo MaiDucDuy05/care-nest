@@ -71,4 +71,12 @@ export class DevicesService {
     if (!userId) throw new BadRequestException('userId is required');
     return this.activationService.createActivationCode({ orderId, userId, imeiList });
   }
+
+  async getLatestVitals(idOrImei: string) {
+    return this.devicesRepository.getLatestVitals(idOrImei);
+  }
+
+  async getTelemetryHistory(idOrImei: string, from?: string, to?: string, limit = 50) {
+    return this.devicesRepository.getTelemetryHistory(idOrImei, from, to, limit);
+  }
 }

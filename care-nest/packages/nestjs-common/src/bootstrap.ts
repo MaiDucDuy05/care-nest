@@ -30,6 +30,10 @@ export interface BootstrapOptions {
    * features should come after the infra modules below.
    */
   featureModules?: DynamicModule[] | { forRoot: () => DynamicModule }[];
+  /**
+   * Optional custom API prefix (default: process.env.API_PREFIX || 'api/v1')
+   */
+  apiPrefix?: string;
 }
 
 /**
@@ -58,9 +62,16 @@ export async function bootstrapHttp(rootModule: unknown, opts: BootstrapOptions)
   );
   app.use(new CorrelationIdMiddleware().use);
 
+  const apiPrefix = opts.apiPrefix ?? process.env.API_PREFIX ?? 'api/v1';
+  if (apiPrefix) {
+    app.setGlobalPrefix(apiPrefix, {
+      exclude: ['metrics', 'health', 'healthz'],
+    });
+  }
+
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port, '0.0.0.0');
-  log.log(`${opts.serviceName} listening on :${port}`);
+  log.log(`${opts.serviceName} listening on :${port} (prefix: /${apiPrefix})`);
   return app;
 }
 

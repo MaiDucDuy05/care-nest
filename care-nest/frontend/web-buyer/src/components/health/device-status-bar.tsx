@@ -19,58 +19,55 @@ export function DeviceStatusBar({
   lastUpdated,
   inGeofence,
 }: DeviceStatusBarProps) {
-  const batteryColor = battery == null
-    ? 'var(--text-muted)'
+  const batteryColorClass = battery == null
+    ? 'text-slate-400'
     : battery > 50
-    ? 'var(--success)'
+    ? 'text-emerald-500'
     : battery > 20
-    ? 'var(--accent)'
-    : 'var(--danger)';
+    ? 'text-amber-500'
+    : 'text-rose-500';
 
   return (
-    <div className="card" style={{
-      padding: '16px 24px',
-      marginBottom: '28px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      flexWrap: 'wrap',
-      gap: '16px',
-      background: '#ffffff',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <span className={`badge ${isConnected ? 'badge-green' : 'badge-red'}`}>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-5 mb-7 flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
+          isConnected
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            : 'bg-rose-50 text-rose-700 border border-rose-200'
+        }`}>
           <Wifi size={14} /> {isConnected ? '4G LTE Kết Nối Mạnh' : 'Mất kết nối'}
         </span>
         {imei && (
-          <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-            IMEI: <strong>{imei}</strong>
+          <span className="text-slate-500">
+            IMEI: <strong className="text-slate-700 font-mono">{imei}</strong>
           </span>
         )}
         {model && (
-          <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+          <span className="text-slate-600 font-medium">
             {model}
           </span>
         )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+      <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm">
         {battery != null && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
-            <Battery size={18} color={batteryColor} />
-            <span>
-              Pin: <strong>{battery}%</strong>
-              {battery > 50 ? ' (Tốt)' : battery > 20 ? ' (Thấp)' : ' (Sạc ngay)'}
+          <div className="flex items-center gap-2">
+            <Battery size={18} className={batteryColorClass} />
+            <span className="text-slate-600">
+              Pin: <strong className="text-slate-800">{battery}%</strong>{' '}
+              <span className="text-xs text-slate-400">
+                {battery > 50 ? '(Tốt)' : battery > 20 ? '(Thấp)' : '(Sạc ngay)'}
+              </span>
             </span>
           </div>
         )}
         {lastUpdated && (
-          <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-            Cập nhật lúc: <strong>{lastUpdated}</strong>
+          <div className="text-slate-500 text-xs sm:text-sm">
+            Cập nhật: <strong className="text-slate-700">{lastUpdated}</strong>
           </div>
         )}
         {inGeofence && (
-          <span className="badge badge-green">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
             ✓ {inGeofence}
           </span>
         )}

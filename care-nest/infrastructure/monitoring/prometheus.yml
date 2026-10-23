@@ -16,20 +16,33 @@ scrape_configs:
   - job_name: carenest-services
     metrics_path: /metrics
     static_configs:
-      - targets:
-          - 'api-gateway:8080'
-          - 'auth-service:3001'
-          - 'catalog-service:3002'
-          - 'device-service:3003'
-          - 'order-service:3004'
-          - 'payment-service:3005'
-          - 'notification-service:3006'
-          - 'alert-service:3007'
-          - 'subscription-service:3008'
-          - 'shipping-service:3009'
-    relabel_configs:
-      # Turn 'payment-service:3005' into a clean 'service' label.
-      - source_labels: [__address__]
-        regex: '([^:]+):.*'
-        target_label: service
-        replacement: '$1'
+      - targets: ['host.docker.internal:8080']
+        labels:
+          service: 'api-gateway'
+      - targets: ['host.docker.internal:3001']
+        labels:
+          service: 'auth-service'
+      - targets: ['host.docker.internal:3002']
+        labels:
+          service: 'catalog-service'
+      - targets: ['host.docker.internal:3003']
+        labels:
+          service: 'device-service'
+      - targets: ['host.docker.internal:3004']
+        labels:
+          service: 'order-service'
+      - targets: ['host.docker.internal:3005']
+        labels:
+          service: 'payment-service'
+      - targets: ['host.docker.internal:3006']
+        labels:
+          service: 'notification-service'
+      - targets: ['host.docker.internal:3007']
+        labels:
+          service: 'alert-service'
+      - targets: ['host.docker.internal:3008']
+        labels:
+          service: 'subscription-service'
+      - targets: ['host.docker.internal:3009']
+        labels:
+          service: 'shipping-service'

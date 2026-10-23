@@ -5,7 +5,7 @@ import { RegisterSchema } from './dto/register.dto.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 
-@Controller('api/v1/auth')
+@Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -39,5 +39,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async me(@CurrentUser() user: any) {
     return { user };
+  }
+
+  @Post('logout')
+  async logout() {
+    return { success: true, message: 'Logged out successfully' };
   }
 }

@@ -19,15 +19,6 @@ interface AlertsListProps {
   isLoading?: boolean;
 }
 
-function getSeverityColor(severity: Alert['severity']) {
-  switch (severity) {
-    case 'CRITICAL': return 'var(--danger)';
-    case 'HIGH': return 'var(--accent)';
-    case 'MEDIUM': return 'var(--secondary)';
-    default: return 'var(--success)';
-  }
-}
-
 function formatAlertTime(timestamp: string) {
   const date = new Date(timestamp);
   return date.toLocaleString('vi-VN', {
@@ -43,7 +34,7 @@ export function AlertsList({ alerts, isLoading }: AlertsListProps) {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <div className="flex flex-col gap-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <AlertSkeleton key={i} />
         ))}
@@ -62,35 +53,46 @@ export function AlertsList({ alerts, isLoading }: AlertsListProps) {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div className="flex flex-col gap-3">
       {alerts.map((alert) => (
         <div
           key={alert.id}
-          style={{
-            padding: '12px',
-            borderRadius: 'var(--radius-md)',
-            background: alert.acknowledged ? '#f8fafc' : '#fef9f9',
-            border: `1px solid ${alert.acknowledged ? 'var(--border-color)' : '#fecaca'}`,
-            display: 'flex',
-            gap: '12px',
-            opacity: alert.acknowledged ? 0.7 : 1,
-          }}
+          className={`p-3.5 rounded-xl border flex items-start gap-3 transition-colors ${
+            alert.acknowledged
+              ? 'bg-slate-50/70 border-slate-200 text-slate-600 opacity-75'
+              : 'bg-rose-50/50 border-rose-200 text-slate-900 shadow-xs'
+          }`}
         >
-          <div style={{
-            width: '10px',
-            height: '10px',
-            borderRadius: '50%',
-            background: getSeverityColor(alert.severity),
-            flexShrink: 0,
-            marginTop: '4px',
-            animation: alert.acknowledged ? 'none' : 'pulseGlow 2s infinite',
-          }} />
-          <div>
-            <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '2px' }}>
+          <div className="relative mt-1 flex h-2.5 w-2.5 flex-shrink-0">
+            {!alert.acknowledged && (
+              <span className={`absolute inline-flex h-full w-full rounded-full opacity-75 animate-ping ${
+                alert.severity === 'CRITICAL'
+                  ? 'bg-rose-500'
+                  : alert.severity === 'HIGH'
+                  ? 'bg-amber-500'
+                  : alert.severity === 'MEDIUM'
+                  ? 'bg-indigo-500'
+                  : 'bg-emerald-500'
+              }`}></span>
+            )}
+            <span className={`relative inline-flex h-2.5 w-2.5 rounded-full ${
+              alert.severity === 'CRITICAL'
+                ? 'bg-rose-600'
+                : alert.severity === 'HIGH'
+                ? 'bg-amber-500'
+                : alert.severity === 'MEDIUM'
+                ? 'bg-indigo-500'
+                : 'bg-emerald-500'
+            }`}></span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-semibold leading-snug">
               {alert.message}
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-              {formatAlertTime(alert.timestamp)} — {t(`severity.${alert.severity}`)}
+            <div className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
+              <span>{formatAlertTime(alert.timestamp)}</span>
+              <span>•</span>
+              <span className="font-medium text-slate-600">{t(`severity.${alert.severity}`)}</span>
             </div>
           </div>
         </div>

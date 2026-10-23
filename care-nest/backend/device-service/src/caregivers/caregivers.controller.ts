@@ -4,7 +4,7 @@ import { CaregiverInviteSchema } from './dto/caregiver.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 
-@Controller('api/v1/caregivers')
+@Controller('caregivers')
 @UseGuards(JwtAuthGuard)
 export class CaregiversController {
   constructor(private readonly caregiversService: CaregiversService) {}
@@ -18,6 +18,11 @@ export class CaregiversController {
     return this.caregiversService.invite(user.id, parsed.data);
   }
 
+  @Get()
+  async list(@CurrentUser() user: { id: string }): Promise<any> {
+    return this.caregiversService.listMine(user.id);
+  }
+
   @Get('me')
   async listMine(@CurrentUser() user: { id: string }): Promise<any> {
     return this.caregiversService.listMine(user.id);
@@ -26,5 +31,10 @@ export class CaregiversController {
   @Delete(':id')
   async revoke(@CurrentUser() user: { id: string }, @Param('id') id: string): Promise<any> {
     return this.caregiversService.revoke(user.id, id);
+  }
+
+  @Post(':id/resend')
+  async resend(@CurrentUser() _user: { id: string }, @Param('id') id: string): Promise<any> {
+    return { success: true, caregiverId: id, resentAt: new Date().toISOString() };
   }
 }

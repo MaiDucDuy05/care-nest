@@ -4,7 +4,7 @@ import { UpdatePreferencesSchema } from './dto/preference.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 
-@Controller('api/v1/notifications/preferences')
+@Controller('notifications/preferences')
 @UseGuards(JwtAuthGuard)
 export class PreferencesController {
   constructor(private readonly preferencesService: PreferencesService) {}

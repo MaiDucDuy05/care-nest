@@ -4,7 +4,7 @@ import { UpdateAlertStatusSchema } from './dto/alert.dto.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 
-@Controller('api/v1/alerts')
+@Controller('alerts')
 @UseGuards(JwtAuthGuard)
 export class AlertsController {
   constructor(private readonly alertsService: AlertsService) {}

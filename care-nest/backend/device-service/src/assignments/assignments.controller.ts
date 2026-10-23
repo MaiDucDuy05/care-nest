@@ -2,7 +2,7 @@ import { Controller, Post, Delete, Get, Param, Body, BadRequestException } from 
 import { AssignmentsService } from './assignments.service.js';
 import { AssignDeviceSchema } from './dto/assign-device.dto.js';
 
-@Controller('api/v1/assignments')
+@Controller('assignments')
 export class AssignmentsController {
   constructor(private readonly assignmentsService: AssignmentsService) {}
 

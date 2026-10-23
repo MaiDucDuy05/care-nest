@@ -23,7 +23,7 @@ export interface PaginatedProducts {
   hasMore: boolean;
 }
 
-@Controller('api/v1/products')
+@Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 

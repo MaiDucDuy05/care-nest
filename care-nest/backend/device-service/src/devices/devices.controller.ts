@@ -5,14 +5,28 @@ import {
   Param,
   Query,
   Body,
+  UseGuards,
   BadRequestException,
 } from '@nestjs/common';
 import { DevicesService } from './devices.service.js';
 import { RegisterDeviceSchema } from './dto/register-device.dto.js';
+import { AssignmentsService } from '../assignments/assignments.service.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
 
-@Controller('api/v1/devices')
+@Controller('devices')
 export class DevicesController {
-  constructor(private readonly devicesService: DevicesService) {}
+  constructor(
+    private readonly devicesService: DevicesService,
+    private readonly assignmentsService: AssignmentsService,
+  ) {}
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getMyDevices(@CurrentUser() user: { id: string }) {
+    const assignments = await this.assignmentsService.getAssignmentsByUser(user.id);
+    return assignments.map((a) => a.device);
+  }
 
   @Get()
   async list(
@@ -20,6 +34,21 @@ export class DevicesController {
     @Query('pageSize') pageSize = '20',
   ) {
     return this.devicesService.listDevices(parseInt(page, 10), parseInt(pageSize, 10));
+  }
+
+  @Get(':id/telemetry/latest')
+  async getLatestVitals(@Param('id') id: string) {
+    return this.devicesService.getLatestVitals(id);
+  }
+
+  @Get(':id/telemetry')
+  async getTelemetryHistory(
+    @Param('id') id: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('limit') limit = '50',
+  ) {
+    return this.devicesService.getTelemetryHistory(id, from, to, parseInt(limit, 10));
   }
 
   @Get(':id')

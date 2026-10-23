@@ -4,7 +4,7 @@ import { AddToCartSchema, UpdateCartItemSchema } from './dto/cart-item.dto.js';
 import { CurrentUser } from './decorators/current-user.decorator.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
-@Controller('api/v1/cart')
+@Controller('cart')
 @UseGuards(JwtAuthGuard)
 export class CartController {
   constructor(private readonly cartService: CartService) {}

@@ -17,6 +17,7 @@
     "type-check": "turbo run type-check",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "db:seed": "pnpm --filter @carenest/database build && pnpm --filter @carenest/database db:seed",
     "clean": "turbo run clean && rm -rf node_modules .turbo"
   },
   "devDependencies": {

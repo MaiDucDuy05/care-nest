@@ -46,6 +46,7 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   SERVICE_NAME: z.string().min(1).default('care-nest-service'),
+  API_PREFIX: z.string().default('api/v1'),
 });
 
 export type BaseEnv = z.infer<typeof envSchema>;

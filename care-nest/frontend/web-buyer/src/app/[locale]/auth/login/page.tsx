@@ -1,11 +1,40 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
-import { HeartPulse, Mail, Lock, ArrowRight } from 'lucide-react';
+import { HeartPulse, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { authService } from '@/services/auth.service';
 
 export default function LoginPage() {
   const t = useTranslations('auth');
+  const router = useRouter();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      await authService.login(email.trim(), password);
+      router.push('/health/dashboard');
+    } catch (err: any) {
+      try {
+        const parsed = JSON.parse(err.message);
+        setError(parsed.message || 'Đăng nhập không thành công');
+      } catch {
+        setError(err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="container" style={{
@@ -36,7 +65,21 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <form style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        {error && (
+          <div style={{
+            background: 'var(--danger-light, #fee2e2)',
+            color: 'var(--danger, #dc2626)',
+            padding: '12px 14px',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '13px',
+            marginBottom: '16px',
+            fontWeight: 500,
+          }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
               {t('email')}
@@ -54,6 +97,8 @@ export default function LoginPage() {
               <input
                 id="login-email-input"
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder={t('emailPlaceholder')}
                 style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px', fontFamily: 'inherit' }}
                 required
@@ -79,6 +124,8 @@ export default function LoginPage() {
               <input
                 id="login-password-input"
                 type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder={t('passwordPlaceholder')}
                 style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px', fontFamily: 'inherit' }}
                 required
@@ -86,14 +133,28 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <button id="login-submit-btn" type="submit" className="btn btn-primary" style={{ padding: '12px', width: '100%', marginTop: '5px' }}>
-            {t('loginBtn')} <ArrowRight size={16} />
+          <button
+            id="login-submit-btn"
+            type="submit"
+            disabled={isLoading}
+            className="btn btn-primary"
+            style={{ padding: '12px', width: '100%', marginTop: '5px' }}
+          >
+            {isLoading ? (
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Loader2 size={16} className="animate-spin" /> Đang đăng nhập...
+              </span>
+            ) : (
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                {t('loginBtn')} <ArrowRight size={16} />
+              </span>
+            )}
           </button>
         </form>
 
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: 'var(--text-muted)' }}>
           {t('noAccount')}{' '}
-          <Link href="/register" id="login-goto-register" style={{ color: 'var(--primary)', fontWeight: 700 }}>
+          <Link href="/auth/register" id="login-goto-register" style={{ color: 'var(--primary)', fontWeight: 700 }}>
             {t('registerNow')}
           </Link>
         </div>

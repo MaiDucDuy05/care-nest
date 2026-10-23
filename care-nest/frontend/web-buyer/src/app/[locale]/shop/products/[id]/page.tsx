@@ -4,6 +4,7 @@ import { Star, Shield, ShoppingCart, MessageCircle, ChevronLeft } from 'lucide-r
 import { publicCatalogService } from '@/lib/services/public-catalog.service';
 import { productMetadata, productJsonLd, type Locale } from '@/lib/seo';
 import { Link } from '@/i18n/routing';
+import { AddToCartButton } from '@/components/shop/add-to-cart-button';
 
 interface PageProps {
   params: { locale: string; id: string };
@@ -148,9 +149,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             )}
 
             <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-              <button className="btn btn-primary" style={{ flex: 1, padding: '12px 18px', fontSize: 15 }}>
-                <ShoppingCart size={18} /> {locale === 'vi' ? 'Thêm vào giỏ' : 'Add to cart'}
-              </button>
+              <AddToCartButton product={product} locale={locale} />
               <button className="btn btn-secondary" style={{ padding: '12px 18px' }}>
                 <MessageCircle size={18} />
               </button>

@@ -18,7 +18,7 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 
-@Controller('api/v1/seller/imeis')
+@Controller('seller/imeis')
 @UseGuards(JwtAuthGuard)
 export class ImeiController {
   constructor(private readonly imeiService: ImeiService) {}

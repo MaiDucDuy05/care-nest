@@ -1,4 +1,4 @@
-import { Module, Controller, Get } from '@nestjs/common';
+import { Module, Controller, Get, Inject } from '@nestjs/common';
 import { HealthCheck, HealthCheckService, HealthIndicatorResult, TerminusModule } from '@nestjs/terminus';
 import { PrismaService } from './prisma.service.js';
 import { PrismaModule } from './prisma.module.js';
@@ -17,8 +17,8 @@ import { getRedis } from '@carenest/shared-redis';
 @Controller('health')
 export class HealthController {
   constructor(
-    private readonly health: HealthCheckService,
-    private readonly prisma: PrismaService,
+    @Inject(HealthCheckService) private readonly health: HealthCheckService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
   ) {}
 
   @Get('healthz')

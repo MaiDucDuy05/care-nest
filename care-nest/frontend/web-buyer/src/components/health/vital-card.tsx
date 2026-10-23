@@ -1,82 +1,88 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
+import { Heart, Activity, Wind, Thermometer } from 'lucide-react';
 
 export type VitalType = 'heartRate' | 'bloodPressure' | 'spo2' | 'temperature';
 
 interface VitalCardProps {
   type: VitalType;
-  value: number | null;
+  value: number | string | null;
   unit: string;
   status: 'normal' | 'low' | 'high' | 'critical' | null;
   safeRange: string;
 }
 
-const VITAL_COLORS: Record<VitalType, string> = {
-  heartRate: 'var(--danger)',
-  bloodPressure: 'var(--primary)',
-  spo2: 'var(--secondary)',
-  temperature: 'var(--accent)',
-};
-
-const VITAL_ICONS: Record<VitalType, string> = {
-  heartRate: '♥',
-  bloodPressure: '↕',
-  spo2: '◎',
-  temperature: '°',
-};
-
 export function VitalCard({ type, value, unit, status, safeRange }: VitalCardProps) {
   const t = useTranslations('health.vitals');
 
-  const color = VITAL_COLORS[type];
   const label = t(type);
   const statusLabel = status ? t(status) : null;
   const isLoading = value === null;
 
+  const typeConfig = {
+    heartRate: {
+      color: 'text-rose-600',
+      icon: <Heart size={18} className="animate-pulse" />,
+    },
+    bloodPressure: {
+      color: 'text-teal-700',
+      icon: <Activity size={18} />,
+    },
+    spo2: {
+      color: 'text-indigo-600',
+      icon: <Wind size={18} />,
+    },
+    temperature: {
+      color: 'text-amber-600',
+      icon: <Thermometer size={18} />,
+    },
+  }[type];
+
   const statusBadgeClass =
     status === 'normal'
-      ? 'badge-green'
+      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
       : status === 'low' || status === 'high'
-      ? 'badge-indigo'
+      ? 'bg-amber-50 text-amber-700 border-amber-200'
       : status === 'critical'
-      ? 'badge-red'
-      : 'badge-teal';
+      ? 'bg-rose-50 text-rose-700 border-rose-200'
+      : 'bg-teal-50 text-teal-700 border-teal-200';
 
   return (
-    <div className="vitals-card" style={{ padding: '24px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color, display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, fontSize: '15px' }}>
-          <span style={{ fontSize: '20px' }}>{VITAL_ICONS[type]}</span>
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6 hover:shadow-md transition-all duration-200">
+      <div className="flex items-center justify-between pb-3">
+        <span className={`inline-flex items-center gap-1.5 font-bold text-sm ${typeConfig.color}`}>
+          {typeConfig.icon}
           {label}
         </span>
-        {statusLabel && <span className={`badge ${statusBadgeClass}`}>{statusLabel}</span>}
-        {isLoading && <span className="badge badge-teal">{t('common:loading')}</span>}
-      </div>
-
-      <div style={{ fontSize: '36px', fontWeight: 800, color: 'var(--text-main)', margin: '8px 0' }}>
-        {isLoading ? (
-          <div style={{
-            background: 'linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)',
-            backgroundSize: '200% 100%',
-            animation: 'shimmer 1.5s infinite',
-            width: '100px',
-            height: '36px',
-            borderRadius: '8px',
-          }} />
-        ) : (
-          <>
-            {type === 'bloodPressure' && value !== null
-              ? `${value}`
-              : value?.toFixed(type === 'temperature' ? 1 : 0)}
-            <span style={{ fontSize: '16px', fontWeight: 500, color: 'var(--text-muted)', marginLeft: '4px' }}>
-              {unit}
-            </span>
-          </>
+        {statusLabel && (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${statusBadgeClass}`}>
+            {statusLabel}
+          </span>
+        )}
+        {isLoading && (
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-500">
+            {t('loading')}
+          </span>
         )}
       </div>
 
-      <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+      <div className="my-2">
+        {isLoading ? (
+          <div className="h-9 w-24 bg-slate-200 animate-pulse rounded my-1" />
+        ) : (
+          <div className="text-3xl font-extrabold text-slate-900 tracking-tight">
+            {typeof value === 'number'
+              ? value.toFixed(type === 'temperature' ? 1 : 0)
+              : value != null ? value : '--'}
+            <span className="text-sm font-normal text-slate-500 ml-1.5">
+              {unit}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="text-xs text-slate-400 font-medium mt-2">
         {safeRange ? `${t('safeRange')}: ${safeRange}` : ''}
       </div>
     </div>

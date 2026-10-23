@@ -23,13 +23,15 @@ export class RealtimeGateway implements OnModuleInit, OnModuleDestroy {
 
   attach(httpServer: HttpServer) {
     this.httpServer = httpServer;
+    this.initSocketServer();
   }
 
   async onModuleInit() {
-    if (!this.httpServer) {
-      this.logger.warn('No HTTP server attached — WebSocket will not be available');
-      return;
-    }
+    this.initSocketServer();
+  }
+
+  private initSocketServer() {
+    if (!this.httpServer || this.io) return;
     this.io = new Server(this.httpServer, {
       path: '/alerts',
       cors: { origin: '*' },
@@ -53,7 +55,7 @@ export class RealtimeGateway implements OnModuleInit, OnModuleDestroy {
       const userId = (socket as any).userId;
       if (userId) {
         socket.join(`user:${userId}`);
-        this.logger.log({ userId }, 'WS client connected');
+        this.logger.log(`WS client connected for user:${userId}`);
       }
     });
 

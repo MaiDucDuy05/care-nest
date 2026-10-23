@@ -1,4 +1,4 @@
-import { Injectable, Module, Global } from '@nestjs/common';
+import { Injectable, Module, Global, Inject } from '@nestjs/common';
 import { Controller, Get, Header } from '@nestjs/common';
 import { collectDefaultMetrics, Counter, Histogram, Registry } from 'prom-client';
 
@@ -88,8 +88,8 @@ export class MetricsService {
 }
 
 @Controller('metrics')
-class MetricsController {
-  constructor(private readonly metricsService: MetricsService) {}
+export class MetricsController {
+  constructor(@Inject(MetricsService) private readonly metricsService: MetricsService) {}
 
   @Get()
   @Header('Content-Type', 'text/plain; version=0.0.4')

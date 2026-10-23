@@ -99,7 +99,10 @@ export const apiClient = {
     },
 
     async getMyDevices() {
-      const res = await fetch(`${DEVICE_API}/api/v1/devices/me`);
+      const token = getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch(`${DEVICE_API}/api/v1/devices/me`, { headers });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
@@ -109,20 +112,33 @@ export const apiClient = {
 export { AUTH_API, CATALOG_API, DEVICE_API, ORDER_API, PAYMENT_API, ALERT_API, SUBSCRIPTION_API, SHIPPING_API, NOTIFICATION_API, ACTIVATION_API };
 
 /**
- * Read the buyer auth token from localStorage. Web-buyer stores the
- * token issued by /auth/login under this key.
+ * Read the buyer auth token from localStorage or cookie.
  */
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
-  return window.localStorage.getItem('buyer_token');
+  const ls = window.localStorage.getItem('buyer_token');
+  if (ls) return ls;
+  if (typeof document !== 'undefined') {
+    const match = document.cookie.match(/(?:^|;\s*)(?:access_token|buyer_token)=([^;]*)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+  return null;
 }
 
 export function setToken(token: string): void {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem('buyer_token', token);
+  if (typeof document !== 'undefined') {
+    document.cookie = `access_token=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
+    document.cookie = `buyer_token=${encodeURIComponent(token)}; path=/; max-age=604800; SameSite=Lax`;
+  }
 }
 
 export function clearToken(): void {
   if (typeof window === 'undefined') return;
   window.localStorage.removeItem('buyer_token');
+  if (typeof document !== 'undefined') {
+    document.cookie = 'access_token=; path=/; max-age=0';
+    document.cookie = 'buyer_token=; path=/; max-age=0';
+  }
 }

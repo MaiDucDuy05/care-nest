@@ -99,3 +99,7 @@ export const IOT = {
   MAX_BUFFER_SIZE: 4096,
   HEARTBEAT_INTERVAL_SEC: 60,
 } as const;
+
+/** Default API prefix / version for REST controllers */
+export const DEFAULT_API_PREFIX = 'api/v1';
+

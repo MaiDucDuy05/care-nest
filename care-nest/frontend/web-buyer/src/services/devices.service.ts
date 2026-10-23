@@ -1,7 +1,7 @@
 /**
  * Devices service — device management and telemetry.
  */
-import { apiClient, DEVICE_API } from '../lib/api-client';
+import { apiClient, DEVICE_API, getToken } from '../lib/api-client';
 
 export interface TelemetryPoint {
   deviceId: string;
@@ -28,7 +28,19 @@ export interface GeofenceInput {
   isActive?: boolean;
 }
 
+function getAuthHeaders(): Record<string, string> {
+  const token = getToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 export const devicesService = {
+  async getDevices() {
+    return apiClient.devices.getDevices();
+  },
+
   async getMyDevices() {
     return apiClient.devices.getMyDevices();
   },
@@ -49,15 +61,20 @@ export const devicesService = {
   },
 
   async getGeofences() {
-    const res = await fetch(`${DEVICE_API}/api/v1/geofences`);
-    if (!res.ok) throw new Error(await res.text());
+    const res = await fetch(`${DEVICE_API}/api/v1/geofences`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      if (res.status === 401) return [];
+      throw new Error(await res.text());
+    }
     return res.json();
   },
 
   async createGeofence(data: GeofenceInput) {
     const res = await fetch(`${DEVICE_API}/api/v1/geofences`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(await res.text());
@@ -67,7 +84,7 @@ export const devicesService = {
   async updateGeofence(id: string, data: Partial<GeofenceInput>) {
     const res = await fetch(`${DEVICE_API}/api/v1/geofences/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
     if (!res.ok) throw new Error(await res.text());
@@ -75,7 +92,10 @@ export const devicesService = {
   },
 
   async deleteGeofence(id: string) {
-    const res = await fetch(`${DEVICE_API}/api/v1/geofences/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${DEVICE_API}/api/v1/geofences/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
     if (!res.ok) throw new Error(await res.text());
     return res.json();
   },

@@ -21,7 +21,7 @@ vi.mock('@carenest/database', () => {
           let rows = Array.from(prismaState.devices.values());
           if (where?.deviceId?.in) {
             const set = new Set(where.deviceId.in);
-            rows = rows.filter((r) => set.has(r.deviceId));
+            rows = rows.filter((r: any) => set.has(r.deviceId));
           }
           return rows;
         },
@@ -36,7 +36,7 @@ vi.mock('@carenest/database', () => {
         findFirst: async ({ where, orderBy, take }: any) => {
           let rows = Array.from(prismaState.codes.values());
           if (where?.usedAt?.not === null) {
-            rows = rows.filter((r) => r.usedAt != null);
+            rows = rows.filter((r: any) => r.usedAt != null);
           }
           rows = rows.slice(0, take ?? 1);
           return rows[0] ?? null;
@@ -44,7 +44,7 @@ vi.mock('@carenest/database', () => {
         findMany: async ({ where, take = 50 }: any) => {
           let rows = Array.from(prismaState.codes.values());
           if (where?.usedAt?.not === null) {
-            rows = rows.filter((r) => r.usedAt != null);
+            rows = rows.filter((r: any) => r.usedAt != null);
           }
           return rows.slice(0, take);
         },

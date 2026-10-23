@@ -1,29 +1,45 @@
 /**
  * Auth service — wraps auth API calls.
  */
-import { apiClient, AUTH_API } from '../lib/api-client';
+import { apiClient, AUTH_API, getToken, setToken, clearToken } from '../lib/api-client';
 
 export const authService = {
   async login(email: string, password: string) {
-    return apiClient.auth.login({ email, password });
+    const res = await apiClient.auth.login({ email, password });
+    if (res?.accessToken) {
+      setToken(res.accessToken);
+    } else if (res?.token) {
+      setToken(res.token);
+    }
+    return res;
   },
 
   async register(data: { email: string; password: string; fullName: string; phone?: string }) {
-    return apiClient.auth.register(data);
+    const res = await apiClient.auth.register(data);
+    if (res?.accessToken) {
+      setToken(res.accessToken);
+    } else if (res?.token) {
+      setToken(res.token);
+    }
+    return res;
   },
 
-  async me(token: string) {
-    return apiClient.auth.me(token);
+  async me(token?: string) {
+    const t = token || getToken();
+    if (!t) throw new Error('Not authenticated');
+    return apiClient.auth.me(t);
   },
 
   getToken(): string | null {
-    if (typeof document === 'undefined') return null;
-    const match = document.cookie.match(/(?:^|;\s*)access_token=([^;]*)/);
-    return match ? decodeURIComponent(match[1]) : null;
+    return getToken();
   },
 
   async logout() {
-    // Clear cookie via server action or API call
-    await fetch(`${AUTH_API}/api/v1/auth/logout`, { method: 'POST' });
+    clearToken();
+    try {
+      await fetch(`${AUTH_API}/api/v1/auth/logout`, { method: 'POST' });
+    } catch {
+      // Ignore network errors during logout
+    }
   },
 };
