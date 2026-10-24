@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Bell, Save } from 'lucide-react';
 import { ChannelToggleGrid } from '@/components/notif/channel-toggle';
-import { notificationService, NotificationPreferences } from '@/services/notification.service';
+import { notificationService, NotificationPreferences, DEFAULT_PREFERENCES } from '@/services/notification.service';
 
 // UI keys for alert types (lowercase, user-friendly)
 const ALERT_TYPES: Array<{ uiKey: string; serviceKey: keyof NotificationPreferences['alertTypes'] }> = [
@@ -18,34 +18,38 @@ const ALERT_TYPES: Array<{ uiKey: string; serviceKey: keyof NotificationPreferen
 
 export default function NotificationsPage() {
   const t = useTranslations('notif');
-  const [prefs, setPrefs] = useState<NotificationPreferences>({
-    channels: { email: true, sms: true, push: false, telegram: false },
-    alertTypes: { sos: true, fall: true, vital: true, geofence: true, battery: true, billing: true },
-  });
+  const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFERENCES);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
     const load = async () => {
       try {
         const result = await notificationService.getPreferences();
-        setPrefs(result);
+        if (isMounted) {
+          setPrefs(result);
+        }
       } catch {
-        // Use defaults
+        // Fallback to default preferences
       } finally {
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
     load();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleSave = async () => {
     setIsSaving(true);
     setError(null);
     try {
-      await notificationService.updatePreferences(prefs);
+      const updated = await notificationService.updatePreferences(prefs);
+      setPrefs(updated);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch {
@@ -56,11 +60,16 @@ export default function NotificationsPage() {
   };
 
   const toggleAlert = (serviceKey: keyof NotificationPreferences['alertTypes']) => {
-    setPrefs((prev) => ({
-      ...prev,
-      alertTypes: { ...prev.alertTypes, [serviceKey]: !prev.alertTypes[serviceKey] },
-    }));
+    setPrefs((prev) => {
+      const alertTypes = prev?.alertTypes || DEFAULT_PREFERENCES.alertTypes;
+      return {
+        ...prev,
+        alertTypes: { ...alertTypes, [serviceKey]: !alertTypes[serviceKey] },
+      };
+    });
   };
+
+  const safeAlerts = prefs?.alertTypes || DEFAULT_PREFERENCES.alertTypes;
 
   return (
     <div className="container" style={{ paddingTop: '40px', paddingBottom: '60px', maxWidth: '800px' }}>
@@ -88,7 +97,8 @@ export default function NotificationsPage() {
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {ALERT_TYPES.map((item) => {
-              const isEnabled = prefs.alertTypes[item.serviceKey];
+              const isEnabled = Boolean(safeAlerts[item.serviceKey]);
+
               return (
                 <label
                   key={item.serviceKey}
@@ -101,16 +111,19 @@ export default function NotificationsPage() {
                     border: `1px solid ${isEnabled ? 'var(--primary)' : 'var(--border-color)'}`,
                     background: isEnabled ? 'var(--primary-light)' : 'transparent',
                     cursor: 'pointer',
+                    transition: 'all 0.15s ease',
                   }}
                 >
                   <input
                     type="checkbox"
                     checked={isEnabled}
                     onChange={() => toggleAlert(item.serviceKey)}
-                    style={{ accentColor: 'var(--primary)', width: '18px', height: '18px' }}
+                    style={{ accentColor: 'var(--primary)', width: '18px', height: '18px', cursor: 'pointer' }}
                   />
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{t(`alertTypes.${item.uiKey}`)}</div>
+                    <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-main)' }}>
+                      {t(`alertTypes.${item.uiKey}`)}
+                    </div>
                     <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                       {t(`alertTypes.${item.uiKey}Desc`)}
                     </div>

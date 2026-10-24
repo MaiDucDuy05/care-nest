@@ -2,7 +2,7 @@
 /**
  * Alerts service — alert history.
  */
-import { apiClient, ALERT_API, getToken } from '../lib/api-client';
+import { ALERT_API, getToken } from '../lib/api-client';
 
 function getAuthHeaders(): Record<string, string> {
   const token = getToken();
@@ -13,10 +13,15 @@ function getAuthHeaders(): Record<string, string> {
 }
 
 export const alertsService = {
-  async listAlerts(params?: { subjectId?: string; limit?: number; from?: string; to?: string }) {
+  async listAlerts(params?: { subjectId?: string; limit?: number; page?: number; pageSize?: number; from?: string; to?: string }) {
     const query = new URLSearchParams();
     if (params?.subjectId) query.set('subjectId', params.subjectId);
-    if (params?.limit) query.set('limit', params.limit.toString());
+    if (params?.limit) {
+      query.set('pageSize', params.limit.toString());
+      query.set('limit', params.limit.toString());
+    }
+    if (params?.page) query.set('page', params.page.toString());
+    if (params?.pageSize) query.set('pageSize', params.pageSize.toString());
     if (params?.from) query.set('from', params.from);
     if (params?.to) query.set('to', params.to);
 
@@ -24,7 +29,7 @@ export const alertsService = {
       headers: getAuthHeaders(),
     });
     if (!res.ok) {
-      if (res.status === 401) return [];
+      if (res.status === 401) return { items: [], total: 0 };
       throw new Error(await res.text());
     }
     return res.json();
@@ -33,6 +38,16 @@ export const alertsService = {
   async getAlert(id: string) {
     const res = await fetch(`${ALERT_API}/api/v1/alerts/${id}`, {
       headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    return res.json();
+  },
+
+  async updateStatus(id: string, status: 'ACKNOWLEDGED' | 'RESOLVED' | 'CLOSED_FALSE', notes?: string) {
+    const res = await fetch(`${ALERT_API}/api/v1/alerts/${id}/status`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status, notes }),
     });
     if (!res.ok) throw new Error(await res.text());
     return res.json();

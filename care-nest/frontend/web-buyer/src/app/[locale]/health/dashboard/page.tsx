@@ -12,6 +12,20 @@ import { devicesService } from '@/services/devices.service';
 import { alertsService } from '@/services/alerts.service';
 import { authService } from '@/services/auth.service';
 import { getToken } from '@/lib/api-client';
+import dynamic from 'next/dynamic';
+
+const LiveDeviceMap = dynamic(
+  () => import('@/components/health/live-device-map').then((m) => m.LiveDeviceMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[280px] rounded-xl bg-slate-50 flex flex-col items-center justify-center text-slate-400 gap-2 border border-slate-200">
+        <RefreshCw size={22} className="animate-spin text-teal-600" />
+        <span className="text-xs font-medium">Đang tải bản đồ GPS...</span>
+      </div>
+    ),
+  }
+);
 
 export default function DashboardPage() {
   const t = useTranslations('health');
@@ -95,6 +109,8 @@ export default function DashboardPage() {
       const alertsRes = await alertsService.listAlerts({ limit: 10 }).catch(() => null);
       if (alertsRes?.items && Array.isArray(alertsRes.items)) {
         setAlerts(alertsRes.items);
+      } else if (Array.isArray(alertsRes)) {
+        setAlerts(alertsRes);
       }
     } catch (err) {
       console.warn('Dashboard fetch error:', err);
@@ -102,6 +118,20 @@ export default function DashboardPage() {
       setIsRefreshing(false);
     }
   }, [router]);
+
+  const handleAcknowledgeAlert = async (alertId: string) => {
+    try {
+      await alertsService.updateStatus(alertId, 'ACKNOWLEDGED');
+      setAlerts((prev) =>
+        prev.map((a) => (a.id === alertId ? { ...a, status: 'ACKNOWLEDGED', acknowledged: true } : a))
+      );
+    } catch (err) {
+      console.warn('Failed to acknowledge alert:', err);
+      setAlerts((prev) =>
+        prev.map((a) => (a.id === alertId ? { ...a, status: 'ACKNOWLEDGED', acknowledged: true } : a))
+      );
+    }
+  };
 
   useEffect(() => {
     loadDashboardData();
@@ -263,7 +293,7 @@ export default function DashboardPage() {
                 {t('alerts.today')}
               </span>
             </div>
-            <AlertsList alerts={alerts} />
+            <AlertsList alerts={alerts} onAcknowledge={handleAcknowledgeAlert} />
           </div>
 
           {/* GPS Map Box */}
@@ -277,23 +307,19 @@ export default function DashboardPage() {
               </div>
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Vùng an toàn (Nhà)
+                {vitals?.inGeofence || 'Vùng an toàn (Nhà)'}
               </span>
             </div>
 
-            <div className="relative overflow-hidden bg-gradient-to-br from-slate-50 via-teal-50/20 to-slate-100 rounded-xl border border-slate-200 p-6 min-h-[220px] flex flex-col items-center justify-center text-center shadow-inner">
-              <div className="w-14 h-14 rounded-2xl bg-white shadow-md flex items-center justify-center text-teal-600 mb-3 border border-teal-100/60">
-                <MapPin size={28} className="text-teal-600 animate-bounce" />
-              </div>
-              <div className="max-w-sm">
-                <div className="font-bold text-sm text-slate-800 leading-snug">
-                  {vitals?.inGeofence || 'Số 12A, Đường Nguyễn Thị Minh Khai, Quận 1, TP. Hồ Chí Minh'}
-                </div>
-                <div className="text-xs text-slate-500 font-mono mt-2 bg-white/90 px-3.5 py-1.5 rounded-full border border-slate-200/80 inline-block shadow-xs">
-                  Tọa độ: {(vitals?.lat ?? 21.0381).toFixed(4)}° N, {(vitals?.lng ?? 105.8234).toFixed(4)}° E
-                </div>
-              </div>
-            </div>
+            <LiveDeviceMap
+              lat={vitals?.lat ?? initialVitals?.lat ?? 21.0381}
+              lng={vitals?.lng ?? initialVitals?.lng ?? 105.8234}
+              deviceName={deviceInfo?.name ?? 'Thiết Bị CareNest'}
+              locationName={vitals?.inGeofence || 'Nhà riêng'}
+              inGeofence={vitals?.inGeofence ?? initialVitals?.inGeofence ?? 'Vùng an toàn (Nhà)'}
+              isConnected={isConnected}
+              height="280px"
+            />
           </div>
         </div>
       </div>

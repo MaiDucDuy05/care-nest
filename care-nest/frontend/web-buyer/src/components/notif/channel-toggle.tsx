@@ -16,26 +16,29 @@ const CHANNEL_ICONS = {
   telegram: Send,
 };
 
+const DEFAULT_CHANNELS = { email: true, sms: true, push: false, telegram: false };
+
 export function ChannelToggleGrid({ preferences, onChange }: ChannelToggleProps) {
   const t = useTranslations('notif.channels');
 
-  const channels = Object.keys(preferences.channels) as Array<keyof typeof preferences.channels>;
+  const safeChannels = preferences?.channels || DEFAULT_CHANNELS;
+  const channelKeys = Object.keys(safeChannels) as Array<keyof typeof DEFAULT_CHANNELS>;
 
-  const toggleChannel = (channel: keyof typeof preferences.channels) => {
+  const toggleChannel = (channel: keyof typeof DEFAULT_CHANNELS) => {
     onChange({
       ...preferences,
       channels: {
-        ...preferences.channels,
-        [channel]: !preferences.channels[channel],
+        ...safeChannels,
+        [channel]: !safeChannels[channel],
       },
     });
   };
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
-      {channels.map((channel) => {
-        const Icon = CHANNEL_ICONS[channel];
-        const isEnabled = preferences.channels[channel];
+      {channelKeys.map((channel) => {
+        const Icon = CHANNEL_ICONS[channel] || Bell;
+        const isEnabled = Boolean(safeChannels[channel]);
 
         return (
           <label
@@ -66,10 +69,12 @@ export function ChannelToggleGrid({ preferences, onChange }: ChannelToggleProps)
               <Icon size={20} />
             </div>
 
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: '14px' }}>{t(`${channel}` as 'email' | 'sms' | 'push' | 'telegram')}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, fontSize: '15px', color: 'var(--text-main)' }}>
+                {t(channel)}
+              </div>
               <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                {t(`${channel}Desc` as 'emailDesc' | 'smsDesc' | 'pushDesc' | 'telegramDesc')}
+                {t(`${channel}Desc`)}
               </div>
             </div>
 
@@ -77,13 +82,7 @@ export function ChannelToggleGrid({ preferences, onChange }: ChannelToggleProps)
               type="checkbox"
               checked={isEnabled}
               onChange={() => toggleChannel(channel)}
-              style={{
-                width: '20px',
-                height: '20px',
-                accentColor: 'var(--primary)',
-                cursor: 'pointer',
-                flexShrink: 0,
-              }}
+              style={{ accentColor: 'var(--primary)', width: '20px', height: '20px', cursor: 'pointer' }}
             />
           </label>
         );

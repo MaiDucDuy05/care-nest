@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Link } from '@/i18n/routing';
+import { Link, useRouter } from '@/i18n/routing';
 import {
   ArrowLeft,
   Trash2,
@@ -13,8 +13,13 @@ import {
   Loader2,
   CheckCircle2,
   Lock,
+  LogIn,
+  UserPlus,
+  AlertCircle,
 } from 'lucide-react';
 import { cartService, type CartItem } from '@/services/cart.service';
+import { ordersService, saveLocalOrder } from '@/services/orders.service';
+import { authService } from '@/services/auth.service';
 import { getToken } from '@/lib/api-client';
 
 const formatVnd = (price: number) => {
@@ -22,6 +27,7 @@ const formatVnd = (price: number) => {
 };
 
 export default function CartPage() {
+  const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -34,14 +40,30 @@ export default function CartPage() {
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [addressLine, setAddressLine] = useState('');
+  const [ward, setWard] = useState('');
+  const [district, setDistrict] = useState('Quận 1');
   const [city, setCity] = useState('Hồ Chí Minh');
+  const [note, setNote] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'VNPAY' | 'MOMO' | 'COD' | 'BANK_TRANSFER'>('COD');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
     const token = getToken();
-    setIsLoggedIn(!!token);
+    const hasToken = !!token;
+    setIsLoggedIn(hasToken);
+
+    // Tự động điền họ tên & SĐT của người mua nếu đã đăng nhập
+    if (hasToken && token) {
+      authService.me(token).then((profile) => {
+        if (isMounted && profile) {
+          if (profile.fullName) setFullName(profile.fullName);
+          if (profile.phone) setPhone(profile.phone);
+        }
+      }).catch(() => {
+        // Token không hợp lệ hoặc hết hạn
+      });
+    }
 
     async function loadCart() {
       try {
@@ -89,6 +111,7 @@ export default function CartPage() {
   const handleStartCheckout = () => {
     const token = getToken();
     if (!token) {
+      // Chuyển hướng hoặc mở modal bắt buộc đăng nhập
       setShowLoginModal(true);
       return;
     }
@@ -98,6 +121,35 @@ export default function CartPage() {
   const handleConfirmCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     setCheckoutError(null);
+
+    // Kiểm tra bảo mật UI: Phải có token đăng nhập mới được gửi thanh toán
+    const token = getToken();
+    if (!token) {
+      setShowCheckoutModal(false);
+      setShowLoginModal(true);
+      return;
+    }
+
+    if (!fullName.trim()) {
+      setCheckoutError('Vui lòng nhập họ và tên người nhận.');
+      return;
+    }
+
+    if (!phone.trim() || phone.trim().length < 8) {
+      setCheckoutError('Số điện thoại nhận hàng phải có ít nhất 8 chữ số.');
+      return;
+    }
+
+    if (!addressLine.trim()) {
+      setCheckoutError('Vui lòng nhập địa chỉ giao hàng.');
+      return;
+    }
+
+    if (!district.trim()) {
+      setCheckoutError('Vui lòng nhập Quận / Huyện nhận hàng.');
+      return;
+    }
+
     setIsCheckingOut(true);
 
     try {
@@ -105,29 +157,105 @@ export default function CartPage() {
         items: items.map((i) => ({
           productId: i.productId,
           sellerId: i.sellerId || 'system-store',
+          name: i.name,
           quantity: i.quantity,
           unitPrice: i.unitPrice,
         })),
         shippingAddress: {
-          fullName: fullName.trim(),
+          name: fullName.trim(),
           phone: phone.trim(),
-          addressLine: addressLine.trim(),
-          city: city.trim(),
+          line1: addressLine.trim(),
+          ward: ward.trim() || undefined,
+          district: district.trim(),
+          province: city.trim(),
+          country: 'VN',
         },
         paymentMethod,
+        note: note.trim() || undefined,
       };
 
       const result = await cartService.checkout(payload);
-      setOrderSuccess({ orderId: result?.id || result?.orderId || 'ORD-' + Date.now().toString().slice(-6) });
+      const createdOrderId = result?.id || result?.orders?.[0]?.id || result?.orderId || 'ORD-' + Date.now().toString().slice(-6);
+      const createdOrderNumber = result?.orderNumber || result?.orders?.[0]?.orderNumber || createdOrderId;
+
+      saveLocalOrder({
+        id: createdOrderId,
+        orderNumber: createdOrderNumber,
+        status: 'CONFIRMED',
+        subtotal,
+        shippingFee,
+        discount: 0,
+        total,
+        shippingAddress: {
+          name: fullName.trim(),
+          phone: phone.trim(),
+          line1: addressLine.trim(),
+          ward: ward.trim() || undefined,
+          district: district.trim(),
+          province: city.trim(),
+          country: 'VN',
+        },
+        paymentMethod,
+        note: note.trim() || undefined,
+        createdAt: new Date().toISOString(),
+        items: items.map((i) => ({
+          productId: i.productId,
+          productName: i.name,
+          name: i.name,
+          quantity: i.quantity,
+          unitPrice: i.unitPrice,
+          lineTotal: i.quantity * i.unitPrice,
+          imageUrl: i.imageUrl,
+        })),
+      });
+
+      setOrderSuccess({ orderId: createdOrderId });
       setItems([]);
       setShowCheckoutModal(false);
     } catch (err: unknown) {
-      try {
-        const p = JSON.parse((err as Error).message);
-        setCheckoutError(p.message || 'Đặt hàng không thành công');
-      } catch {
-        setCheckoutError((err as Error).message || 'Lỗi đặt hàng. Vui lòng thử lại.');
+      const rawError = (err as Error)?.message || '';
+      // Trường hợp backend trả về 401 Unauthorized do token hết hạn hoặc chưa đăng nhập
+      if (
+        rawError.includes('401') ||
+        rawError.toLowerCase().includes('unauthorized') ||
+        rawError.includes('đăng nhập')
+      ) {
+        setCheckoutError('Phiên đăng nhập đã kết thúc. Đang chuyển hướng bạn tới trang đăng nhập...');
+        setTimeout(() => {
+          setShowCheckoutModal(false);
+          router.push('/auth/login?redirect=/shop/cart');
+        }, 1200);
+        return;
       }
+
+      // Xử lý thông báo lỗi an toàn: Đảm bảo luôn luôn là string, KHÔNG BAO GIỜ gán object/array vào JSX
+      let errMsg = 'Lỗi đặt hàng. Vui lòng thử lại.';
+      try {
+        const p = JSON.parse(rawError);
+        if (Array.isArray(p.message)) {
+          // Lỗi Zod validation: [{ code, expected, received, path, message }]
+          errMsg = p.message
+            .map((item: any) => {
+              if (typeof item === 'string') return item;
+              const fieldName = Array.isArray(item?.path) ? item.path.join('.') : '';
+              const message = item?.message || 'Không hợp lệ';
+              return fieldName ? `${fieldName}: ${message}` : message;
+            })
+            .join(' | ');
+        } else if (typeof p.message === 'string') {
+          errMsg = p.message;
+        } else if (typeof p.message === 'object' && p.message !== null) {
+          errMsg = p.message.message || JSON.stringify(p.message);
+        } else if (typeof p.error === 'string') {
+          errMsg = p.error;
+        }
+      } catch {
+        if (typeof rawError === 'string' && rawError.trim()) {
+          errMsg = rawError;
+        }
+      }
+
+      setCheckoutError(String(errMsg));
     } finally {
       setIsCheckingOut(false);
     }
@@ -135,7 +263,7 @@ export default function CartPage() {
 
   if (orderSuccess) {
     return (
-      <div className="container" style={{ paddingTop: '60px', paddingBottom: '80px', maxWidth: '600px' }}>
+      <div className="container" style={{ paddingTop: '60px', paddingBottom: '80px', maxWidth: '640px' }}>
         <div className="card" style={{ padding: '40px', textAlign: 'center' }}>
           <div style={{
             width: '72px',
@@ -153,11 +281,17 @@ export default function CartPage() {
           <h1 style={{ fontSize: '26px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
             Đặt Hàng Thành Công!
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginBottom: '20px' }}>
-            Mã đơn hàng của bạn là <strong>#{orderSuccess.orderId}</strong>. Đơn hàng đã được lưu trên hệ thống và chuyển sang đơn vị vận chuyển.
+          <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginBottom: '24px', lineHeight: 1.6 }}>
+            Mã đơn hàng của bạn là <strong>#{orderSuccess.orderId}</strong>. Đơn hàng đã được ghi nhận trên hệ thống và chuyển sang bộ phận vận chuyển thiết bị y tế.
           </p>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-            <Link href="/shop/products" className="btn btn-primary" style={{ padding: '12px 24px' }}>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link href={`/orders/${orderSuccess.orderId}`} className="btn btn-primary" style={{ padding: '12px 22px' }}>
+              Xem chi tiết đơn hàng
+            </Link>
+            <Link href="/orders" className="btn btn-secondary" style={{ padding: '12px 22px' }}>
+              Danh sách đơn hàng
+            </Link>
+            <Link href="/shop/products" className="btn" style={{ padding: '12px 20px', color: 'var(--text-muted)' }}>
               Tiếp tục mua sắm
             </Link>
           </div>
@@ -176,6 +310,65 @@ export default function CartPage() {
           Giỏ Hàng Của Bạn ({items.length} sản phẩm)
         </h1>
       </div>
+
+      {/* Banner thông báo bắt buộc đăng nhập để thanh toán nếu User chưa đăng nhập */}
+      {!isLoggedIn && (
+        <div style={{
+          background: '#fffbeb',
+          border: '1px solid #fde68a',
+          borderRadius: 'var(--radius-lg, 16px)',
+          padding: '16px 20px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '16px',
+          flexWrap: 'wrap',
+          boxShadow: '0 2px 8px rgba(245, 158, 11, 0.08)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              background: '#fef3c7',
+              color: '#b45309',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <Lock size={22} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '15px', color: '#92400e' }}>
+                Yêu cầu đăng nhập trước khi thanh toán
+              </div>
+              <div style={{ fontSize: '13px', color: '#78350f', marginTop: '2px', lineHeight: 1.5 }}>
+                Quý khách vui lòng đăng nhập tài khoản để xác nhận địa chỉ giao hàng, lưu đơn và kích hoạt bảo hành điện tử chính hãng.
+              </div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <Link
+              href="/auth/login?redirect=/shop/cart"
+              id="cart-banner-login-btn"
+              className="btn btn-primary"
+              style={{ fontSize: '13px', padding: '9px 18px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <LogIn size={15} /> Đăng nhập ngay
+            </Link>
+            <Link
+              href="/auth/register?redirect=/shop/cart"
+              id="cart-banner-register-btn"
+              className="btn btn-secondary"
+              style={{ fontSize: '13px', padding: '9px 18px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <UserPlus size={15} /> Đăng ký
+            </Link>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="card" style={{ padding: '60px', textAlign: 'center' }}>
@@ -323,52 +516,56 @@ export default function CartPage() {
               </div>
             </div>
 
-            {/* Cảnh báo bắt buộc đăng nhập nếu chưa có tài khoản */}
-            {!isLoggedIn && (
-              <div style={{
-                background: '#fffbeb',
-                border: '1px solid #fde68a',
-                borderRadius: 'var(--radius-md)',
-                padding: '12px 14px',
-                marginBottom: '16px',
-                fontSize: '13px',
-                color: '#92400e',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, marginBottom: '4px' }}>
-                  <Lock size={15} color="#b45309" />
-                  <span>Yêu cầu đăng nhập để mua hàng</span>
-                </div>
-                <div style={{ color: '#78350f', fontSize: '12px', lineHeight: 1.5 }}>
-                  Quý khách vui lòng đăng nhập tài khoản trước khi đặt hàng để kích hoạt bảo hành điện tử chính hãng và đồng bộ hồ sơ y tế.
+            {/* Nút hành động thanh toán / đăng nhập */}
+            {isLoggedIn ? (
+              <button
+                id="cart-checkout-btn"
+                onClick={handleStartCheckout}
+                className="btn btn-primary"
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  fontSize: '15px',
+                  fontWeight: 700,
+                }}
+              >
+                <CreditCard size={18} />
+                <span>Tiến hành thanh toán</span>
+              </button>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <button
+                  id="cart-login-to-checkout-btn"
+                  onClick={() => router.push('/auth/login?redirect=/shop/cart')}
+                  className="btn btn-primary"
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    backgroundColor: '#ea580c',
+                    borderColor: '#c2410c',
+                    fontSize: '15px',
+                    fontWeight: 700,
+                  }}
+                >
+                  <Lock size={18} />
+                  <span>Đăng nhập để thanh toán</span>
+                </button>
+                <div style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
+                  Chưa có tài khoản?{' '}
+                  <Link href="/auth/register?redirect=/shop/cart" style={{ color: 'var(--primary)', fontWeight: 600, textDecoration: 'underline' }}>
+                    Đăng ký ngay
+                  </Link>
                 </div>
               </div>
             )}
-
-            <button
-              id="cart-checkout-btn"
-              onClick={handleStartCheckout}
-              className="btn btn-primary"
-              style={{
-                width: '100%',
-                padding: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-              }}
-            >
-              {isLoggedIn ? (
-                <>
-                  <CreditCard size={18} />
-                  <span>Tiến hành đặt hàng</span>
-                </>
-              ) : (
-                <>
-                  <Lock size={18} />
-                  <span>Đăng nhập để đặt hàng</span>
-                </>
-              )}
-            </button>
           </div>
         </div>
       )}
@@ -381,35 +578,35 @@ export default function CartPage() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.7)',
-          backdropFilter: 'blur(4px)',
+          backgroundColor: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(5px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 9999,
           padding: '16px',
         }}>
-          <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '32px', textAlign: 'center' }}>
+          <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '32px', textAlign: 'center', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)' }}>
             <div style={{
-              width: '60px',
-              height: '60px',
+              width: '64px',
+              height: '64px',
               borderRadius: '50%',
-              background: 'var(--primary-light, #ccfbf1)',
-              color: 'var(--primary, #0d9488)',
+              background: '#fef3c7',
+              color: '#d97706',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 16px',
             }}>
-              <Lock size={30} />
+              <Lock size={32} />
             </div>
 
             <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
-              Vui Lòng Đăng Nhập Để Mua Hàng
+              Vui Lòng Đăng Nhập Để Thanh Toán
             </h3>
 
             <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.6 }}>
-              Để kích hoạt bảo hành chính hãng 1 đổi 1 trong 24 tháng và liên kết hồ sơ giám sát y tế cho người thân, quý khách cần đăng nhập tài khoản trước khi hoàn tất đặt mua.
+              Để kích hoạt bảo hành chính hãng 1 đổi 1 trong 24 tháng và bảo vệ quyền lợi nhận hàng, quý khách cần đăng nhập tài khoản trước khi hoàn tất đặt mua.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -417,18 +614,18 @@ export default function CartPage() {
                 href="/auth/login?redirect=/shop/cart"
                 id="cart-modal-login-btn"
                 className="btn btn-primary"
-                style={{ padding: '12px', justifyContent: 'center', fontSize: '14px' }}
+                style={{ padding: '12px', justifyContent: 'center', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}
               >
-                Đăng Nhập Ngay
+                <LogIn size={16} /> Đăng Nhập Ngay
               </Link>
 
               <Link
                 href="/auth/register?redirect=/shop/cart"
                 id="cart-modal-register-btn"
                 className="btn btn-secondary"
-                style={{ padding: '12px', justifyContent: 'center', fontSize: '14px' }}
+                style={{ padding: '12px', justifyContent: 'center', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}
               >
-                Chưa có tài khoản? Đăng Ký
+                <UserPlus size={16} /> Chưa có tài khoản? Đăng Ký
               </Link>
 
               <button
@@ -439,11 +636,11 @@ export default function CartPage() {
                   color: 'var(--text-muted)',
                   fontSize: '13px',
                   cursor: 'pointer',
-                  marginTop: '6px',
+                  marginTop: '8px',
                   textDecoration: 'underline',
                 }}
               >
-                Để sau, tiếp tục xem giỏ hàng
+                Để sau, quay lại giỏ hàng
               </button>
             </div>
           </div>
@@ -458,7 +655,8 @@ export default function CartPage() {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(4px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -466,7 +664,7 @@ export default function CartPage() {
           padding: '16px',
         }}>
           <div className="card" style={{ maxWidth: '520px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '32px' }}>
-            <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '16px' }}>Thông Tin Giao Hàng & Thanh Toán</h2>
+            <h2 style={{ fontSize: '20px', fontWeight: 800, marginBottom: '16px' }}>Thông Tin Giao Hàng &amp; Thanh Toán</h2>
 
             {checkoutError && (
               <div style={{
@@ -476,14 +674,18 @@ export default function CartPage() {
                 borderRadius: 'var(--radius-md)',
                 fontSize: '13px',
                 marginBottom: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
               }}>
-                {checkoutError}
+                <AlertCircle size={18} style={{ flexShrink: 0 }} />
+                <span>{typeof checkoutError === 'string' ? checkoutError : JSON.stringify(checkoutError)}</span>
               </div>
             )}
 
             <form onSubmit={handleConfirmCheckout} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Họ và tên</label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Họ và tên người nhận</label>
                 <input
                   type="text"
                   required
@@ -507,24 +709,60 @@ export default function CartPage() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Địa chỉ nhận hàng</label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Địa chỉ nhận hàng (Số nhà, tên đường) *</label>
                 <input
                   type="text"
                   required
                   value={addressLine}
                   onChange={(e) => setAddressLine(e.target.value)}
-                  placeholder="Số 123 Đường Nguyễn Trãi, Phường 2"
+                  placeholder="Số 123 Đường Nguyễn Trãi"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', fontSize: '14px' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Quận / Huyện *</label>
+                  <input
+                    type="text"
+                    required
+                    value={district}
+                    onChange={(e) => setDistrict(e.target.value)}
+                    placeholder="Quận 1"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', fontSize: '14px' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Tỉnh / Thành phố *</label>
+                  <input
+                    type="text"
+                    required
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', fontSize: '14px' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Phường / Xã (tùy chọn)</label>
+                <input
+                  type="text"
+                  value={ward}
+                  onChange={(e) => setWard(e.target.value)}
+                  placeholder="Phường Bến Nghé"
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', fontSize: '14px' }}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Tỉnh / Thành phố</label>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Ghi chú đơn hàng (tùy chọn)</label>
                 <input
                   type="text"
-                  required
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Ví dụ: Giao giờ hành chính, gọi trước khi đến"
                   style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', fontSize: '14px' }}
                 />
               </div>

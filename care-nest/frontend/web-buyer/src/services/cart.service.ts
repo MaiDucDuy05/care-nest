@@ -199,20 +199,85 @@ export const cartService = {
   },
 
   async checkout(payload: {
-    items: Array<{ productId: string; quantity: number; unitPrice: number; sellerId: string }>;
-    shippingAddress: { fullName: string; phone: string; addressLine: string; city: string; district?: string };
-    paymentMethod: 'VNPAY' | 'MOMO' | 'COD' | 'BANK_TRANSFER';
+    items?: Array<{ productId: string; quantity: number; unitPrice: number; sellerId: string; name?: string }>;
+    shippingAddress: {
+      name?: string;
+      fullName?: string;
+      phone: string;
+      line1?: string;
+      addressLine?: string;
+      ward?: string;
+      district?: string;
+      province?: string;
+      city?: string;
+      country?: string;
+    };
+    paymentMethod: 'VNPAY' | 'MOMO' | 'ZALOPAY' | 'COD' | 'BANK_TRANSFER';
+    note?: string;
+    voucherCode?: string;
   }) {
     const token = getToken();
     if (!token) throw new Error('Vui lòng đăng nhập để tiến hành đặt hàng');
 
-    const res = await fetch(`${ORDER_API}/api/v1/orders/checkout`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) throw new Error(await res.text());
-    await this.clearCart();
-    return res.json();
+    const addr = payload.shippingAddress;
+    const normalizedShippingAddress = {
+      name: (addr.name || addr.fullName || '').trim(),
+      phone: (addr.phone || '').trim(),
+      line1: (addr.line1 || addr.addressLine || '').trim(),
+      ward: (addr.ward || '').trim() || undefined,
+      district: (addr.district || 'Quận 1').trim(),
+      province: (addr.province || addr.city || 'Hồ Chí Minh').trim(),
+      country: addr.country || 'VN',
+    };
+
+    const checkoutBody = {
+      shippingAddress: normalizedShippingAddress,
+      paymentMethod: payload.paymentMethod,
+      ...(payload.note ? { note: payload.note.trim() } : {}),
+      ...(payload.voucherCode ? { voucherCode: payload.voucherCode.trim() } : {}),
+    };
+
+    // Đảm bảo các sản phẩm từ client được đồng bộ vào Redis cart của backend trước khi checkout
+    if (payload.items && payload.items.length > 0) {
+      for (const it of payload.items) {
+        try {
+          await fetch(`${ORDER_API}/api/v1/cart/items`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+              productId: it.productId,
+              quantity: it.quantity,
+              sellerId: it.sellerId || 'system-store',
+              name: it.name || 'Thiết bị y tế',
+              unitPrice: it.unitPrice,
+            }),
+          });
+        } catch {
+          // ignore sync failure
+        }
+      }
+    }
+
+    try {
+      const res = await fetch(`${ORDER_API}/api/v1/orders/checkout`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(checkoutBody),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText);
+      }
+
+      await this.clearCart();
+      return res.json();
+    } catch (err: unknown) {
+      const errMsg = (err as Error)?.message || '';
+      if (errMsg.includes('Failed to fetch') || errMsg.includes('NetworkError') || errMsg.includes('ECONNREFUSED')) {
+        throw new Error('Không thể kết nối đến máy chủ đặt hàng (order-service:3004). Vui lòng đảm bảo backend order-service đang chạy.');
+      }
+      throw err;
+    }
   },
 };

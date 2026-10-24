@@ -16,6 +16,7 @@ import {
   X,
   Clock,
   ChevronRight,
+  Package,
 } from 'lucide-react';
 import { LocaleSwitcher } from '@/components/ui/locale-switcher';
 import { cartService, CART_UPDATED_EVENT } from '@/services/cart.service';
@@ -188,12 +189,12 @@ export function ShopHeader() {
           <Link
             href="/shop/cart"
             id="header-cart-btn"
-            className="relative inline-flex items-center justify-center p-2.5 rounded-xl text-slate-700 hover:text-teal-600 hover:bg-slate-100 transition-colors"
+            className="relative inline-flex items-center justify-center p-2.5 rounded-xl text-slate-700 hover:text-teal-600 hover:bg-slate-100"
             title="Xem giỏ hàng"
           >
             <ShoppingBag
               size={22}
-              className={`transition-transform duration-300 ${isCartBouncing ? 'scale-125 text-teal-600' : 'scale-100'}`}
+              className={`text-teal-600`}
             />
             {cartCount > 0 && (
               <span
@@ -205,6 +206,17 @@ export function ShopHeader() {
                 {cartCount > 99 ? '99+' : cartCount}
               </span>
             )}
+          </Link>
+
+          {/* Đơn Hàng Của Tôi */}
+          <Link
+            href={isLoggedIn ? '/orders' : '/auth/login?redirect=/orders'}
+            id="header-orders-btn"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:text-teal-600 hover:bg-slate-100 transition-colors"
+            title="Đơn hàng của tôi"
+          >
+            <Package size={16} />
+            <span>Đơn Hàng</span>
           </Link>
 
           {/* Đăng Nhập / Tài Khoản */}
@@ -345,6 +357,13 @@ export function ShopHeader() {
               className="block py-1.5 text-slate-600"
             >
               Giỏ Hàng ({cartCount})
+            </Link>
+            <Link
+              href={isLoggedIn ? '/orders' : '/auth/login?redirect=/orders'}
+              onClick={() => setMobileMenuOpen(false)}
+              className="block py-1.5 text-teal-700 font-semibold"
+            >
+              📦 Đơn Hàng Của Tôi
             </Link>
           </div>
         </div>

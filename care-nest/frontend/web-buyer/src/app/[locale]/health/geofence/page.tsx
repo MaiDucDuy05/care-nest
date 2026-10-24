@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslations } from 'next-intl';
-import { MapPin, Plus, Loader2 } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { GeofenceList } from '@/components/geofence/geofence-list';
 import { GeofenceForm } from '@/components/geofence/geofence-form';
 import type { Geofence } from '@/lib/types';
@@ -14,7 +14,7 @@ const GeofenceMap = dynamic(() => import('@/components/geofence/geofence-map').t
   ssr: false,
   loading: () => (
     <div style={{
-      height: '400px',
+      height: '520px',
       borderRadius: 'var(--radius-lg)',
       border: '1px solid var(--border-color)',
       background: 'var(--bg-card-subtle)',
@@ -45,6 +45,9 @@ export default function GeofencePage() {
         const data = await devicesService.getGeofences();
         if (isMounted && Array.isArray(data)) {
           setGeofences(data);
+          if (data.length > 0 && !selectedId) {
+            setSelectedId(data[0].id);
+          }
         }
       } catch (err) {
         console.error('Failed to load geofences:', err);
@@ -80,6 +83,7 @@ export default function GeofencePage() {
     } else {
       const created = await devicesService.createGeofence(payload);
       setGeofences((prev) => [...prev, created]);
+      setSelectedId(created.id);
     }
     setShowForm(false);
     setPendingLocation(null);
@@ -88,6 +92,7 @@ export default function GeofencePage() {
   const handleDelete = async (id: string) => {
     await devicesService.deleteGeofence(id);
     setGeofences((prev) => prev.filter((g) => g.id !== id));
+    if (selectedId === id) setSelectedId(null);
   };
 
   const handleEdit = (id: string) => {
@@ -99,6 +104,8 @@ export default function GeofencePage() {
   const handleZoneClick = (id: string) => {
     setSelectedId(id);
   };
+
+  const selectedGf = geofences.find((g) => g.id === selectedId);
 
   return (
     <div className="container" style={{ paddingTop: '40px', paddingBottom: '60px' }}>
@@ -114,17 +121,26 @@ export default function GeofencePage() {
         <div>
           <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
-              Nhấn vào bản đồ để thêm vùng mới
+              {selectedGf ? (
+                <>
+                  Đang chọn: <strong style={{ color: 'var(--primary)' }}>{selectedGf.name}</strong> — Nhấp vào vùng khác hoặc danh sách bên phải để chuyển vị trí
+                </>
+              ) : (
+                'Nhấn vào bản đồ để thêm vùng mới, hoặc nhấp vào danh sách bên phải để định vị'
+              )}
             </span>
           </div>
+
           <GeofenceMap
             geofences={geofences}
-            center={[10.7769, 106.7009]}
+            center={[21.0381, 105.8234]}
             zoom={14}
             selectedId={selectedId}
+            pendingLocation={pendingLocation}
             onZoneClick={handleZoneClick}
             onMapClick={handleMapClick}
             editable
+            height="520px"
           />
         </div>
 
@@ -154,6 +170,8 @@ export default function GeofencePage() {
 
           <GeofenceList
             geofences={geofences}
+            selectedId={selectedId}
+            onSelect={handleZoneClick}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />

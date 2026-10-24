@@ -36,6 +36,28 @@ function getAuthHeaders(): Record<string, string> {
   };
 }
 
+function normalizeGeofence(g: any) {
+  const centerLat = g.centerLat != null ? Number(g.centerLat) : g.circle?.center?.lat ?? 10.7769;
+  const centerLon = g.centerLon != null ? Number(g.centerLon) : g.circle?.center?.lng ?? 106.7009;
+  const radiusM = g.radiusMeters != null ? Number(g.radiusMeters) : g.circle?.radiusM ?? 150;
+
+  return {
+    id: g.id,
+    userId: g.userId || '',
+    name: g.name || 'Vùng an toàn',
+    shape: g.shape || 'CIRCLE',
+    circle: {
+      center: { lat: centerLat, lng: centerLon },
+      radiusM,
+    },
+    polygon: g.polygon || null,
+    alertEvents: Array.isArray(g.alertEvents) && g.alertEvents.length > 0 ? g.alertEvents : ['ENTER', 'EXIT'],
+    isActive: g.isActive !== undefined ? Boolean(g.isActive) : g.active !== undefined ? Boolean(g.active) : true,
+    createdAt: g.createdAt || new Date().toISOString(),
+    updatedAt: g.updatedAt || new Date().toISOString(),
+  };
+}
+
 export const devicesService = {
   async getDevices() {
     return apiClient.devices.getDevices();
@@ -61,34 +83,62 @@ export const devicesService = {
   },
 
   async getGeofences() {
-    const res = await fetch(`${DEVICE_API}/api/v1/geofences`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) {
-      if (res.status === 401) return [];
-      throw new Error(await res.text());
+    try {
+      const res = await fetch(`${DEVICE_API}/api/v1/geofences`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        if (res.status === 401) return [];
+        return [];
+      }
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+      return data.map(normalizeGeofence);
+    } catch {
+      return [];
     }
-    return res.json();
   },
 
   async createGeofence(data: GeofenceInput) {
+    const centerLat = data.center?.lat ?? 10.7769;
+    const centerLon = data.center?.lng ?? 106.7009;
+    const radiusMeters = data.radiusM ?? 150;
+
+    const backendPayload = {
+      name: data.name,
+      centerLat,
+      centerLon,
+      radiusMeters,
+    };
+
     const res = await fetch(`${DEVICE_API}/api/v1/geofences`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify(backendPayload),
     });
     if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    const g = await res.json();
+    return normalizeGeofence(g);
   },
 
   async updateGeofence(id: string, data: Partial<GeofenceInput>) {
+    const backendPayload: Record<string, any> = {};
+    if (data.name) backendPayload.name = data.name;
+    if (data.center) {
+      backendPayload.centerLat = data.center.lat;
+      backendPayload.centerLon = data.center.lng;
+    }
+    if (data.radiusM) backendPayload.radiusMeters = data.radiusM;
+    if (data.isActive !== undefined) backendPayload.active = data.isActive;
+
     const res = await fetch(`${DEVICE_API}/api/v1/geofences/${id}`, {
       method: 'PATCH',
       headers: getAuthHeaders(),
-      body: JSON.stringify(data),
+      body: JSON.stringify(backendPayload),
     });
     if (!res.ok) throw new Error(await res.text());
-    return res.json();
+    const g = await res.json();
+    return normalizeGeofence(g);
   },
 
   async deleteGeofence(id: string) {
