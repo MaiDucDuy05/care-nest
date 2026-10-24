@@ -1,8 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Link, useRouter } from '@/i18n/routing';
-import { ArrowLeft, Trash2, ShieldCheck, CreditCard, ShoppingBag, Plus, Minus, Loader2, CheckCircle2 } from 'lucide-react';
+import { Link } from '@/i18n/routing';
+import {
+  ArrowLeft,
+  Trash2,
+  ShieldCheck,
+  CreditCard,
+  ShoppingBag,
+  Plus,
+  Minus,
+  Loader2,
+  CheckCircle2,
+  Lock,
+} from 'lucide-react';
 import { cartService, type CartItem } from '@/services/cart.service';
 import { getToken } from '@/lib/api-client';
 
@@ -11,11 +22,12 @@ const formatVnd = (price: number) => {
 };
 
 export default function CartPage() {
-  const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<{ orderId: string } | null>(null);
 
   // Checkout form fields
@@ -28,6 +40,9 @@ export default function CartPage() {
 
   useEffect(() => {
     let isMounted = true;
+    const token = getToken();
+    setIsLoggedIn(!!token);
+
     async function loadCart() {
       try {
         setIsLoading(true);
@@ -70,10 +85,11 @@ export default function CartPage() {
   const shippingFee = subtotal >= 500000 || items.length === 0 ? 0 : 30000;
   const total = subtotal + shippingFee;
 
+  // Bắt buộc đăng nhập trước khi tiến hành thanh toán / đặt mua
   const handleStartCheckout = () => {
     const token = getToken();
     if (!token) {
-      router.push('/auth/login');
+      setShowLoginModal(true);
       return;
     }
     setShowCheckoutModal(true);
@@ -105,12 +121,12 @@ export default function CartPage() {
       setOrderSuccess({ orderId: result?.id || result?.orderId || 'ORD-' + Date.now().toString().slice(-6) });
       setItems([]);
       setShowCheckoutModal(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       try {
-        const p = JSON.parse(err.message);
+        const p = JSON.parse((err as Error).message);
         setCheckoutError(p.message || 'Đặt hàng không thành công');
       } catch {
-        setCheckoutError(err.message || 'Lỗi đặt hàng. Vui lòng thử lại.');
+        setCheckoutError((err as Error).message || 'Lỗi đặt hàng. Vui lòng thử lại.');
       }
     } finally {
       setIsCheckingOut(false);
@@ -307,19 +323,134 @@ export default function CartPage() {
               </div>
             </div>
 
+            {/* Cảnh báo bắt buộc đăng nhập nếu chưa có tài khoản */}
+            {!isLoggedIn && (
+              <div style={{
+                background: '#fffbeb',
+                border: '1px solid #fde68a',
+                borderRadius: 'var(--radius-md)',
+                padding: '12px 14px',
+                marginBottom: '16px',
+                fontSize: '13px',
+                color: '#92400e',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 700, marginBottom: '4px' }}>
+                  <Lock size={15} color="#b45309" />
+                  <span>Yêu cầu đăng nhập để mua hàng</span>
+                </div>
+                <div style={{ color: '#78350f', fontSize: '12px', lineHeight: 1.5 }}>
+                  Quý khách vui lòng đăng nhập tài khoản trước khi đặt hàng để kích hoạt bảo hành điện tử chính hãng và đồng bộ hồ sơ y tế.
+                </div>
+              </div>
+            )}
+
             <button
               id="cart-checkout-btn"
               onClick={handleStartCheckout}
               className="btn btn-primary"
-              style={{ width: '100%', padding: '14px' }}
+              style={{
+                width: '100%',
+                padding: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
             >
-              <CreditCard size={18} /> Tiến hành đặt hàng
+              {isLoggedIn ? (
+                <>
+                  <CreditCard size={18} />
+                  <span>Tiến hành đặt hàng</span>
+                </>
+              ) : (
+                <>
+                  <Lock size={18} />
+                  <span>Đăng nhập để đặt hàng</span>
+                </>
+              )}
             </button>
           </div>
         </div>
       )}
 
-      {/* Checkout Modal */}
+      {/* Modal Bắt Buộc Đăng Nhập Trước Khi Mua Hàng */}
+      {showLoginModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '16px',
+        }}>
+          <div className="card" style={{ maxWidth: '440px', width: '100%', padding: '32px', textAlign: 'center' }}>
+            <div style={{
+              width: '60px',
+              height: '60px',
+              borderRadius: '50%',
+              background: 'var(--primary-light, #ccfbf1)',
+              color: 'var(--primary, #0d9488)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 16px',
+            }}>
+              <Lock size={30} />
+            </div>
+
+            <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
+              Vui Lòng Đăng Nhập Để Mua Hàng
+            </h3>
+
+            <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '24px', lineHeight: 1.6 }}>
+              Để kích hoạt bảo hành chính hãng 1 đổi 1 trong 24 tháng và liên kết hồ sơ giám sát y tế cho người thân, quý khách cần đăng nhập tài khoản trước khi hoàn tất đặt mua.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <Link
+                href="/auth/login?redirect=/shop/cart"
+                id="cart-modal-login-btn"
+                className="btn btn-primary"
+                style={{ padding: '12px', justifyContent: 'center', fontSize: '14px' }}
+              >
+                Đăng Nhập Ngay
+              </Link>
+
+              <Link
+                href="/auth/register?redirect=/shop/cart"
+                id="cart-modal-register-btn"
+                className="btn btn-secondary"
+                style={{ padding: '12px', justifyContent: 'center', fontSize: '14px' }}
+              >
+                Chưa có tài khoản? Đăng Ký
+              </Link>
+
+              <button
+                onClick={() => setShowLoginModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  fontSize: '13px',
+                  cursor: 'pointer',
+                  marginTop: '6px',
+                  textDecoration: 'underline',
+                }}
+              >
+                Để sau, tiếp tục xem giỏ hàng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Checkout Modal (Chỉ mở khi đã đăng nhập) */}
       {showCheckoutModal && (
         <div style={{
           position: 'fixed',

@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { Star, Shield, ShoppingCart, MessageCircle, ChevronLeft } from 'lucide-react';
+import { Star, Shield, MessageCircle, ChevronLeft } from 'lucide-react';
 import { publicCatalogService } from '@/lib/services/public-catalog.service';
 import { productMetadata, productJsonLd, type Locale } from '@/lib/seo';
 import { Link } from '@/i18n/routing';
 import { AddToCartButton } from '@/components/shop/add-to-cart-button';
+import { BuyNowButton } from '@/components/shop/buy-now-button';
 
 interface PageProps {
   params: { locale: string; id: string };
@@ -148,9 +149,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+            <div style={{ display: 'flex', gap: 12, marginTop: 8, flexWrap: 'wrap' }}>
               <AddToCartButton product={product} locale={locale} />
-              <button className="btn btn-secondary" style={{ padding: '12px 18px' }}>
+              <BuyNowButton product={product} locale={locale} />
+              <button className="btn btn-secondary" style={{ padding: '12px 18px' }} title="Tư vấn y tế">
                 <MessageCircle size={18} />
               </button>
             </div>

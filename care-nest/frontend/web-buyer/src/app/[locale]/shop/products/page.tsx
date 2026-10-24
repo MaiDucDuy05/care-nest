@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Search, ShoppingCart, Star } from 'lucide-react';
+import { ShoppingCart, Star } from 'lucide-react';
 import { publicCatalogService } from '@/lib/services/public-catalog.service';
 import { storeListMetadata, type Locale } from '@/lib/seo';
 import { Link } from '@/i18n/routing';
@@ -46,45 +46,6 @@ export default async function ProductsPage({ params, searchParams }: PageProps) 
             : 'Curated medical devices from KYC-verified sellers.'}
         </p>
       </div>
-
-      <form
-        className="card"
-        style={{ padding: '16px 20px', marginBottom: '32px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}
-        action={`/${locale}/shop/products`}
-        method="get"
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            background: 'var(--bg-card-subtle)',
-            padding: '10px 16px',
-            borderRadius: 'var(--radius-md)',
-            flex: 1,
-            minWidth: '240px',
-          }}
-        >
-          <Search size={18} color="var(--text-muted)" />
-          <input
-            type="text"
-            name="search"
-            defaultValue={searchParams.search ?? ''}
-            placeholder={locale === 'vi' ? 'Tìm kiếm sản phẩm…' : 'Search products…'}
-            style={{
-              border: 'none',
-              background: 'transparent',
-              outline: 'none',
-              width: '100%',
-              fontSize: '14px',
-              fontFamily: 'inherit',
-            }}
-          />
-        </div>
-        <button type="submit" className="btn btn-primary" style={{ padding: '10px 18px', fontSize: '14px' }}>
-          {locale === 'vi' ? 'Tìm' : 'Search'}
-        </button>
-      </form>
 
       {error ? (
         <div className="card" style={{ color: 'var(--danger)' }}>

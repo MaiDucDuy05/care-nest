@@ -1,15 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from '@/i18n/routing';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { HeartPulse, Mail, Lock, User, Phone, ArrowRight, Loader2 } from 'lucide-react';
+import { HeartPulse, Mail, Lock, User, Phone, ArrowRight, Loader2, ShoppingBag } from 'lucide-react';
 import { authService } from '@/services/auth.service';
 
-export default function RegisterPage() {
+function RegisterContent() {
   const t = useTranslations('auth');
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const redirectUrl = searchParams.get('redirect') || searchParams.get('callbackUrl') || '/health/dashboard';
+  const isBuyingRedirect = redirectUrl.includes('/shop') || redirectUrl.includes('/cart');
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -30,13 +35,13 @@ export default function RegisterPage() {
         phone: phone.trim() || undefined,
         password,
       });
-      router.push('/health/dashboard');
-    } catch (err: any) {
+      router.push(redirectUrl);
+    } catch (err: unknown) {
       try {
-        const parsed = JSON.parse(err.message);
+        const parsed = JSON.parse((err as Error).message);
         setError(parsed.message || 'Đăng ký không thành công');
       } catch {
-        setError(err.message || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.');
+        setError((err as Error).message || 'Đăng ký thất bại. Vui lòng kiểm tra lại thông tin.');
       }
     } finally {
       setIsLoading(false);
@@ -72,6 +77,26 @@ export default function RegisterPage() {
           </p>
         </div>
 
+        {isBuyingRedirect && (
+          <div style={{
+            background: 'var(--primary-light, #ccfbf1)',
+            color: 'var(--primary-hover, #0f766e)',
+            padding: '12px 14px',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '13px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            border: '1px solid #99f6e4',
+          }}>
+            <ShoppingBag size={20} style={{ flexShrink: 0 }} />
+            <div>
+              <strong>Tạo tài khoản để mua hàng:</strong> Đăng ký tài khoản để bảo vệ quyền lợi bảo hành chính hãng thiết bị y tế.
+            </div>
+          </div>
+        )}
+
         {error && (
           <div style={{
             background: 'var(--danger-light, #fee2e2)',
@@ -86,7 +111,7 @@ export default function RegisterPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
               {t('fullName')}
@@ -102,7 +127,7 @@ export default function RegisterPage() {
             }}>
               <User size={18} color="var(--text-muted)" />
               <input
-                id="register-name-input"
+                id="register-fullname-input"
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
@@ -211,11 +236,29 @@ export default function RegisterPage() {
 
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: 'var(--text-muted)' }}>
           {t('hasAccount')}{' '}
-          <Link href="/auth/login" id="register-goto-login" style={{ color: 'var(--primary)', fontWeight: 700 }}>
+          <Link
+            href={`/auth/login${redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : ''}`}
+            id="register-goto-login"
+            style={{ color: 'var(--primary)', fontWeight: 700 }}
+          >
             {t('loginHere')}
           </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container" style={{ paddingTop: '80px', textAlign: 'center' }}>
+          <div className="animate-spin text-teal-600 font-bold">Đang tải trang đăng ký...</div>
+        </div>
+      }
+    >
+      <RegisterContent />
+    </Suspense>
   );
 }

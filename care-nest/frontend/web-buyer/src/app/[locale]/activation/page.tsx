@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
@@ -18,7 +18,7 @@ interface Device {
   model: string;
 }
 
-export default function ActivationPage() {
+function ActivationContent() {
   const t = useTranslations('activation');
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -56,11 +56,14 @@ export default function ActivationPage() {
     }
   };
 
-  const handleToggleDevice = (id: string) => {
+  const handleToggleSelect = (deviceId: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(deviceId)) {
+        next.delete(deviceId);
+      } else {
+        next.add(deviceId);
+      }
       return next;
     });
   };
@@ -68,6 +71,7 @@ export default function ActivationPage() {
   const handleConfirm = async () => {
     if (selectedIds.size === 0) return;
     setIsLoading(true);
+    setError(null);
     try {
       await activationService.redeemCode(token, Array.from(selectedIds));
       setStep(2);
@@ -79,24 +83,40 @@ export default function ActivationPage() {
   };
 
   return (
-    <div className="container" style={{ paddingTop: '40px', paddingBottom: '80px', maxWidth: '640px' }}>
-      <div style={{ marginBottom: '32px', textAlign: 'center' }}>
+    <div className="container" style={{ paddingTop: '40px', paddingBottom: '60px', maxWidth: '640px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
         <h1 style={{ fontSize: '28px', fontWeight: 800, color: 'var(--text-main)', marginBottom: '8px' }}>
           {t('title')}
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>{t('subtitle')}</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>
+          {t('subtitle')}
+        </p>
       </div>
 
-      <WizardStepper steps={steps} currentStep={step} />
+      <div style={{ marginBottom: '40px' }}>
+        <WizardStepper currentStep={step} steps={steps} />
+      </div>
 
-      <div className="card" style={{ padding: '32px' }}>
-        {/* Step 0: Token Input */}
+      {error && (
+        <div style={{
+          padding: '12px 16px',
+          background: 'var(--danger-light)',
+          color: 'var(--danger)',
+          borderRadius: 'var(--radius-md)',
+          marginBottom: '24px',
+          fontSize: '14px',
+        }}>
+          {error}
+        </div>
+      )}
+
+      <div className="card">
         {step === 0 && (
-          <>
-            <div style={{ marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '6px' }}>{t('step1')}</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>{t('step1Desc')}</p>
-            </div>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>{t('step1')}</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px' }}>
+              {t('step1Desc')}
+            </p>
             <CodeInput
               value={token}
               onChange={setToken}
@@ -104,36 +124,27 @@ export default function ActivationPage() {
               isLoading={isLoading}
               error={error}
             />
-          </>
+          </div>
         )}
 
-        {/* Step 1: IMEI Confirm */}
         {step === 1 && (
-          <>
-            <div style={{ marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '6px' }}>{t('step2')}</h2>
-              <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>{t('step2Desc')}</p>
-            </div>
+          <div>
+            <h2 style={{ fontSize: '18px', fontWeight: 700, marginBottom: '8px' }}>{t('step2')}</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '24px' }}>
+              {t('step2Desc')}
+            </p>
             <ImeiConfirm
               devices={devices}
               selectedIds={selectedIds}
-              onToggle={handleToggleDevice}
+              onToggle={handleToggleSelect}
               onConfirm={handleConfirm}
               isLoading={isLoading}
             />
-            <button
-              onClick={() => setStep(0)}
-              className="btn btn-secondary"
-              style={{ width: '100%', marginTop: '12px' }}
-            >
-              {t('back')}
-            </button>
-          </>
+          </div>
         )}
 
-        {/* Step 2: Success */}
         {step === 2 && (
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          <div style={{ textAlign: 'center', padding: '24px 0' }}>
             <div style={{
               width: '80px',
               height: '80px',
@@ -154,7 +165,7 @@ export default function ActivationPage() {
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <button
-                onClick={() => router.push('/dashboard')}
+                onClick={() => router.push('/health/dashboard')}
                 className="btn btn-primary"
                 style={{ padding: '14px' }}
               >
@@ -165,5 +176,19 @@ export default function ActivationPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function ActivationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container" style={{ paddingTop: '60px', textAlign: 'center' }}>
+          <div className="animate-spin text-teal-600 font-bold">Đang tải trang kích hoạt...</div>
+        </div>
+      }
+    >
+      <ActivationContent />
+    </Suspense>
   );
 }

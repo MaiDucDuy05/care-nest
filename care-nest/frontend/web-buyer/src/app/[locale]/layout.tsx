@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { AppLayoutShell } from '@/components/layout/app-layout-shell';
 
 export const metadata: Metadata = {
   title: {
@@ -12,5 +13,5 @@ export default function LocaleLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return <AppLayoutShell>{children}</AppLayoutShell>;
 }

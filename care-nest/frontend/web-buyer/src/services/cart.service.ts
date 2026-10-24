@@ -19,6 +19,20 @@ export interface Cart {
   updatedAt?: string;
 }
 
+export const CART_UPDATED_EVENT = 'carenest:cart-updated';
+
+export function emitCartUpdated(cart?: Cart) {
+  if (typeof window === 'undefined') return;
+  try {
+    const resolvedCart = cart ?? getLocalCart();
+    window.dispatchEvent(new CustomEvent(CART_UPDATED_EVENT, { detail: resolvedCart }));
+    window.dispatchEvent(new CustomEvent('cart-updated', { detail: resolvedCart }));
+    window.dispatchEvent(new Event('storage'));
+  } catch {
+    // Ignore errors
+  }
+}
+
 const LOCAL_CART_KEY = 'buyer_cart';
 
 function getLocalCart(): Cart {
@@ -32,10 +46,13 @@ function getLocalCart(): Cart {
   }
 }
 
-function saveLocalCart(cart: Cart): Cart {
+function saveLocalCart(cart: Cart, notify: boolean = true): Cart {
   if (typeof window === 'undefined') return cart;
   try {
     window.localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(cart));
+    if (notify) {
+      emitCartUpdated(cart);
+    }
   } catch {
     // Ignore storage quota errors
   }

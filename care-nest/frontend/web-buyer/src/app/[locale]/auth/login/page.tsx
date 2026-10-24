@@ -1,15 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter } from '@/i18n/routing';
+import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { HeartPulse, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
+import { HeartPulse, Mail, Lock, ArrowRight, Loader2, ShoppingBag } from 'lucide-react';
 import { authService } from '@/services/auth.service';
 
-export default function LoginPage() {
+function LoginContent() {
   const t = useTranslations('auth');
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const redirectUrl = searchParams.get('redirect') || searchParams.get('callbackUrl') || '/health/dashboard';
+  const isBuyingRedirect = redirectUrl.includes('/shop') || redirectUrl.includes('/cart');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,13 +28,14 @@ export default function LoginPage() {
 
     try {
       await authService.login(email.trim(), password);
-      router.push('/health/dashboard');
-    } catch (err: any) {
+      // Chuyển hướng đúng về trang giỏ hàng/sản phẩm nếu đang trong luồng mua hàng
+      router.push(redirectUrl);
+    } catch (err: unknown) {
       try {
-        const parsed = JSON.parse(err.message);
+        const parsed = JSON.parse((err as Error).message);
         setError(parsed.message || 'Đăng nhập không thành công');
       } catch {
-        setError(err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+        setError((err as Error).message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
       }
     } finally {
       setIsLoading(false);
@@ -64,6 +70,27 @@ export default function LoginPage() {
             {t('loginSubtitle')}
           </p>
         </div>
+
+        {/* Thông báo nếu đang yêu cầu đăng nhập để mua hàng */}
+        {isBuyingRedirect && (
+          <div style={{
+            background: 'var(--primary-light, #ccfbf1)',
+            color: 'var(--primary-hover, #0f766e)',
+            padding: '12px 14px',
+            borderRadius: 'var(--radius-md)',
+            fontSize: '13px',
+            marginBottom: '20px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            border: '1px solid #99f6e4',
+          }}>
+            <ShoppingBag size={20} style={{ flexShrink: 0 }} />
+            <div>
+              <strong>Yêu cầu đăng nhập để mua hàng:</strong> Quý khách vui lòng đăng nhập để tiếp tục hoàn tất đơn hàng thiết bị y tế.
+            </div>
+          </div>
+        )}
 
         {error && (
           <div style={{
@@ -154,11 +181,29 @@ export default function LoginPage() {
 
         <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '14px', color: 'var(--text-muted)' }}>
           {t('noAccount')}{' '}
-          <Link href="/auth/register" id="login-goto-register" style={{ color: 'var(--primary)', fontWeight: 700 }}>
+          <Link
+            href={`/auth/register${redirectUrl ? `?redirect=${encodeURIComponent(redirectUrl)}` : ''}`}
+            id="login-goto-register"
+            style={{ color: 'var(--primary)', fontWeight: 700 }}
+          >
             {t('registerNow')}
           </Link>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container" style={{ paddingTop: '80px', textAlign: 'center' }}>
+          <div className="animate-spin text-teal-600 font-bold">Đang tải trang đăng nhập...</div>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }

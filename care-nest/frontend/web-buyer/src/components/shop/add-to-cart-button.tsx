@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ShoppingCart, Check, Loader2 } from 'lucide-react';
-import { cartService } from '@/services/cart.service';
+import { cartService, emitCartUpdated } from '@/services/cart.service';
 import type { PublicProduct } from '@/lib/services/public-catalog.service';
 import type { Locale } from '@/lib/seo';
 
@@ -18,7 +18,7 @@ export function AddToCartButton({ product, locale }: AddToCartButtonProps) {
   const handleAdd = async () => {
     setIsAdding(true);
     try {
-      await cartService.addItem({
+      const updatedCart = await cartService.addItem({
         productId: product.id,
         sellerId: product.seller?.id || 'care-nest-store',
         name: product.name,
@@ -26,6 +26,7 @@ export function AddToCartButton({ product, locale }: AddToCartButtonProps) {
         quantity: 1,
         imageUrl: product.images?.[0]?.url,
       });
+      emitCartUpdated(updatedCart);
       setIsSuccess(true);
       setTimeout(() => setIsSuccess(false), 2500);
     } catch (err) {
@@ -37,7 +38,7 @@ export function AddToCartButton({ product, locale }: AddToCartButtonProps) {
 
   return (
     <button
-      id="add-to-cart-btn"
+      id={`add-to-cart-btn-${product.id}`}
       onClick={handleAdd}
       disabled={isAdding || (typeof product.stock === 'number' && product.stock <= 0)}
       className="btn btn-primary"

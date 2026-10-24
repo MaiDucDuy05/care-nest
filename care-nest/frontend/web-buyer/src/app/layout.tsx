@@ -2,8 +2,6 @@ import type { Metadata } from 'next';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import './globals.css';
-import { Header } from '@/components/layout/header';
-import { Footer } from '@/components/layout/footer';
 
 export const metadata: Metadata = {
   title: 'CareNest — TMĐT Y Tế & Giám Sát Sức Khỏe IoT Người Cao Tuổi',
@@ -25,11 +23,7 @@ export default async function RootLayout({
       </head>
       <body>
         <NextIntlClientProvider messages={messages}>
-          <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-            <Header />
-            <main style={{ flex: 1 }}>{children}</main>
-            <Footer />
-          </div>
+          {children}
         </NextIntlClientProvider>
       </body>
     </html>
