@@ -9,7 +9,18 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 
-const STATUSES = ['', 'PENDING', 'CONFIRMED', 'PACKING', 'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'REFUNDED'];
+const STATUSES = [
+  '',
+  'CREATED',
+  'CONFIRMED',
+  'PACKING',
+  'SHIPPED',
+  'DELIVERED',
+  'CANCELLED',
+  'RETURNED',
+  'PENDING',
+  'REFUNDED',
+];
 
 export default function OrdersPage() {
   const t = useTranslations('orders');

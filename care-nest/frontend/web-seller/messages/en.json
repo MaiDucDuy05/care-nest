@@ -122,12 +122,14 @@
       "success": "Order moved to PACKING"
     },
     "statuses": {
+      "CREATED": "Created",
       "PENDING": "Pending",
       "CONFIRMED": "Confirmed",
       "PACKING": "Packing",
       "SHIPPED": "Shipped",
       "DELIVERED": "Delivered",
-      "CANCELLED": "Cancelled"
+      "CANCELLED": "Cancelled",
+      "RETURNED": "Returned"
     }
   },
   "imei": {

@@ -241,11 +241,22 @@
     "active": "Active",
     "suspended": "Suspended",
     "pending": "Pending Verification",
+    "pending_verification": "Pending Verification",
+    "deactivated": "Deactivated",
     "roles": {
       "USER": "User",
+      "BUYER": "Buyer",
       "SELLER": "Seller",
       "ADMIN": "Admin",
-      "MEDICAL_REVIEWER": "Medical Reviewer"
+      "MEDICAL_REVIEWER": "Medical Reviewer",
+      "CAREGIVER": "Caregiver",
+      "ELDER": "Elderly User"
+    },
+    "statuses": {
+      "ACTIVE": "Active",
+      "SUSPENDED": "Suspended",
+      "PENDING_VERIFICATION": "Pending Verification",
+      "DEACTIVATED": "Deactivated"
     },
     "suspend": "Suspend",
     "unsuspend": "Unsuspend",
@@ -276,6 +287,7 @@
     "buyer": "Buyer",
     "seller": "Seller",
     "status": "Status",
+    "allStatuses": "All statuses",
     "totalAmount": "Total Amount",
     "createdAt": "Order Date",
     "updatedAt": "Updated",
@@ -285,9 +297,11 @@
     "paymentMethod": "Payment Method",
     "shippingAddress": "Shipping Address",
     "statuses": {
+      "CREATED": "Created",
       "PENDING": "Pending",
       "CONFIRMED": "Confirmed",
       "PACKING": "Packing",
+      "SHIPPED": "Shipped",
       "PICKED_UP": "Picked Up",
       "IN_TRANSIT": "In Transit",
       "OUT_FOR_DELIVERY": "Out for Delivery",
@@ -295,7 +309,10 @@
       "CANCELLED": "Cancelled",
       "REFUNDED": "Refunded",
       "RETURN_REQUESTED": "Return Requested",
-      "RETURNED": "Returned"
+      "RETURNED": "Returned",
+      "PAID": "Paid",
+      "PROCESSING": "Processing",
+      "COMPLETED": "Completed"
     },
     "refund": "Refund",
     "refundConfirm": "Are you sure you want to refund this order?",
@@ -447,6 +464,8 @@
     },
     "statuses": {
       "ACTIVE": "Active",
+      "TRIALING": "Trialing",
+      "PAST_DUE": "Past Due",
       "PAUSED": "Paused",
       "CANCELLED": "Cancelled",
       "EXPIRED": "Expired",
@@ -485,10 +504,12 @@
     },
     "statuses": {
       "PENDING": "Pending",
+      "PENDING_PICKUP": "Pending Pickup",
       "PICKED_UP": "Picked Up",
       "IN_TRANSIT": "In Transit",
       "OUT_FOR_DELIVERY": "Out for Delivery",
       "DELIVERED": "Delivered",
+      "FAILED_ATTEMPT": "Delivery Failed Attempt",
       "RETURN_REQUESTED": "Return Requested",
       "RETURNED": "Returned",
       "CANCELLED": "Cancelled",
