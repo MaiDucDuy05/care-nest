@@ -21,6 +21,18 @@ export function KycQueueTable({ data, loading, onView, page, totalPages, onPageC
   const t = useTranslations('kyc');
   const tCommon = useTranslations('common');
 
+  const docTypeMap: Record<string, string> = {
+    IDENTITY_CARD: 'identityCard',
+    ID_CARD: 'identityCard',
+    BUSINESS_LICENSE: 'businessLicense',
+    TAX_ID: 'taxId',
+    BANK_ACCOUNT: 'bankAccount',
+    PASSPORT: 'passport',
+    DRIVERS_LICENSE: 'driversLicense',
+    HEALTH_INSURANCE: 'healthInsurance',
+    OTHER: 'other',
+  };
+
   return (
     <>
       <DataTable
@@ -33,8 +45,8 @@ export function KycQueueTable({ data, loading, onView, page, totalPages, onPageC
             </div>
           )},
           { key: 'type', header: t('documentType'), render: (r) => {
-            const map: Record<string, string> = { IDENTITY_CARD: 'kyc.identityCard', PASSPORT: 'kyc.passport', DRIVERS_LICENSE: 'kyc.driversLicense', HEALTH_INSURANCE: 'kyc.healthInsurance', OTHER: 'kyc.other' };
-            return <Badge variant="info">{t(map[r.type] || 'kyc.other')}</Badge>;
+            const labelKey = docTypeMap[r.type] || 'other';
+            return <Badge variant="info">{t(labelKey as any)}</Badge>;
           }},
           { key: 'filename', header: 'File', render: (r) => r.filename ? (
             <span style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>

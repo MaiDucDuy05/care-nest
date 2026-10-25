@@ -58,6 +58,13 @@ export function KycReviewForm({ data, onSuccess }: KycReviewFormProps) {
           <div><span style={{ color: 'var(--text-muted)' }}>{t('seller')}:</span> <span style={{ fontWeight: 500 }}>{data.seller.fullName}</span></div>
           <div><span style={{ color: 'var(--text-muted)' }}>Email:</span> <span>{data.seller.email}</span></div>
           <div><span style={{ color: 'var(--text-muted)' }}>Phone:</span> <span>{data.seller.phone || '—'}</span></div>
+          {data.seller.taxId && <div><span style={{ color: 'var(--text-muted)' }}>MST:</span> <span>{data.seller.taxId}</span></div>}
+          {data.seller.bankName && (
+            <div>
+              <span style={{ color: 'var(--text-muted)' }}>Ngân hàng:</span>{' '}
+              <span>{data.seller.bankName} - {data.seller.bankAccount} ({data.seller.bankAccountName})</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -65,26 +72,71 @@ export function KycReviewForm({ data, onSuccess }: KycReviewFormProps) {
       <div>
         <h3 style={{ fontSize: '14px', fontWeight: 700, marginBottom: '12px' }}>{t('documents')}</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {data.documents.map((doc) => (
-            <div key={doc.id} style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '12px', background: 'var(--bg-card)', border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-sm)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <span style={{ fontSize: '20px' }}>📄</span>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: '14px' }}>{doc.filename || doc.type}</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    {formatDateTime(doc.createdAt)}
+          {data.documents.map((doc) => {
+            const docTypeLabel =
+              doc.type === 'ID_CARD' || doc.type === 'IDENTITY_CARD'
+                ? t('identityCard')
+                : doc.type === 'BUSINESS_LICENSE'
+                  ? t('businessLicense')
+                  : doc.type === 'TAX_ID'
+                    ? t('taxId')
+                    : doc.type === 'BANK_ACCOUNT'
+                      ? t('bankAccount')
+                      : doc.type === 'PASSPORT'
+                        ? t('passport')
+                        : doc.filename || doc.type;
+
+            const statusLower = doc.status.toLowerCase();
+            const statusLabel =
+              statusLower === 'in_review'
+                ? t('in_review')
+                : statusLower === 'approved'
+                  ? t('approved')
+                  : statusLower === 'rejected'
+                    ? t('rejected')
+                    : t('pending');
+
+            const statusVariant =
+              doc.status === 'APPROVED' ? 'success' : doc.status === 'REJECTED' ? 'danger' : 'warning';
+
+            return (
+              <div key={doc.id} style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '12px', background: 'var(--bg-card)', border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '20px' }}>📄</span>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '14px' }}>{docTypeLabel}</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      {formatDateTime(doc.createdAt)}
+                    </div>
                   </div>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {doc.fileUrl && (
+                    <a
+                      href={doc.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        fontSize: '13px',
+                        color: 'var(--primary, #0284c7)',
+                        textDecoration: 'underline',
+                        marginRight: '8px',
+                      }}
+                    >
+                      {t('viewDocument')} ↗
+                    </a>
+                  )}
+                  <Badge variant={statusVariant}>
+                    {statusLabel}
+                  </Badge>
+                </div>
               </div>
-              <Badge variant={doc.status === 'APPROVED' ? 'success' : doc.status === 'REJECTED' ? 'danger' : 'warning'}>
-                {t(doc.status.toLowerCase() as 'pending' | 'approved' | 'rejected')}
-              </Badge>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

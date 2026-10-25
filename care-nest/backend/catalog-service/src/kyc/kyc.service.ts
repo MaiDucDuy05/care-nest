@@ -300,6 +300,10 @@ export class KycService {
         fullName: seller.user?.fullName || seller.storeName,
         email: seller.user?.email || '',
         phone: seller.user?.phone || '',
+        taxId: seller.taxId || '',
+        bankName: seller.bankName || '',
+        bankAccount: seller.bankAccount || '',
+        bankAccountName: seller.bankAccountName || '',
       },
       documents: seller.kycDocs.map((d) => ({
         id: d.id,
@@ -309,6 +313,7 @@ export class KycService {
         type: d.type,
         status: d.status,
         filename: d.type,
+        fileUrl: d.fileUrl,
         rejectionReason: d.rejectionReason,
         createdAt: d.createdAt.toISOString(),
         updatedAt: d.updatedAt.toISOString(),

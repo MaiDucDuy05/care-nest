@@ -413,13 +413,23 @@ export interface KycDocumentAdmin {
   type: string;
   status: string;
   filename?: string;
+  fileUrl?: string;
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface KycDetailResponse {
-  seller: { id: string; fullName: string; email: string; phone?: string };
+  seller: {
+    id: string;
+    fullName: string;
+    email: string;
+    phone?: string;
+    taxId?: string;
+    bankName?: string;
+    bankAccount?: string;
+    bankAccountName?: string;
+  };
   documents: KycDocumentAdmin[];
   lockedBy?: string;
   lockExpiresAt?: string;
