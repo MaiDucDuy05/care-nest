@@ -9,6 +9,14 @@ import { RolesGuard } from '../auth/guards/roles.guard.js';
 export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
+  @Get()
+  @Roles('ADMIN')
+  async listAll(@Query() query: any): Promise<any> {
+    const page = parseInt(query.page, 10) || 1;
+    const limit = Math.min(parseInt(query.limit, 10) || 50, 100);
+    return this.auditService.listAll(page, limit, query);
+  }
+
   @Get(':entityType/:entityId')
   @Roles('ADMIN')
   async list(

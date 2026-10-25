@@ -5,7 +5,7 @@ import { useTranslations } from 'next-intl';
 
 interface KpiCardProps {
   title: string;
-  value: string | number;
+  value: ReactNode;
   description?: string;
   icon?: ReactNode;
   trend?: number;

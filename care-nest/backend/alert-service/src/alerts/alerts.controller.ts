@@ -25,6 +25,13 @@ export class AlertsController {
     return this.alertsService.listForSubject(user.id, p, ps);
   }
 
+  @Get('admin')
+  async listAdmin(@Query() query: any): Promise<any> {
+    const page = parseInt(query.page, 10) || 1;
+    const limit = Math.min(parseInt(query.limit, 10) || 50, 100);
+    return this.alertsService.listAdmin(page, limit, query);
+  }
+
   @Get(':id')
   async getOne(@Param('id') id: string): Promise<any> {
     return this.alertsService.listForSubject(id, 1, 1);

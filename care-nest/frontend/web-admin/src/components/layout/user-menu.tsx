@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 
 export function UserMenu() {
   const t = useTranslations('auth');
-  const tNav = useTranslations('nav');
+  const tRoles = useTranslations('users.roles');
   const { user, logout } = useAuth();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -23,6 +23,18 @@ export function UserMenu() {
 
   if (!user) return null;
 
+  const displayName =
+    typeof user.fullName === 'string' && user.fullName.trim()
+      ? user.fullName.trim()
+      : typeof user.email === 'string' && user.email.includes('@')
+        ? user.email.slice(0, user.email.indexOf('@'))
+        : 'User';
+  const roleLabel =
+    user.role === 'ADMIN'
+      ? tRoles('ADMIN')
+      : user.role === 'MEDICAL_REVIEWER'
+        ? tRoles('MEDICAL_REVIEWER')
+        : user.role;
   const roleVariant = user.role === 'ADMIN' ? 'danger' : user.role === 'MEDICAL_REVIEWER' ? 'info' : 'secondary';
 
   return (
@@ -42,14 +54,14 @@ export function UserMenu() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           fontSize: '13px', fontWeight: 700,
         }}>
-          {user.fullName.charAt(0).toUpperCase()}
+          {displayName.charAt(0).toUpperCase()}
         </div>
         <div style={{ textAlign: 'left' }}>
           <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)', maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {user.fullName}
+            {displayName}
           </div>
           <Badge variant={roleVariant} style={{ fontSize: '10px', padding: '0 4px' }}>
-            {tNav(`users.roles.${user.role}`)}
+            {roleLabel}
           </Badge>
         </div>
         <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>▼</span>
@@ -63,7 +75,7 @@ export function UserMenu() {
           minWidth: '200px', zIndex: 200,
         }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>{user.fullName}</div>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>{displayName}</div>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{user.email}</div>
           </div>
           <div style={{ padding: '8px' }}>

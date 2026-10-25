@@ -136,6 +136,30 @@ export class AlertsService {
     return this.alertsRepository.listOpen(page, pageSize);
   }
 
+  async listAdmin(page = 1, limit = 50, _filters: any = {}): Promise<any> {
+    const res = await this.alertsRepository.listOpen(page, limit);
+    const data = (res.items || []).map((a: any) => ({
+      id: a.id,
+      severity: a.severity,
+      type: a.type,
+      message: a.payload?.reason || a.payload?.metric || `Cảnh báo ${a.type}`,
+      source: a.deviceId ? `Thiết bị ${a.deviceId.slice(0, 8)}` : 'Hệ thống',
+      deviceId: a.deviceId,
+      userId: a.subjectId,
+      userName: `Bệnh nhân (${a.subjectId ? a.subjectId.slice(0, 8) : 'IoT'})`,
+      acknowledged: a.status === 'ACKNOWLEDGED' || a.status === 'RESOLVED',
+      resolved: a.status === 'RESOLVED',
+      createdAt: a.receivedAt ? new Date(a.receivedAt).toISOString() : new Date().toISOString(),
+    }));
+    return {
+      data,
+      total: res.total || 0,
+      page,
+      limit,
+      totalPages: Math.ceil((res.total || 0) / limit) || 1,
+    };
+  }
+
   async listForSubject(subjectId: string, page = 1, pageSize = 20): Promise<any> {
     return this.alertsRepository.listForSubject(subjectId, page, pageSize);
   }

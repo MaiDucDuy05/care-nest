@@ -67,6 +67,19 @@ export class AuthService {
     }
   }
 
+  async getCurrentUser(id: string) {
+    const user = await this.usersService.findById(id);
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      status: user.status,
+      createdAt: user.createdAt,
+      lastLoginAt: user.lastLoginAt,
+    };
+  }
+
   private generateTokens(user: { id: string; email: string; fullName: string; role: any }): TokenResponseDto {
     const payload = { sub: user.id, email: user.email, role: user.role };
 

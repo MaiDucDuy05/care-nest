@@ -3,7 +3,7 @@ import { AuthService } from './auth.service.js';
 import { LoginSchema } from './dto/login.dto.js';
 import { RegisterSchema } from './dto/register.dto.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
-import { CurrentUser } from './decorators/current-user.decorator.js';
+import { CurrentUser, type JwtUser } from './decorators/current-user.decorator.js';
 
 @Controller('auth')
 export class AuthController {
@@ -37,8 +37,9 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  async me(@CurrentUser() user: any) {
-    return { user };
+  async me(@CurrentUser() user: JwtUser) {
+    const userId = user.userId ?? user.id ?? user.sub;
+    return { user: await this.authService.getCurrentUser(userId) };
   }
 
   @Post('logout')

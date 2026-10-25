@@ -36,6 +36,64 @@ export class ProductsController {
     return this.productsService.listProducts(parsed.data) as unknown as PaginatedProducts;
   }
 
+  @Get('admin')
+  async listAdmin(@Query() query: any): Promise<any> {
+    const page = parseInt(query.page, 10) || 1;
+    const limit = Math.min(parseInt(query.limit, 10) || 50, 100);
+    const status = query.status || undefined;
+    const search = query.search || undefined;
+    const res = await this.productsService.listProducts({ page, limit, status, search } as any);
+    const data = res.items.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      sellerId: p.sellerId || '',
+      sellerName: p.seller?.storeName || 'Nhà bán hàng CareNest',
+      category: p.category?.name || 'Thiết bị y tế',
+      priceVnd: Number(p.basePrice || p.priceVnd || 0),
+      status: p.status,
+      images: p.images?.map((img: any) => img.url) || [],
+      createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+    }));
+    return {
+      data,
+      total: res.total,
+      page,
+      limit,
+      totalPages: Math.ceil(res.total / limit) || 1,
+    };
+  }
+
+  @Get('admin/:id')
+  async getAdminOne(@Param('id') id: string): Promise<any> {
+    const p = await this.productsService.getProductById(id);
+    return {
+      id: p.id,
+      name: p.name,
+      sellerId: p.sellerId || '',
+      sellerName: p.seller?.storeName || 'Nhà bán hàng CareNest',
+      category: p.category?.name || 'Thiết bị y tế',
+      priceVnd: Number(p.basePrice || p.priceVnd || 0),
+      status: p.status,
+      images: p.images?.map((img: any) => img.url) || [],
+      description: p.description || '',
+      specifications: p.specifications || {},
+      documents: [],
+      createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : new Date().toISOString(),
+    };
+  }
+
+  @Post('admin/:id/approve')
+  async approveAdmin(@Param('id') id: string): Promise<any> {
+    await this.productsService.updateProduct(id, { status: 'ACTIVE' } as any);
+    return { success: true };
+  }
+
+  @Post('admin/:id/reject')
+  async rejectAdmin(@Param('id') id: string): Promise<any> {
+    await this.productsService.updateProduct(id, { status: 'REJECTED' } as any);
+    return { success: true };
+  }
+
   @Get(':id')
   async getOne(@Param('id') id: string): Promise<Product | null> {
     return this.productsService.getProductById(id) as unknown as Product | null;

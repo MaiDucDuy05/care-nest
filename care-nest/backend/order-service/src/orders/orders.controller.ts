@@ -34,6 +34,18 @@ export class OrdersController {
     return this.ordersService.listForBuyer(user.id, p, ps);
   }
 
+  @Get('admin')
+  async listAdmin(@Query() query: any): Promise<any> {
+    const page = parseInt(query.page, 10) || 1;
+    const limit = Math.min(parseInt(query.limit, 10) || 50, 100);
+    return this.ordersService.listAdmin(page, limit, query);
+  }
+
+  @Get('admin/:id')
+  async getAdminOne(@CurrentUser() user: { id: string }, @Param('id') id: string): Promise<any> {
+    return this.ordersService.getOrder(user.id, id, true);
+  }
+
   @Get(':id')
   async getOne(@CurrentUser() user: { id: string; role?: string }, @Param('id') id: string): Promise<any> {
     const isAdmin = user.role === 'ADMIN';

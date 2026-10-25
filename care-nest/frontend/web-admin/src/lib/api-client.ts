@@ -6,6 +6,7 @@ const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
 
 const AUTH_API = API_GATEWAY || process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3001';
 const CATALOG_API = API_GATEWAY || process.env.NEXT_PUBLIC_CATALOG_API_URL || 'http://localhost:3002';
+const ORDER_API = API_GATEWAY || process.env.NEXT_PUBLIC_ORDER_API_URL || 'http://localhost:3004';
 const ALERT_API = API_GATEWAY || process.env.NEXT_PUBLIC_ALERT_API_URL || 'http://localhost:3007';
 const SUBSCRIPTION_API = API_GATEWAY || process.env.NEXT_PUBLIC_SUBSCRIPTION_API_URL || 'http://localhost:3008';
 const SHIPPING_API = API_GATEWAY || process.env.NEXT_PUBLIC_SHIPPING_API_URL || 'http://localhost:3009';
@@ -194,19 +195,19 @@ export const apiClient = {
       if (params?.status) q.set('status', params.status);
       if (params?.from) q.set('from', params.from);
       if (params?.to) q.set('to', params.to);
-      const res = await fetch(`${AUTH_API}/api/v1/orders/admin?${q}`, {
+      const res = await fetch(`${ORDER_API}/api/v1/orders/admin?${q}`, {
         headers: authHeaders(),
       });
       return handleResponse<OrderListResponse>(res);
     },
     async getById(orderId: string, token?: string) {
-      const res = await fetch(`${AUTH_API}/api/v1/orders/admin/${orderId}`, {
+      const res = await fetch(`${ORDER_API}/api/v1/orders/admin/${orderId}`, {
         headers: authHeaders(token),
       });
       return handleResponse<OrderDetailResponse>(res);
     },
     async refund(orderId: string, reason: string, token?: string) {
-      const res = await fetch(`${AUTH_API}/api/v1/orders/admin/${orderId}/refund`, {
+      const res = await fetch(`${ORDER_API}/api/v1/orders/admin/${orderId}/refund`, {
         method: 'POST',
         headers: authHeaders(token),
         body: JSON.stringify({ reason }),
@@ -374,7 +375,7 @@ export const apiClient = {
 export interface AuthUser {
   id: string;
   email: string;
-  fullName: string;
+  fullName?: string;
   role: 'ADMIN' | 'MEDICAL_REVIEWER' | 'USER' | 'SELLER' | 'BUYER' | 'CAREGIVER' | 'ELDER';
   avatarUrl?: string;
   status: string;

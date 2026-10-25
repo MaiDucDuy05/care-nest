@@ -66,4 +66,49 @@ export class AuditService {
     ]);
     return { items, total, page, pageSize };
   }
+
+  async listAll(page = 1, limit = 50, filters: any = {}): Promise<any> {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (filters.action) where.action = filters.action;
+    if (filters.entityType) where.entityType = filters.entityType;
+    if (filters.entityId) where.entityId = filters.entityId;
+    if (filters.from || filters.to) {
+      where.occurredAt = {};
+      if (filters.from) where.occurredAt.gte = new Date(filters.from);
+      if (filters.to) where.occurredAt.lte = new Date(filters.to);
+    }
+    const [logs, total] = await Promise.all([
+      this.prisma.auditLog.findMany({
+        where,
+        orderBy: { occurredAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.auditLog.count({ where }),
+    ]);
+
+    const data = logs.map((l) => ({
+      id: l.id,
+      userId: l.actorId || '',
+      actor: l.actorId || 'Hệ thống',
+      actorName: l.actorId || 'Hệ thống',
+      actorEmail: '',
+      actorType: l.actorType,
+      action: l.action,
+      entityType: l.entityType,
+      entityId: l.entityId || '',
+      timestamp: l.occurredAt.toISOString(),
+      createdAt: l.occurredAt.toISOString(),
+      payload: { before: l.before, after: l.after },
+    }));
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
+  }
 }

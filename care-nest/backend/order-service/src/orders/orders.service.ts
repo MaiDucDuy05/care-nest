@@ -255,4 +255,50 @@ export class OrdersService {
     }
     return this.ordersRepository.updateStatus(orderId, OrderStatus.CONFIRMED);
   }
+
+  async listAdmin(page = 1, limit = 50, filters: any = {}): Promise<any> {
+    const prisma = getPrismaClient();
+    const skip = (page - 1) * limit;
+    const where: any = {};
+    if (filters.status) where.status = filters.status;
+    if (filters.from || filters.to) {
+      where.createdAt = {};
+      if (filters.from) where.createdAt.gte = new Date(filters.from);
+      if (filters.to) where.createdAt.lte = new Date(filters.to);
+    }
+    const [orders, total] = await Promise.all([
+      prisma.order.findMany({
+        where,
+        include: {
+          items: true,
+          seller: { select: { storeName: true } },
+          buyer: { select: { fullName: true, email: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.order.count({ where }),
+    ]);
+
+    const data = orders.map((o) => ({
+      id: o.id,
+      orderNumber: o.orderNumber || o.id.slice(0, 8),
+      buyerName: o.buyer?.fullName || 'Khách hàng CareNest',
+      buyerEmail: o.buyer?.email || '',
+      sellerName: o.seller?.storeName || 'Nhà bán hàng CareNest',
+      totalVnd: Number(o.total || 0),
+      status: o.status,
+      itemCount: o.items.length,
+      createdAt: o.createdAt.toISOString(),
+    }));
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit) || 1,
+    };
+  }
 }
