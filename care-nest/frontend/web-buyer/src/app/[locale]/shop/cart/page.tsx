@@ -18,9 +18,11 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { cartService, type CartItem } from '@/services/cart.service';
-import { ordersService, saveLocalOrder } from '@/services/orders.service';
+import { ordersService, saveLocalOrder, updateLocalOrderStatus } from '@/services/orders.service';
+import { PaymentSimulatorModal, PaymentGatewayType } from '@/components/payment/payment-simulator-modal';
 import { authService } from '@/services/auth.service';
 import { getToken } from '@/lib/api-client';
+import { DEMO_ACCOUNTS } from '@/lib/demo-accounts';
 
 const formatVnd = (price: number) => {
   return new Intl.NumberFormat('vi-VN').format(price) + ' đ';
@@ -35,6 +37,12 @@ export default function CartPage() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<{ orderId: string } | null>(null);
+  const [pendingPayment, setPendingPayment] = useState<{
+    orderId: string;
+    orderNumber: string;
+    amount: number;
+    method: PaymentGatewayType;
+  } | null>(null);
 
   // Checkout form fields
   const [fullName, setFullName] = useState('');
@@ -53,12 +61,18 @@ export default function CartPage() {
     const hasToken = !!token;
     setIsLoggedIn(hasToken);
 
-    // Tự động điền họ tên & SĐT của người mua nếu đã đăng nhập
+    // Tự động điền họ tên, SĐT & địa chỉ của người mua nếu đã đăng nhập
     if (hasToken && token) {
       authService.me(token).then((profile) => {
         if (isMounted && profile) {
           if (profile.fullName) setFullName(profile.fullName);
           if (profile.phone) setPhone(profile.phone);
+          if (profile.shippingAddress) {
+            if (profile.shippingAddress.addressLine) setAddressLine(profile.shippingAddress.addressLine);
+            if (profile.shippingAddress.district) setDistrict(profile.shippingAddress.district);
+            if (profile.shippingAddress.city) setCity(profile.shippingAddress.city);
+            if (profile.shippingAddress.ward) setWard(profile.shippingAddress.ward);
+          }
         }
       }).catch(() => {
         // Token không hợp lệ hoặc hết hạn
@@ -209,9 +223,19 @@ export default function CartPage() {
         })),
       });
 
-      setOrderSuccess({ orderId: createdOrderId });
       setItems([]);
       setShowCheckoutModal(false);
+
+      if (paymentMethod === 'COD') {
+        setOrderSuccess({ orderId: createdOrderId });
+      } else {
+        setPendingPayment({
+          orderId: createdOrderId,
+          orderNumber: createdOrderNumber,
+          amount: total,
+          method: paymentMethod as PaymentGatewayType,
+        });
+      }
     } catch (err: unknown) {
       const rawError = (err as Error)?.message || '';
       // Trường hợp backend trả về 401 Unauthorized do token hết hạn hoặc chưa đăng nhập
@@ -258,6 +282,18 @@ export default function CartPage() {
       setCheckoutError(String(errMsg));
     } finally {
       setIsCheckingOut(false);
+    }
+  };
+
+  const handlePaymentSimulatorSuccess = (details: {
+    transactionId: string;
+    method: PaymentGatewayType;
+    paidAt: string;
+  }) => {
+    if (pendingPayment) {
+      updateLocalOrderStatus(pendingPayment.orderId, 'CONFIRMED', 'PAID', details.paidAt);
+      setOrderSuccess({ orderId: pendingPayment.orderId });
+      setPendingPayment(null);
     }
   };
 
@@ -683,6 +719,47 @@ export default function CartPage() {
               </div>
             )}
 
+            {/* Thanh chọn nhanh hồ sơ người nhận mẫu */}
+            <div style={{
+              background: '#f8fafc',
+              border: '1px dashed #cbd5e1',
+              borderRadius: '12px',
+              padding: '10px 12px',
+              marginBottom: '14px',
+            }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
+                ⚡ Điền nhanh thông tin người nhận mẫu:
+              </div>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {DEMO_ACCOUNTS.slice(0, 3).map((acc) => (
+                  <button
+                    key={acc.id}
+                    type="button"
+                    onClick={() => {
+                      setFullName(acc.fullName);
+                      setPhone(acc.phone);
+                      setAddressLine(acc.address.addressLine);
+                      setDistrict(acc.address.district);
+                      setCity(acc.address.city);
+                      setWard(acc.address.ward);
+                    }}
+                    style={{
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      background: '#ffffff',
+                      border: '1px solid #e2e8f0',
+                      cursor: 'pointer',
+                      color: '#0f172a',
+                    }}
+                  >
+                    {acc.avatar} {acc.fullName}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <form onSubmit={handleConfirmCheckout} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Họ và tên người nhận</label>
@@ -772,9 +849,9 @@ export default function CartPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {[
                     { key: 'COD', label: 'Thanh toán khi nhận hàng (COD)' },
-                    { key: 'VNPAY', label: 'Cổng thanh toán VNPAY' },
-                    { key: 'MOMO', label: 'Ví điện tử MoMo' },
-                    { key: 'BANK_TRANSFER', label: 'Chuyển khoản ngân hàng trực tiếp' },
+                    { key: 'VNPAY', label: 'Cổng VNPay (QR & Thẻ ATM Sandbox)' },
+                    { key: 'MOMO', label: 'Ví điện tử MoMo (Sandbox Test)' },
+                    { key: 'BANK_TRANSFER', label: 'Chuyển khoản VietQR 24/7 (Quét mã tự động)' },
                   ].map((m) => (
                     <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
                       <input
@@ -822,6 +899,24 @@ export default function CartPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Payment Simulator Modal */}
+      {pendingPayment && (
+        <PaymentSimulatorModal
+          isOpen={!!pendingPayment}
+          orderId={pendingPayment.orderId}
+          orderNumber={pendingPayment.orderNumber}
+          amount={pendingPayment.amount}
+          initialMethod={pendingPayment.method}
+          onClose={() => {
+            // Close simulator and still allow buyer to view order
+            const oid = pendingPayment.orderId;
+            setPendingPayment(null);
+            setOrderSuccess({ orderId: oid });
+          }}
+          onSuccess={handlePaymentSimulatorSuccess}
+        />
       )}
     </div>
   );

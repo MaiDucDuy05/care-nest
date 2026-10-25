@@ -21,12 +21,14 @@ import {
 import { LocaleSwitcher } from '@/components/ui/locale-switcher';
 import { cartService, CART_UPDATED_EVENT } from '@/services/cart.service';
 import { getToken } from '@/lib/api-client';
+import { authService } from '@/services/auth.service';
 
 export function ShopHeader() {
   const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   const [cartCount, setCartCount] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCartBouncing, setIsCartBouncing] = useState(false);
 
@@ -49,6 +51,14 @@ export function ShopHeader() {
     const token = getToken();
     setIsLoggedIn(!!token);
     updateCartInfo();
+
+    if (token) {
+      authService.me(token).then((profile) => {
+        if (isMounted && profile?.fullName) {
+          setUserName(profile.fullName);
+        }
+      }).catch(() => {});
+    }
 
     const handleCartUpdated = (e?: Event) => {
       if (e && 'detail' in e && (e as CustomEvent).detail?.items) {
@@ -226,7 +236,7 @@ export function ShopHeader() {
             className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-teal-600 hover:bg-teal-700 text-white shadow-xs transition-colors"
           >
             <User size={16} />
-            <span>{isLoggedIn ? 'Tài Khoản' : 'Đăng Nhập'}</span>
+            <span>{isLoggedIn ? (userName ? userName.split(' ').slice(-2).join(' ') : 'Tài Khoản') : 'Đăng Nhập'}</span>
           </Link>
 
           {/* Mobile Menu Toggle */}
