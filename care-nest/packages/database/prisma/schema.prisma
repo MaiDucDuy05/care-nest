@@ -202,6 +202,34 @@ enum WalletEntryKind {
   ADJUSTMENT
 }
 
+enum ConversationType {
+  BUYER_SELLER
+  CARE_CIRCLE
+  PHARMACIST_CONSULT
+}
+
+enum ParticipantRole {
+  BUYER
+  SELLER
+  CAREGIVER
+  PHARMACIST
+  SYSTEM
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  PRODUCT_SNIPPET
+  ORDER_SNIPPET
+  SYSTEM_ALERT
+}
+
+enum MessageStatus {
+  SENT
+  DELIVERED
+  READ
+}
+
 // -------------------------------------------------------------------------
 // 1. User — every account on the platform (also includes caregivers)
 // -------------------------------------------------------------------------
@@ -240,6 +268,8 @@ model User {
   notificationPreference NotificationPreference?
   pushSubscriptions      PushSubscription[]
   reviews                Review[]
+  chatParticipants       ConversationParticipant[]
+  sentChatMessages       ChatMessage[]
 
   @@index([role, status])
   @@index([email])
@@ -280,6 +310,7 @@ model Seller {
   wallet        SellerWallet?
   payouts       Payout[]
   reviews       Review[]
+  conversations Conversation[]
 
   @@index([status])
   @@index([storeSlug])
@@ -987,4 +1018,79 @@ model Review {
 
   @@index([sellerId, createdAt])
   @@map("reviews")
+}
+
+// -------------------------------------------------------------------------
+// Real-time Chat Models (Buyer <-> Seller, Care Circle, Telehealth)
+// -------------------------------------------------------------------------
+
+model Conversation {
+  id            String           @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  type          ConversationType @default(BUYER_SELLER)
+  title         String?
+  sellerId      String?          @db.Uuid
+  seller        Seller?          @relation(fields: [sellerId], references: [id], onDelete: SetNull)
+  metadata      Json?
+  lastMessageAt DateTime         @default(now())
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  participants ConversationParticipant[]
+  messages     ChatMessage[]
+
+  @@index([sellerId])
+  @@index([lastMessageAt(sort: Desc)])
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  id             String          @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  conversationId String          @db.Uuid
+  conversation   Conversation    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String          @db.Uuid
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           ParticipantRole @default(BUYER)
+  lastReadAt     DateTime        @default(now())
+  isMuted        Boolean         @default(false)
+  joinedAt       DateTime        @default(now())
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_participants")
+}
+
+model ChatMessage {
+  id             String        @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  conversationId String        @db.Uuid
+  conversation   Conversation  @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String        @db.Uuid
+  sender         User          @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  type           MessageType   @default(TEXT)
+  content        String        @db.Text
+  metadata       Json?
+  status         MessageStatus @default(SENT)
+  isEdited       Boolean       @default(false)
+  isDeleted      Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  attachments MessageAttachment[]
+
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@index([senderId])
+  @@map("chat_messages")
+}
+
+model MessageAttachment {
+  id        String      @id @default(dbgenerated("uuidv7()")) @db.Uuid
+  messageId String      @db.Uuid
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  fileUrl   String
+  fileName  String
+  fileType  String
+  fileSize  Int
+  createdAt DateTime    @default(now())
+
+  @@index([messageId])
+  @@map("message_attachments")
 }

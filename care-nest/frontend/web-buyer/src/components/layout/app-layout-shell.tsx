@@ -5,6 +5,7 @@ import { ShopHeader } from './shop-header';
 import { ShopFooter } from './shop-footer';
 import { HealthHeader } from './health-header';
 import { HealthFooter } from './health-footer';
+import { FloatingChatWidget } from '@/components/chat/floating-chat-widget';
 
 interface AppLayoutShellProps {
   children: React.ReactNode;
@@ -24,19 +25,21 @@ export function AppLayoutShell({ children }: AppLayoutShellProps) {
 
   if (isHealthDashboard) {
     return (
-      <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+      <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 relative">
         <HealthHeader />
         <main className="flex-1">{children}</main>
         <HealthFooter />
+        <FloatingChatWidget />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-slate-900">
+    <div className="min-h-screen flex flex-col bg-white text-slate-900 relative">
       <ShopHeader />
       <main className="flex-1">{children}</main>
       <ShopFooter />
+      <FloatingChatWidget />
     </div>
   );
 }

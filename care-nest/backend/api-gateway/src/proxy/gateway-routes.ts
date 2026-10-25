@@ -50,6 +50,9 @@ export const GATEWAY_ROUTES: RouteMapping[] = [
 
   // Shipping Service (Port 3009)
   { prefix: `${API_PREFIX}/shipments`, targetEnvKey: 'SHIPPING_SERVICE_URL', defaultUrl: 'http://localhost:3009', serviceName: 'shipping-service' },
+
+  // Chat Service (Port 3010)
+  { prefix: `${API_PREFIX}/chat`, targetEnvKey: 'CHAT_SERVICE_URL', defaultUrl: 'http://localhost:3010', serviceName: 'chat-service' },
 ];
 
 export function resolveTargetUrl(path: string): { targetBase: string; serviceName: string } | null {

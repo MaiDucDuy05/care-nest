@@ -17,9 +17,9 @@ const CATALOG_API = API_GATEWAY || process.env.NEXT_PUBLIC_CATALOG_API_URL || 'h
 const ORDER_API = API_GATEWAY || process.env.NEXT_PUBLIC_ORDER_API_URL || 'http://localhost:3004';
 const PAYMENT_API = API_GATEWAY || process.env.NEXT_PUBLIC_PAYMENT_API_URL || 'http://localhost:3005';
 const SHIPPING_API = API_GATEWAY || process.env.NEXT_PUBLIC_SHIPPING_API_URL || 'http://localhost:3009';
+const CHAT_API = API_GATEWAY || process.env.NEXT_PUBLIC_CHAT_API_URL || 'http://localhost:3010';
 
-
-export { AUTH_API, CATALOG_API, ORDER_API, PAYMENT_API, SHIPPING_API, API_GATEWAY };
+export { AUTH_API, CATALOG_API, ORDER_API, PAYMENT_API, SHIPPING_API, CHAT_API, API_GATEWAY };
 
 export type ApiError = Error & { status?: number };
 
