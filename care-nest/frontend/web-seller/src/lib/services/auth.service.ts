@@ -21,19 +21,76 @@ const MOCK_SELLER: SellerProfile = {
   createdAt: new Date().toISOString(),
 };
 
+type AuthUser = {
+  id?: string;
+  sub?: string;
+  userId?: string;
+  email?: string;
+  fullName?: string;
+  phone?: string;
+  role?: string;
+  [key: string]: unknown;
+};
+
+type AuthResponse = {
+  accessToken?: string;
+  token?: string;
+  user?: AuthUser;
+  seller?: AuthUser;
+};
+
+const MOCK_SELLER_EMAILS = new Set(
+  [
+    MOCK_SELLER.email,
+    'seller.wonlex@carenest.vn',
+    'seller.medtech@carenest.vn',
+    process.env.NEXT_PUBLIC_MOCK_SELLER_EMAIL,
+  ]
+    .filter((email): email is string => Boolean(email))
+    .map((email) => email.trim().toLowerCase())
+);
+const MOCK_SELLER_PASSWORD = process.env.NEXT_PUBLIC_MOCK_SELLER_PASSWORD || 'Seller@123456';
+const WRONG_PORTAL_ERROR = 'Tài khoản này không có vai trò người bán. Hãy đăng nhập từ đúng cổng.';
+
+function toSellerProfile(user: AuthUser): SellerProfile {
+  return {
+    ...MOCK_SELLER,
+    ...user,
+    id: user.id ?? user.sub ?? user.userId ?? MOCK_SELLER.id,
+    email: user.email ?? MOCK_SELLER.email,
+    fullName: user.fullName ?? user.email ?? MOCK_SELLER.fullName,
+    phone: user.phone ?? MOCK_SELLER.phone,
+    role: 'SELLER',
+  } as SellerProfile;
+}
+
 export const authService = {
-  async login(email: string, password: string): Promise<{ token: string; seller: SellerProfile }> {
+  async login(email: string, password: string): Promise<void> {
+    clearToken();
+    const normalizedEmail = email.trim().toLowerCase();
+
     if (USE_MOCK) {
-      const token = 'mock.' + btoa(email + ':' + Date.now());
+      if (!MOCK_SELLER_EMAILS.has(normalizedEmail) || password !== MOCK_SELLER_PASSWORD) {
+        throw new Error('Thông tin đăng nhập demo người bán không đúng.');
+      }
+      const token = 'mock.seller.' + btoa(normalizedEmail + ':' + Date.now());
       setToken(token);
-      return { token, seller: { ...MOCK_SELLER, email } };
+      return;
     }
-    const data = await apiFetch<{ accessToken: string; seller: SellerProfile }>(
+
+    const data = await apiFetch<AuthResponse>(
       `${AUTH_API}/api/v1/auth/login`,
       { method: 'POST', body: JSON.stringify({ email, password }) }
     );
-    setToken(data.accessToken);
-    return { token: data.accessToken, seller: data.seller };
+    const user = data.user ?? data.seller;
+    if (user?.role !== 'SELLER') {
+      clearToken();
+      throw new Error(WRONG_PORTAL_ERROR);
+    }
+
+    const token = data.accessToken ?? data.token;
+    if (!token) throw new Error('Máy chủ không trả về access token.');
+    setToken(token);
   },
 
   async register(input: {
@@ -43,23 +100,43 @@ export const authService = {
     phone: string;
   }): Promise<{ token: string; seller: SellerProfile }> {
     if (USE_MOCK) {
-      const token = 'mock.' + btoa(input.email + ':' + Date.now());
+      const token = 'mock.seller.' + btoa(input.email.trim().toLowerCase() + ':' + Date.now());
       setToken(token);
       return { token, seller: { ...MOCK_SELLER, ...input } };
     }
-    const data = await apiFetch<{ accessToken: string; seller: SellerProfile }>(
+    const data = await apiFetch<AuthResponse>(
       `${AUTH_API}/api/v1/auth/register`,
       { method: 'POST', body: JSON.stringify({ ...input, role: 'SELLER' }) }
     );
-    setToken(data.accessToken);
-    return { token: data.accessToken, seller: data.seller };
+    const user = data.user ?? data.seller;
+    if (user?.role !== 'SELLER') {
+      clearToken();
+      throw new Error(WRONG_PORTAL_ERROR);
+    }
+    const token = data.accessToken ?? data.token;
+    if (!token) throw new Error('Máy chủ không trả về access token.');
+    setToken(token);
+    return { token, seller: toSellerProfile(user) };
   },
 
   async me(): Promise<SellerProfile> {
     const token = getToken();
     if (!token) throw new Error('not authenticated');
-    if (USE_MOCK) return MOCK_SELLER;
-    return apiFetch<SellerProfile>(`${AUTH_API}/api/v1/auth/me`, { token });
+    if (USE_MOCK) {
+      if (!token.startsWith('mock.seller.')) {
+        clearToken();
+        throw new Error(WRONG_PORTAL_ERROR);
+      }
+      return MOCK_SELLER;
+    }
+
+    const data = await apiFetch<{ user?: AuthUser } & AuthUser>(`${AUTH_API}/api/v1/auth/me`, { token });
+    const user = data.user ?? data;
+    if (user.role !== 'SELLER') {
+      clearToken();
+      throw new Error(WRONG_PORTAL_ERROR);
+    }
+    return toSellerProfile(user);
   },
 
   logout(): void {

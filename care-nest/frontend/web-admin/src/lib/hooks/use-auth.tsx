@@ -15,6 +15,11 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const TOKEN_KEY = 'admin_token';
+const ADMIN_ROLES: string[] = ['ADMIN', 'SUPPORT', 'MEDICAL_REVIEWER'];
+
+function hasAdminRole(role?: string): boolean {
+  return Boolean(role && ADMIN_ROLES.includes(role));
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -24,16 +29,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const stored = localStorage.getItem(TOKEN_KEY);
     if (stored) {
-      setToken(stored);
       apiClient.auth
         .me(stored)
         .then((u) => {
+          if (!hasAdminRole(u.role)) {
+            localStorage.removeItem(TOKEN_KEY);
+            setToken(null);
+            setUser(null);
+            return;
+          }
+          setToken(stored);
           setUser(u);
-          setIsLoading(false);
         })
         .catch(() => {
           localStorage.removeItem(TOKEN_KEY);
           setToken(null);
+          setUser(null);
+        })
+        .finally(() => {
           setIsLoading(false);
         });
     } else {
@@ -42,10 +55,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { token: t, user: u } = await apiClient.auth.login({ email, password });
-    localStorage.setItem(TOKEN_KEY, t);
-    setToken(t);
-    setUser(u);
+    localStorage.removeItem(TOKEN_KEY);
+    setToken(null);
+    setUser(null);
+
+    const response = await apiClient.auth.login({ email, password });
+    if (!hasAdminRole(response.user?.role)) {
+      throw new Error('Tài khoản này không có quyền truy cập cổng quản trị.');
+    }
+
+    const authToken = response.accessToken ?? response.token;
+    if (!authToken) throw new Error('Máy chủ không trả về access token.');
+    localStorage.setItem(TOKEN_KEY, authToken);
+    setToken(authToken);
+    setUser(response.user);
   }, []);
 
   const logout = useCallback(() => {

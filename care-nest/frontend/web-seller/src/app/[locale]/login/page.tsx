@@ -100,7 +100,8 @@ export default function LoginPage() {
           </p>
 
           <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-light)' }}>
-            {tErr('error')} dev? Set <code>NEXT_PUBLIC_USE_MOCK_AUTH=true</code>
+            {tErr('error')} dev? Set <code>NEXT_PUBLIC_USE_MOCK_AUTH=true</code>; demo seller:{' '}
+            <code>demo.seller@carenest.vn</code> / <code>Seller@123456</code>
           </p>
         </form>
       </div>

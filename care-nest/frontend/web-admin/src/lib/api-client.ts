@@ -34,13 +34,14 @@ export const apiClient = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(credentials),
       });
-      return handleResponse<{ token: string; user: AuthUser }>(res);
+      return handleResponse<{ accessToken?: string; token?: string; user: AuthUser }>(res);
     },
     async me(token: string) {
       const res = await fetch(`${AUTH_API}/api/v1/auth/me`, {
         headers: authHeaders(token),
       });
-      return handleResponse<AuthUser>(res);
+      const response = await handleResponse<{ user?: AuthUser } & AuthUser>(res);
+      return (response.user ?? response) as AuthUser;
     },
     async refresh(token: string) {
       const res = await fetch(`${AUTH_API}/api/v1/auth/refresh`, {
@@ -374,7 +375,7 @@ export interface AuthUser {
   id: string;
   email: string;
   fullName: string;
-  role: 'ADMIN' | 'SUPPORT' | 'MEDICAL_REVIEWER' | 'USER' | 'SELLER';
+  role: 'ADMIN' | 'SUPPORT' | 'MEDICAL_REVIEWER' | 'USER' | 'SELLER' | 'BUYER' | 'CAREGIVER' | 'ELDER';
   avatarUrl?: string;
   status: string;
   createdAt: string;

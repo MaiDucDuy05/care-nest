@@ -25,8 +25,9 @@ export default function LoginPage() {
       await login(email, password);
       router.push('/');
     } catch (err) {
-      setError(t('invalidCredentials'));
-      toast('error', t('invalidCredentials'));
+      const message = err instanceof Error ? err.message : t('invalidCredentials');
+      setError(message);
+      toast('error', message);
     } finally {
       setLoading(false);
     }
