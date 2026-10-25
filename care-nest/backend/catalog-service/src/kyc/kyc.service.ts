@@ -274,13 +274,24 @@ export class KycService {
    * Get single seller KYC details for admin review matching KycDetailResponse.
    */
   async getByIdAdmin(sellerId: string): Promise<any> {
-    const seller = await this.prisma.seller.findUnique({
+    let seller = await this.prisma.seller.findUnique({
       where: { id: sellerId },
       include: {
         user: { select: { id: true, email: true, fullName: true, phone: true } },
         kycDocs: { orderBy: { createdAt: 'desc' } },
       },
     });
+
+    if (!seller) {
+      seller = await this.prisma.seller.findUnique({
+        where: { userId: sellerId },
+        include: {
+          user: { select: { id: true, email: true, fullName: true, phone: true } },
+          kycDocs: { orderBy: { createdAt: 'desc' } },
+        },
+      });
+    }
+
     if (!seller) throw new NotFoundException(`Không tìm thấy seller ${sellerId}`);
 
     return {
@@ -311,19 +322,23 @@ export class KycService {
    * Admin approves a KYC submission.
    */
   async approveAdmin(sellerId: string, reason?: string): Promise<any> {
-    const seller = await this.prisma.seller.findUnique({ where: { id: sellerId } });
+    let seller = await this.prisma.seller.findUnique({ where: { id: sellerId } });
+    if (!seller) {
+      seller = await this.prisma.seller.findUnique({ where: { userId: sellerId } });
+    }
     if (!seller) throw new NotFoundException(`Không tìm thấy seller ${sellerId}`);
 
+    const resolvedSellerId = seller.id;
     await this.prisma.$transaction(async (tx) => {
       await tx.sellerKycDocument.updateMany({
-        where: { sellerId },
+        where: { sellerId: resolvedSellerId },
         data: {
           status: KycStatus.APPROVED,
           reviewedAt: new Date(),
         },
       });
       await tx.seller.update({
-        where: { id: sellerId },
+        where: { id: resolvedSellerId },
         data: {
           status: SellerStatus.ACTIVE,
           kycStatus: KycStatus.APPROVED,
@@ -337,12 +352,16 @@ export class KycService {
    * Admin rejects a KYC submission.
    */
   async rejectAdmin(sellerId: string, reason = 'Từ chối bởi quản trị viên'): Promise<any> {
-    const seller = await this.prisma.seller.findUnique({ where: { id: sellerId } });
+    let seller = await this.prisma.seller.findUnique({ where: { id: sellerId } });
+    if (!seller) {
+      seller = await this.prisma.seller.findUnique({ where: { userId: sellerId } });
+    }
     if (!seller) throw new NotFoundException(`Không tìm thấy seller ${sellerId}`);
 
+    const resolvedSellerId = seller.id;
     await this.prisma.$transaction(async (tx) => {
       await tx.sellerKycDocument.updateMany({
-        where: { sellerId },
+        where: { sellerId: resolvedSellerId },
         data: {
           status: KycStatus.REJECTED,
           rejectionReason: reason,
@@ -350,7 +369,7 @@ export class KycService {
         },
       });
       await tx.seller.update({
-        where: { id: sellerId },
+        where: { id: resolvedSellerId },
         data: {
           status: SellerStatus.REJECTED,
           kycStatus: KycStatus.REJECTED,

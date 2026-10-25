@@ -58,12 +58,12 @@ export const apiClient = {
   },
 
   kyc: {
-    async listPending(params?: { page?: number; limit?: number }) {
+    async listPending(params?: { page?: number; limit?: number }, token?: string) {
       const q = new URLSearchParams();
       if (params?.page) q.set('page', String(params.page));
       if (params?.limit) q.set('limit', String(params.limit ?? 50));
       const res = await fetch(`${CATALOG_API}/api/v1/kyc/admin/pending?${q}`, {
-        headers: authHeaders(),
+        headers: authHeaders(token),
       });
       return handleResponse<KycListResponse>(res);
     },
@@ -99,14 +99,14 @@ export const apiClient = {
   },
 
   products: {
-    async listPending(params?: { page?: number; limit?: number; search?: string }) {
+    async listPending(params?: { page?: number; limit?: number; search?: string }, token?: string) {
       const q = new URLSearchParams();
       q.set('status', 'PENDING_REVIEW');
       if (params?.page) q.set('page', String(params.page));
       if (params?.limit) q.set('limit', String(params.limit ?? 50));
       if (params?.search) q.set('search', params.search);
       const res = await fetch(`${CATALOG_API}/api/v1/products/admin?${q}`, {
-        headers: authHeaders(),
+        headers: authHeaders(token),
       });
       return handleResponse<ProductListResponse>(res);
     },
@@ -184,14 +184,17 @@ export const apiClient = {
   },
 
   orders: {
-    async list(params?: {
-      page?: number;
-      limit?: number;
-      search?: string;
-      status?: string;
-      from?: string;
-      to?: string;
-    }) {
+    async list(
+      params?: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        status?: string;
+        from?: string;
+        to?: string;
+      },
+      token?: string,
+    ) {
       const q = new URLSearchParams();
       if (params?.page) q.set('page', String(params.page));
       if (params?.limit) q.set('limit', String(params.limit ?? 50));
@@ -200,7 +203,7 @@ export const apiClient = {
       if (params?.from) q.set('from', params.from);
       if (params?.to) q.set('to', params.to);
       const res = await fetch(`${ORDER_API}/api/v1/orders/admin?${q}`, {
-        headers: authHeaders(),
+        headers: authHeaders(token),
       });
       return handleResponse<OrderListResponse>(res);
     },
@@ -221,13 +224,16 @@ export const apiClient = {
   },
 
   alerts: {
-    async list(params?: {
-      page?: number;
-      limit?: number;
-      severity?: string;
-      type?: string;
-      status?: string;
-    }) {
+    async list(
+      params?: {
+        page?: number;
+        limit?: number;
+        severity?: string;
+        type?: string;
+        status?: string;
+      },
+      token?: string,
+    ) {
       const q = new URLSearchParams();
       if (params?.page) q.set('page', String(params.page));
       if (params?.limit) q.set('limit', String(params.limit ?? 50));
@@ -235,7 +241,7 @@ export const apiClient = {
       if (params?.type) q.set('type', params.type);
       if (params?.status) q.set('status', params.status);
       const res = await fetch(`${ALERT_API}/api/v1/alerts/admin?${q}`, {
-        headers: authHeaders(),
+        headers: authHeaders(token),
       });
       return handleResponse<AlertListResponse>(res);
     },
@@ -262,16 +268,19 @@ export const apiClient = {
   },
 
   audit: {
-    async list(params?: {
-      page?: number;
-      limit?: number;
-      actor?: string;
-      action?: string;
-      entityType?: string;
-      entityId?: string;
-      from?: string;
-      to?: string;
-    }) {
+    async list(
+      params?: {
+        page?: number;
+        limit?: number;
+        actor?: string;
+        action?: string;
+        entityType?: string;
+        entityId?: string;
+        from?: string;
+        to?: string;
+      },
+      token?: string,
+    ) {
       const q = new URLSearchParams();
       if (params?.page) q.set('page', String(params.page));
       if (params?.limit) q.set('limit', String(params.limit ?? 50));
@@ -282,7 +291,7 @@ export const apiClient = {
       if (params?.from) q.set('from', params.from);
       if (params?.to) q.set('to', params.to);
       const res = await fetch(`${AUTH_API}/api/v1/audit?${q}`, {
-        headers: authHeaders(),
+        headers: authHeaders(token),
       });
       return handleResponse<AuditListResponse>(res);
     },

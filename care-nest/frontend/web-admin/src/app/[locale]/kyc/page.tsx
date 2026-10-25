@@ -1,15 +1,16 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { apiClient, type KycDocumentAdmin } from '@/lib/api-client';
 import { KycQueueTable } from '@/components/kyc/kyc-queue-table';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/lib/hooks/use-auth';
 
 export default function KycPage() {
   const t = useTranslations('kyc');
   const router = useRouter();
+  const { token, isLoading: authLoading } = useAuth();
   const [data, setData] = useState<KycDocumentAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -18,21 +19,22 @@ export default function KycPage() {
   const fetchData = useCallback(async (p = 1) => {
     setLoading(true);
     try {
-      const res = await apiClient.kyc.listPending({ page: p, limit: 50 });
-      setData(res.data);
-      setTotalPages(res.totalPages);
-      setPage(res.page);
-    } catch {
-      // ignore
+      const res = await apiClient.kyc.listPending({ page: p, limit: 50 }, token ?? undefined);
+      setData(res.data || []);
+      setTotalPages(res.totalPages || 1);
+      setPage(res.page || 1);
+    } catch (err) {
+      console.error('Failed to fetch pending KYC:', err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [token]);
 
-  // Initial load
-  if (data.length === 0 && !loading) {
-    fetchData();
-  }
+  useEffect(() => {
+    if (!authLoading) {
+      fetchData(1);
+    }
+  }, [authLoading, fetchData]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -44,7 +46,7 @@ export default function KycPage() {
       <KycQueueTable
         data={data}
         loading={loading}
-        onView={(item) => router.push(`/kyc/${item.userId}`)}
+        onView={(item) => router.push(`/kyc/${item.id || item.userId}`)}
         page={page}
         totalPages={totalPages}
         onPageChange={fetchData}
