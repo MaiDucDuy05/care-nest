@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Param, Query, Body, UseGuards, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Body, UseGuards, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { OrderStatus } from '@carenest/database';
 import { OrdersService } from './orders.service.js';
 import { CheckoutSchema, UpdateOrderStatusSchema } from './dto/order.dto.js';
@@ -28,7 +28,13 @@ export class OrdersController {
   ): Promise<any> {
     const p = parseInt(page, 10) || 1;
     const ps = Math.min(parseInt(pageSize, 10) || 20, 100);
+    if (user.role === 'SELLER') {
+      return this.ordersService.listForSellerUser(user.id, p, ps);
+    }
     if (sellerId) {
+      if (user.role !== 'ADMIN') {
+        throw new ForbiddenException('Chỉ quản trị viên mới được xem đơn của cửa hàng khác');
+      }
       return this.ordersService.listForSeller(sellerId, p, ps);
     }
     return this.ordersService.listForBuyer(user.id, p, ps);
@@ -74,7 +80,7 @@ export class OrdersController {
     // Authorization: sellers can move their orders forward; buyers can confirm delivery; admins can do anything.
     if (user.role !== 'ADMIN') {
       const order = await this.ordersService.getOrder(user.id, id, false);
-      const isSeller = order.sellerId === user.id;
+      const isSeller = order.sellerId === user.id || order.seller?.userId === user.id;
       const isBuyerConfirmingDelivery = order.buyerId === user.id && parsed.data.status === OrderStatus.DELIVERED;
       if (!isSeller && !isBuyerConfirmingDelivery) {
         throw new NotFoundException(`Không tìm thấy đơn hàng ${id}`);

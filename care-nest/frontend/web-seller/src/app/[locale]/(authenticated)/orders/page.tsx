@@ -9,12 +9,13 @@ import type { Order, OrderStatus } from '@/lib/types';
 const formatVnd = (n: number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
 
 const STATUS_COLOR: Record<OrderStatus, string> = {
-  PENDING: 'badge-amber',
+  CREATED: 'badge-amber',
   CONFIRMED: 'badge-indigo',
   PACKING: 'badge-indigo',
   SHIPPED: 'badge-teal',
   DELIVERED: 'badge-green',
   CANCELLED: 'badge-red',
+  RETURNED: 'badge-red',
 };
 
 export default function OrdersListPage() {
@@ -51,7 +52,7 @@ export default function OrdersListPage() {
           onChange={(e) => setStatusFilter(e.target.value as OrderStatus | '')}
         >
           <option value="">Tất cả trạng thái</option>
-          {(['PENDING', 'CONFIRMED', 'PACKING', 'SHIPPED', 'DELIVERED', 'CANCELLED'] as OrderStatus[]).map((s) => (
+          {(['CREATED', 'CONFIRMED', 'PACKING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURNED'] as OrderStatus[]).map((s) => (
             <option key={s} value={s}>
               {t(`statuses.${s}`)}
             </option>

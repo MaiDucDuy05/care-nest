@@ -41,7 +41,7 @@ export interface KYCApplication {
   updatedAt: string;
 }
 
-export type ProductStatus = 'DRAFT' | 'ACTIVE' | 'INACTIVE';
+export type ProductStatus = 'DRAFT' | 'PENDING_REVIEW' | 'ACTIVE' | 'INACTIVE' | 'REJECTED';
 
 export interface Product {
   id: string;
@@ -49,6 +49,7 @@ export interface Product {
   name: string;
   slug: string;
   description?: string;
+  brand?: string | null;
   sku: string;
   priceVnd: number;
   categoryId: string;
@@ -62,12 +63,13 @@ export interface Product {
 }
 
 export type OrderStatus =
-  | 'PENDING'
+  | 'CREATED'
   | 'CONFIRMED'
   | 'PACKING'
   | 'SHIPPED'
   | 'DELIVERED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'RETURNED';
 
 export interface OrderItem {
   id: string;

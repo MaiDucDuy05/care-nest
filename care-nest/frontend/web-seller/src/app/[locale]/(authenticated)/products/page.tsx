@@ -70,6 +70,8 @@ export default function ProductsListPage() {
           <option value="ACTIVE">{t('active')}</option>
           <option value="INACTIVE">{t('inactive')}</option>
           <option value="DRAFT">{t('draft')}</option>
+          <option value="PENDING_REVIEW">{t('pendingReview')}</option>
+          <option value="REJECTED">{t('rejected')}</option>
         </select>
       </div>
 
@@ -105,8 +107,16 @@ export default function ProductsListPage() {
                   <td style={{ fontWeight: 600 }}>{formatVnd(p.priceVnd)}</td>
                   <td style={{ color: p.stock < 5 ? 'var(--danger)' : 'var(--text-main)' }}>{p.stock}</td>
                   <td>
-                    <span className={`badge badge-${p.status === 'ACTIVE' ? 'green' : p.status === 'DRAFT' ? 'amber' : 'slate'}`}>
-                      {p.status === 'ACTIVE' ? t('active') : p.status === 'DRAFT' ? t('draft') : t('inactive')}
+                    <span className={`badge badge-${p.status === 'ACTIVE' ? 'green' : p.status === 'PENDING_REVIEW' || p.status === 'DRAFT' ? 'amber' : p.status === 'REJECTED' ? 'red' : 'slate'}`}>
+                      {p.status === 'ACTIVE'
+                        ? t('active')
+                        : p.status === 'PENDING_REVIEW'
+                          ? t('pendingReview')
+                          : p.status === 'DRAFT'
+                            ? t('draft')
+                            : p.status === 'REJECTED'
+                              ? t('rejected')
+                              : t('inactive')}
                     </span>
                   </td>
                   <td>

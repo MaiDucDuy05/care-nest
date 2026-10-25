@@ -27,10 +27,16 @@ export async function apiFetch<T>(
   url: string,
   init?: RequestInit & { token?: string }
 ): Promise<T> {
+  const isFormData = typeof FormData !== 'undefined' && init?.body instanceof FormData;
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(init?.headers as Record<string, string> | undefined),
   };
+  if (isFormData) {
+    for (const key of Object.keys(headers)) {
+      if (key.toLowerCase() === 'content-type') delete headers[key];
+    }
+  }
   if (init?.token) headers.Authorization = `Bearer ${init.token}`;
 
   const res = await fetch(url, { ...init, headers });

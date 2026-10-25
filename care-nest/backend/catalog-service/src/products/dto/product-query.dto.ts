@@ -4,6 +4,7 @@ import { PaginationInputSchema } from '@carenest/shared-types';
 export const ProductQuerySchema = PaginationInputSchema.extend({
   categoryId: z.string().optional(),
   sellerId: z.string().optional(),
+  status: z.enum(['DRAFT', 'PENDING_REVIEW', 'ACTIVE', 'INACTIVE', 'REJECTED', 'ARCHIVED']).optional(),
   search: z.string().optional(),
   minPrice: z.coerce.number().min(0).optional(),
   maxPrice: z.coerce.number().min(0).optional(),

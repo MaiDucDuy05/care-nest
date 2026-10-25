@@ -80,12 +80,13 @@ export class ProxyService {
       );
 
       proxyReq.on('error', (err: NodeJS.ErrnoException) => {
-        this.logger.error(`Failed to proxy request to ${serviceName} (${targetUrl}): ${err.message}`);
+        const reason = err.message || err.code || 'Unknown proxy error';
+        this.logger.error(`Failed to proxy request to ${serviceName} (${targetUrl}): ${reason}`);
         if (!res.headersSent) {
           res.status(502).json({
             statusCode: 502,
             error: 'Bad Gateway',
-            message: `Downstream service '${serviceName}' unavailable: ${err.message}`,
+            message: `Downstream service '${serviceName}' unavailable: ${reason}`,
             service: serviceName,
           });
         }
@@ -100,7 +101,7 @@ export class ProxyService {
         proxyReq.setHeader('content-length', Buffer.byteLength(payload));
         proxyReq.write(payload);
         proxyReq.end();
-      } else if (req.readableEnded || req.complete) {
+      } else if (req.readableEnded) {
         proxyReq.end();
       } else {
         req.pipe(proxyReq);

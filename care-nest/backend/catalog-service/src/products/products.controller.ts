@@ -9,8 +9,10 @@ import {
   Body,
   UseGuards,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import type { Product, Prisma } from '@carenest/database';
+import { Roles, RolesGuard } from '@carenest/nestjs-common';
 import { ProductsService } from './products.service.js';
 import { ProductQuerySchema, type ProductQueryDto } from './dto/product-query.dto.js';
 import { CreateProductSchema, type CreateProductDto } from './dto/create-product.dto.js';
@@ -43,9 +45,11 @@ export class ProductsController {
   @UseGuards(JwtAuthGuard)
   async createSeller(
     @CurrentUser() user: { id: string },
-    @Body() body: any,
+    @Body() body: unknown,
   ): Promise<Product> {
-    return this.productsService.createForSeller(user.id, body);
+    const parsed = CreateProductSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException(parsed.error.errors);
+    return this.productsService.createForSeller(user.id, parsed.data);
   }
 
   @Put('seller/:id')
@@ -53,9 +57,11 @@ export class ProductsController {
   async updateSeller(
     @CurrentUser() user: { id: string },
     @Param('id') id: string,
-    @Body() body: any,
+    @Body() body: unknown,
   ): Promise<Product> {
-    return this.productsService.updateForSeller(user.id, id, body);
+    const parsed = UpdateProductSchema.safeParse(body);
+    if (!parsed.success) throw new BadRequestException(parsed.error.errors);
+    return this.productsService.updateForSeller(user.id, id, parsed.data);
   }
 
   @Delete('seller/:id')
@@ -73,16 +79,22 @@ export class ProductsController {
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.errors);
     }
-    return this.productsService.listProducts(parsed.data) as unknown as PaginatedProducts;
+    return this.productsService.listProducts({ ...parsed.data, status: 'ACTIVE' }) as unknown as PaginatedProducts;
   }
 
   @Get('admin')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async listAdmin(@Query() query: any): Promise<any> {
     const page = parseInt(query.page, 10) || 1;
     const limit = Math.min(parseInt(query.limit, 10) || 50, 100);
-    const status = query.status || undefined;
     const search = query.search || undefined;
-    const res = await this.productsService.listProducts({ page, limit, status, search } as any);
+    const res = await this.productsService.listProducts({
+      page,
+      pageSize: limit,
+      status: 'PENDING_REVIEW',
+      search,
+    });
     const data = res.items.map((p: any) => ({
       id: p.id,
       name: p.name,
@@ -104,6 +116,8 @@ export class ProductsController {
   }
 
   @Get('admin/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async getAdminOne(@Param('id') id: string): Promise<any> {
     const p = await this.productsService.getProductById(id);
     return {
@@ -123,42 +137,65 @@ export class ProductsController {
   }
 
   @Post('admin/:id/approve')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async approveAdmin(@Param('id') id: string): Promise<any> {
+    const product = await this.productsService.getProductById(id);
+    if (product.status !== 'PENDING_REVIEW') {
+      throw new BadRequestException('Only products awaiting review can be approved.');
+    }
     await this.productsService.updateProduct(id, { status: 'ACTIVE' } as any);
     return { success: true };
   }
 
   @Post('admin/:id/reject')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async rejectAdmin(@Param('id') id: string): Promise<any> {
+    const product = await this.productsService.getProductById(id);
+    if (product.status !== 'PENDING_REVIEW') {
+      throw new BadRequestException('Only products awaiting review can be rejected.');
+    }
     await this.productsService.updateProduct(id, { status: 'REJECTED' } as any);
     return { success: true };
   }
 
   @Get(':id')
   async getOne(@Param('id') id: string): Promise<Product | null> {
-    return this.productsService.getProductById(id) as unknown as Product | null;
+    const product = await this.productsService.getProductById(id);
+    if (product.status !== 'ACTIVE') {
+      throw new NotFoundException('Product is not available.');
+    }
+    return product as Product;
   }
 
   @Post()
-  async create(@Body() body: unknown): Promise<Product> {
+  @UseGuards(JwtAuthGuard)
+  async create(@CurrentUser() user: { id: string }, @Body() body: unknown): Promise<Product> {
     const parsed = CreateProductSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.errors);
     }
-    return this.productsService.createProduct(parsed.data) as unknown as Product;
+    return this.productsService.createForSeller(user.id, parsed.data);
   }
 
   @Put(':id')
-  async update(@Param('id') id: string, @Body() body: unknown): Promise<Product> {
+  @UseGuards(JwtAuthGuard)
+  async update(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() body: unknown,
+  ): Promise<Product> {
     const parsed = UpdateProductSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.errors);
     }
-    return this.productsService.updateProduct(id, parsed.data) as unknown as Product;
+    return this.productsService.updateForSeller(user.id, id, parsed.data);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string): Promise<Product> {
-    return this.productsService.deleteProduct(id) as unknown as Product;
+  @UseGuards(JwtAuthGuard)
+  async remove(@CurrentUser() user: { id: string }, @Param('id') id: string): Promise<Product> {
+    return this.productsService.deleteForSeller(user.id, id);
   }
 }

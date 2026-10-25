@@ -184,7 +184,20 @@ export class OrdersService {
   }
 
   async listForSeller(sellerId: string, page = 1, pageSize = 20): Promise<any> {
-    return this.ordersRepository.findBySeller(sellerId, page, pageSize);
+    const result = await this.ordersRepository.findBySeller(sellerId, page, pageSize);
+    return { ...result, items: result.items.map((order: any) => this.formatOrder(order)) };
+  }
+
+  async listForSellerUser(userId: string, page = 1, pageSize = 20): Promise<any> {
+    const prisma = getPrismaClient();
+    const seller = await prisma.seller.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+    if (!seller) {
+      return { items: [], total: 0, page, pageSize, hasMore: false };
+    }
+    return this.listForSeller(seller.id, page, pageSize);
   }
 
   /**
@@ -274,7 +287,8 @@ export class OrdersService {
   async markAsDelivered(userId: string, orderId: string, isAdmin = false): Promise<any> {
     const order = await this.ordersRepository.findById(orderId);
     if (!order) throw new NotFoundException(`Không tìm thấy đơn hàng ${orderId}`);
-    if (!isAdmin && order.buyerId !== userId && order.sellerId !== userId) {
+    const isSeller = order.sellerId === userId || order.seller?.userId === userId;
+    if (!isAdmin && order.buyerId !== userId && !isSeller) {
       throw new NotFoundException(`Không tìm thấy đơn hàng ${orderId}`);
     }
     if (order.status === OrderStatus.DELIVERED) {

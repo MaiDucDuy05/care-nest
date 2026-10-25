@@ -8,6 +8,7 @@ build/
 .next/
 out/
 *.tsbuildinfo
+**/uploads/products/
 
 # Turbo
 .turbo/

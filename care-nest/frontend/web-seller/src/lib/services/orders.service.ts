@@ -10,7 +10,7 @@ const MOCK_ORDERS: Order[] = [
     buyerId: 'buyer-1',
     buyerName: 'Trần Thị B',
     sellerId: 'seller-mock-1',
-    status: 'PENDING' as OrderStatus,
+    status: 'CREATED' as OrderStatus,
     totalVnd: 3380000,
     items: [
       {
@@ -46,10 +46,8 @@ interface OrderListResponse {
 
 export const ordersService = {
   /**
-   * List orders for the current seller. Pass the sellerId (the User
-   * id mapped to the seller record) so order-service filters by it.
-   * If no sellerId is given, returns the buyer's own orders — useful
-   * for pages that don't yet have the seller context loaded.
+   * The order service resolves a seller's profile from the authenticated
+   * user, so seller pages can list orders without sending a sellerId.
    */
   async list(sellerId?: string, params?: { status?: OrderStatus }): Promise<Order[]> {
     if (USE_MOCK) {

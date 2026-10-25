@@ -53,7 +53,11 @@ export class OrdersRepository {
         orderBy: { createdAt: 'desc' },
         skip,
         take: pageSize,
-        include: { items: true },
+        include: {
+          items: true,
+          buyer: { select: { id: true, fullName: true, email: true, phone: true } },
+          seller: { select: { id: true, userId: true, storeName: true } },
+        },
       }),
       this.prisma.order.count({ where: { sellerId, deletedAt: null } }),
     ]);

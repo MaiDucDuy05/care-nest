@@ -54,7 +54,7 @@ export default function DashboardPage() {
     );
   }
 
-  const pendingOrders = orders.filter((o) => o.status === 'PENDING' || o.status === 'CONFIRMED');
+  const pendingOrders = orders.filter((o) => o.status === 'CREATED' || o.status === 'CONFIRMED');
   const lowStock = products.filter((p) => p.stock < 5);
   const inStockImeis = imeis.filter((i) => i.status === 'IN_STOCK');
 

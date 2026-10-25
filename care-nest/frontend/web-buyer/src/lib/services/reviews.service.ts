@@ -55,54 +55,6 @@ async function jsonFetch<T>(url: string, init?: RequestInit & { token?: string }
   return (await res.json()) as T;
 }
 
-const DEMO_SELLER_REVIEWS: SellerReviews = {
-  items: [
-    {
-      id: 'rev-01',
-      rating: 5,
-      buyerName: 'Nguyễn Văn An',
-      orderId: 'CN-20261020-001',
-      createdAt: '2026-10-23T14:30:00.000Z',
-      comment: 'Máy đo huyết áp Omron HEM-7361T dùng rất tốt, kết nối bluetooth với app CareNest cực kỳ mượt mà. Bác sĩ ở nhà khen máy đo chuẩn như ở bệnh viện.',
-    },
-    {
-      id: 'rev-02',
-      rating: 5,
-      buyerName: 'Trần Thị Bích',
-      orderId: 'CN-20261019-002',
-      createdAt: '2026-10-22T09:15:00.000Z',
-      comment: 'Nút bấm SOS nhỏ gọn, mình gắn cạnh giường bà ngoại. Hôm trước bà bấm thử chuông reo lập tức trên điện thoại cả nhà, rất an tâm cho người già ở nhà một mình.',
-    },
-    {
-      id: 'rev-03',
-      rating: 5,
-      buyerName: 'Cụ Lê Hoàng Nam',
-      orderId: 'CN-20261018-003',
-      createdAt: '2026-10-21T16:45:00.000Z',
-      comment: 'Hàng chính hãng có tem bảo hành đầy đủ, giao nhanh trong ngày tại Hà Nội. Đóng gói cẩn thận 2 lớp chống sốc, nhân viên tư vấn rất tận tình.',
-    },
-    {
-      id: 'rev-04',
-      rating: 5,
-      buyerName: 'BS.CKII Nguyễn Văn Minh',
-      orderId: 'CN-20261015-004',
-      createdAt: '2026-10-19T11:20:00.000Z',
-      comment: 'Cảm biến giường ngủ radar theo dõi nhịp thở đêm rất nhạy, không cần phải đeo gì vào người cụ. Rất đáng giá cho người bệnh tim mạch và hô hấp.',
-    },
-    {
-      id: 'rev-05',
-      rating: 4,
-      buyerName: 'Hoàng Minh Tuấn',
-      orderId: 'CN-20261012-005',
-      createdAt: '2026-10-16T08:00:00.000Z',
-      comment: 'Nhiệt kế Microlife đo trán cực chuẩn, bấm 1 giây là có kết quả. Shop giao nhanh, tặng kèm pin xịn.',
-    },
-  ],
-  total: 128,
-  averageRating: 4.88,
-  ratingCount: 128,
-};
-
 export const reviewsService = {
   async listForSeller(sellerId: string, limit = 10, offset = 0): Promise<SellerReviews> {
     try {
@@ -110,7 +62,12 @@ export const reviewsService = {
         `${ORDER_API}/api/v1/orders/reviews?sellerId=${encodeURIComponent(sellerId)}&limit=${limit}&offset=${offset}`
       );
     } catch {
-      return DEMO_SELLER_REVIEWS;
+      return {
+        items: [],
+        total: 0,
+        averageRating: 0,
+        ratingCount: 0,
+      };
     }
   },
 

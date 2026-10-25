@@ -23,6 +23,16 @@ function withAvailableStock<T extends { inventory: InventoryStockRow[] }>(produc
   return { ...productData, stock };
 }
 
+function slugifyProductName(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
 @Injectable()
 export class ProductsRepository {
   private prisma: PrismaClient;
@@ -32,11 +42,12 @@ export class ProductsRepository {
   }
 
   async findMany(query: ProductQueryDto): Promise<PaginatedProducts> {
-    const { page, pageSize, categoryId, sellerId, search, isIotDevice } = query;
+    const { page, pageSize, categoryId, sellerId, status, search, isIotDevice } = query;
     const skip = (page - 1) * pageSize;
 
     const where: Prisma.ProductWhereInput = {
       deletedAt: null,
+      status: status ?? 'ACTIVE',
     };
 
     if (categoryId) where.categoryId = categoryId;
@@ -66,6 +77,7 @@ export class ProductsRepository {
         include: {
           category: true,
           images: true,
+          seller: { select: { storeName: true, storeSlug: true, ratingAvg: true } },
           inventory: { select: { quantity: true, reserved: true } },
         },
       }),
@@ -191,7 +203,7 @@ export class ProductsRepository {
       categoryId = defaultCat?.id;
     }
 
-    const slug = data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    const slug = data.slug || slugifyProductName(data.name);
     const created = await this.prisma.$transaction(async (tx) => {
       const product = await tx.product.create({
         data: {
@@ -200,15 +212,19 @@ export class ProductsRepository {
           name: data.name,
           slug,
           description: data.description || '',
+          brand: data.brand?.trim() || null,
           basePrice: data.price,
           compareAtPrice: data.compareAtPrice,
           sku: data.sku,
-          status: data.status ?? 'ACTIVE',
+          status: 'PENDING_REVIEW',
           isMedical: data.isMedical || false,
           isIotDevice: data.isIotDevice || false,
           iotDeviceModel: data.iotDeviceModel,
           requiresRx: data.requiresRx || false,
           requiresImei: data.requiresImei ?? true,
+          images: {
+            create: (data.images ?? []).map((url, position) => ({ url, position })),
+          },
         },
       });
       await tx.inventory.create({
@@ -230,6 +246,7 @@ export class ProductsRepository {
     const updateData: Prisma.ProductUpdateInput = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.description !== undefined) updateData.description = data.description;
+    if (data.brand !== undefined) updateData.brand = data.brand.trim() || null;
     if (data.price !== undefined) updateData.basePrice = data.price;
     if (data.sku !== undefined) updateData.sku = data.sku;
     if (data.status !== undefined) updateData.status = data.status;
@@ -241,6 +258,15 @@ export class ProductsRepository {
         where: { id },
         data: updateData,
       });
+
+      if (data.images !== undefined) {
+        await tx.productImage.deleteMany({ where: { productId: id } });
+        if (data.images.length > 0) {
+          await tx.productImage.createMany({
+            data: data.images.map((url, position) => ({ productId: id, url, position })),
+          });
+        }
+      }
 
       if (data.stock !== undefined) {
         const inventoryRows = await tx.inventory.findMany({

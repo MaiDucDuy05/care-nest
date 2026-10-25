@@ -43,19 +43,22 @@ let MOCK_PRODUCTS: Product[] = [
 export interface ProductInput {
   name: string;
   description?: string;
+  brand?: string;
   sku: string;
   priceVnd: number;
   categoryId: string;
   stock: number;
-  status: ProductStatus;
+  status?: ProductStatus;
   requiresImei?: boolean;
+  images?: string[];
 }
 
-type CatalogProduct = Omit<Product, 'priceVnd' | 'stock'> & {
+type CatalogProduct = Omit<Product, 'priceVnd' | 'stock' | 'images'> & {
   priceVnd?: number | string | null;
   basePrice?: number | string | null;
   stock?: number | string | null;
   inventory?: Array<{ quantity: number; reserved: number }>;
+  images?: Array<string | { url: string }> | null;
 };
 
 interface ProductListResponse {
@@ -77,6 +80,7 @@ function toSellerProduct(product: CatalogProduct): Product {
 
   return {
     ...product,
+    images: (product.images ?? []).map((image) => typeof image === 'string' ? image : image.url),
     priceVnd: Number.isFinite(priceVnd) ? priceVnd : 0,
     stock: Number.isFinite(stock) ? stock : 0,
   };
@@ -141,7 +145,7 @@ export const productsService = {
     }
     const token = getToken();
     if (!token) throw new Error('not authenticated');
-    const product = await apiFetch<CatalogProduct>(`${CATALOG_API}/api/v1/products/${id}`, { token });
+    const product = await apiFetch<CatalogProduct>(`${CATALOG_API}/api/v1/seller/products/${id}`, { token });
     return toSellerProduct(product);
   },
 
@@ -152,8 +156,9 @@ export const productsService = {
         id: 'p-' + Date.now(),
         sellerId: 'seller-mock-1',
         ...input,
+        status: 'PENDING_REVIEW',
         slug: input.name.toLowerCase().replace(/\s+/g, '-'),
-        images: [],
+        images: input.images ?? [],
         createdAt: now,
         updatedAt: now,
       };
@@ -178,6 +183,29 @@ export const productsService = {
       });
       return toSellerProduct(product);
     }
+  },
+
+  async uploadImage(file: File): Promise<string> {
+    if (USE_MOCK) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === 'string'
+          ? resolve(reader.result)
+          : reject(new Error('Could not read image file.'));
+        reader.onerror = () => reject(new Error('Could not read image file.'));
+        reader.readAsDataURL(file);
+      });
+    }
+    const token = getToken();
+    if (!token) throw new Error('not authenticated');
+    const formData = new FormData();
+    formData.append('file', file);
+    const result = await apiFetch<{ url: string }>(`${CATALOG_API}/api/v1/seller/products/images`, {
+      method: 'POST',
+      body: formData,
+      token,
+    });
+    return result.url;
   },
 
   async update(id: string, input: Partial<ProductInput>): Promise<Product> {

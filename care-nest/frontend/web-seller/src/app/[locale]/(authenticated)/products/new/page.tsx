@@ -10,15 +10,17 @@ import { productsService } from '@/lib/services/products.service';
 import { ChevronLeft } from 'lucide-react';
 import { Link } from '@/i18n/routing';
 import { CategorySelectField } from '@/components/products/category-select-field';
+import { ProductImageUploader } from '@/components/products/product-image-uploader';
 
 const schema = z.object({
   name: z.string().min(2, 'Bắt buộc'),
   description: z.string().optional(),
+  brand: z.string().optional(),
+  images: z.array(z.string()).default([]),
   sku: z.string().min(2, 'Bắt buộc'),
   priceVnd: z.coerce.number().min(0, 'Giá phải >= 0'),
   categoryId: z.string().min(1, 'Bắt buộc'),
   stock: z.coerce.number().int().min(0, 'Tồn kho phải >= 0'),
-  status: z.enum(['DRAFT', 'ACTIVE', 'INACTIVE']),
   requiresImei: z.boolean().default(true),
 });
 
@@ -29,6 +31,7 @@ export default function NewProductPage() {
   const tCommon = useTranslations('common');
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   const {
     register,
@@ -37,7 +40,7 @@ export default function NewProductPage() {
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { status: 'DRAFT', stock: 0, priceVnd: 0, requiresImei: true },
+    defaultValues: { stock: 0, priceVnd: 0, requiresImei: true, images: [] },
   });
 
   const onSubmit = async (data: FormValues) => {
@@ -59,10 +62,29 @@ export default function NewProductPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Field label={t('name')} reg={register('name')} err={errors.name} />
+        <Field label={t('brand')} reg={register('brand')} err={errors.brand} />
         <div>
           <label className="label">{t('create.description')}</label>
           <textarea className="textarea" {...register('description')} />
         </div>
+        <Controller
+          name="images"
+          control={control}
+          render={({ field }) => (
+            <ProductImageUploader
+              value={field.value ?? []}
+              onChange={field.onChange}
+              label={t('images')}
+              selectImagesText={t('selectImages')}
+              help={t('imageUploadHelp')}
+              uploadingText={t('uploadingImages')}
+              uploadFailedText={t('imageUploadFailed')}
+              maxImagesText={t('maxProductImages')}
+              removeImageText={t('removeImage')}
+              onUploadingChange={setIsUploadingImages}
+            />
+          )}
+        />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <Field label={t('sku')} reg={register('sku')} err={errors.sku} />
           <Controller
@@ -83,11 +105,10 @@ export default function NewProductPage() {
           <Field label={t('stock')} reg={register('stock')} err={errors.stock} type="number" />
           <div>
             <label className="label">{t('status')}</label>
-            <select className="select" {...register('status')}>
-              <option value="DRAFT">{t('draft')}</option>
-              <option value="ACTIVE">{t('active')}</option>
-              <option value="INACTIVE">{t('inactive')}</option>
-            </select>
+            <div className="input" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}>
+              {t('pendingReview')}
+            </div>
+            <p className="text-sm text-muted" style={{ marginTop: 4 }}>{t('reviewRequired')}</p>
           </div>
         </div>
 
@@ -128,7 +149,7 @@ export default function NewProductPage() {
         )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+          <button type="submit" className="btn btn-primary" disabled={isSubmitting || isUploadingImages}>
             {isSubmitting ? <span className="spinner" /> : t('create.submit')}
           </button>
         </div>

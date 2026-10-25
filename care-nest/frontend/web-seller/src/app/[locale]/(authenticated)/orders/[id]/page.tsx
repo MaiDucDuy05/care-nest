@@ -44,7 +44,7 @@ export default function OrderDetailPage({ params }: { params: { id: string } }) 
     return <div className="card" style={{ color: 'var(--danger)' }}>{error ?? 'Order not found'}</div>;
   }
 
-  const canPack = order.status === 'PENDING' || order.status === 'CONFIRMED';
+  const canPack = order.status === 'CONFIRMED';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 900 }}>
