@@ -20,7 +20,7 @@ interface DashboardMetrics {
 export default function DashboardPage() {
   const t = useTranslations('dashboard');
   const tAudit = useTranslations('audit');
-  const { user, token } = useAuth();
+  const { user, token, isLoading: authLoading } = useAuth();
 
   const [metrics, setMetrics] = useState<DashboardMetrics>({
     pendingKyc: '—',
@@ -35,7 +35,10 @@ export default function DashboardPage() {
     let mounted = true;
 
     async function loadDashboard() {
+      if (authLoading) return;
+
       try {
+        setLoading(true);
         const [kycRes, prodRes, ordRes, alertRes, auditRes] = await Promise.allSettled([
           apiClient.kyc.listPending({ page: 1, limit: 1 }),
           apiClient.products.listPending({ page: 1, limit: 1 }),
@@ -68,7 +71,7 @@ export default function DashboardPage() {
     return () => {
       mounted = false;
     };
-  }, [token]);
+  }, [token, authLoading]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>

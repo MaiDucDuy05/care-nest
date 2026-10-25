@@ -13,6 +13,7 @@ export const GATEWAY_ROUTES: RouteMapping[] = [
   { prefix: `${API_PREFIX}/auth`, targetEnvKey: 'AUTH_SERVICE_URL', defaultUrl: 'http://localhost:3001', serviceName: 'auth-service' },
   { prefix: `${API_PREFIX}/mfa`, targetEnvKey: 'AUTH_SERVICE_URL', defaultUrl: 'http://localhost:3001', serviceName: 'auth-service' },
   { prefix: `${API_PREFIX}/audit`, targetEnvKey: 'AUTH_SERVICE_URL', defaultUrl: 'http://localhost:3001', serviceName: 'auth-service' },
+  { prefix: `${API_PREFIX}/users`, targetEnvKey: 'AUTH_SERVICE_URL', defaultUrl: 'http://localhost:3001', serviceName: 'auth-service' },
 
   // Catalog Service (Port 3002)
   { prefix: `${API_PREFIX}/products`, targetEnvKey: 'CATALOG_SERVICE_URL', defaultUrl: 'http://localhost:3002', serviceName: 'catalog-service' },

@@ -42,6 +42,16 @@ export class SellerKycController {
     return this.kycService.submitSellerKyc(user.id, body, files || []);
   }
 
+  @Post('submit')
+  @UseInterceptors(AnyFilesInterceptor())
+  async submitSubmit(
+    @CurrentUser() user: { id: string },
+    @Body() body: any,
+    @UploadedFiles() files?: UploadedFile[],
+  ): Promise<any> {
+    return this.kycService.submitSellerKyc(user.id, body, files || []);
+  }
+
   /**
    * Seller checks their own KYC status.
    */
@@ -73,6 +83,42 @@ export class KycController {
         return this.kycService.submit(user.id, parsed.data);
       }
     }
+    return this.kycService.submitSellerKyc(user.id, body, files || []);
+  }
+
+  @Post()
+  @UseInterceptors(AnyFilesInterceptor())
+  async submitRoot(
+    @CurrentUser() user: { id: string },
+    @Body() body: any,
+    @UploadedFiles() files?: UploadedFile[],
+  ): Promise<any> {
+    if (body?.documents && !files?.length) {
+      const parsed = SubmitKycSchema.safeParse(body);
+      if (parsed.success) {
+        return this.kycService.submit(user.id, parsed.data);
+      }
+    }
+    return this.kycService.submitSellerKyc(user.id, body, files || []);
+  }
+
+  @Post('seller')
+  @UseInterceptors(AnyFilesInterceptor())
+  async submitSeller(
+    @CurrentUser() user: { id: string },
+    @Body() body: any,
+    @UploadedFiles() files?: UploadedFile[],
+  ): Promise<any> {
+    return this.kycService.submitSellerKyc(user.id, body, files || []);
+  }
+
+  @Post('seller/kyc')
+  @UseInterceptors(AnyFilesInterceptor())
+  async submitSellerKyc(
+    @CurrentUser() user: { id: string },
+    @Body() body: any,
+    @UploadedFiles() files?: UploadedFile[],
+  ): Promise<any> {
     return this.kycService.submitSellerKyc(user.id, body, files || []);
   }
 

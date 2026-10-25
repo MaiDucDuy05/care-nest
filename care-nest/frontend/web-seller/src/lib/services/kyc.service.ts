@@ -63,11 +63,30 @@ export const kycService = {
     Object.entries(input).forEach(([k, v]) => form.append(k, v));
     documentFiles.forEach((f) => form.append('documents', f));
 
-    const res = await fetch(`${CATALOG_API}/api/v1/seller/kyc`, {
+    let res = await fetch(`${CATALOG_API}/api/v1/seller/kyc`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: form,
     });
+
+    if (res.status === 404) {
+      // Fallback in case backend routing or active process uses /api/v1/kyc/submit
+      res = await fetch(`${CATALOG_API}/api/v1/kyc/submit`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+    }
+
+    if (res.status === 404) {
+      // Fallback to /api/v1/kyc
+      res = await fetch(`${CATALOG_API}/api/v1/kyc`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: form,
+      });
+    }
+
     if (!res.ok) {
       let errorMsg = 'Lỗi gửi hồ sơ KYC';
       try {

@@ -2,20 +2,24 @@
  * Admin API client — wraps HTTP calls to all backend microservices.
  */
 
-const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL;
+const API_GATEWAY = process.env.NEXT_PUBLIC_API_GATEWAY_URL || 'http://localhost:8080';
 
-const AUTH_API = API_GATEWAY || process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3001';
-const CATALOG_API = API_GATEWAY || process.env.NEXT_PUBLIC_CATALOG_API_URL || 'http://localhost:3002';
-const ORDER_API = API_GATEWAY || process.env.NEXT_PUBLIC_ORDER_API_URL || 'http://localhost:3004';
-const ALERT_API = API_GATEWAY || process.env.NEXT_PUBLIC_ALERT_API_URL || 'http://localhost:3007';
-const SUBSCRIPTION_API = API_GATEWAY || process.env.NEXT_PUBLIC_SUBSCRIPTION_API_URL || 'http://localhost:3008';
-const SHIPPING_API = API_GATEWAY || process.env.NEXT_PUBLIC_SHIPPING_API_URL || 'http://localhost:3009';
+const AUTH_API = process.env.NEXT_PUBLIC_AUTH_API_URL || API_GATEWAY;
+const CATALOG_API = process.env.NEXT_PUBLIC_CATALOG_API_URL || API_GATEWAY;
+const ORDER_API = process.env.NEXT_PUBLIC_ORDER_API_URL || API_GATEWAY;
+const ALERT_API = process.env.NEXT_PUBLIC_ALERT_API_URL || API_GATEWAY;
+const SUBSCRIPTION_API = process.env.NEXT_PUBLIC_SUBSCRIPTION_API_URL || API_GATEWAY;
+const SHIPPING_API = process.env.NEXT_PUBLIC_SHIPPING_API_URL || API_GATEWAY;
 
 
 function authHeaders(token?: string) {
+  const activeToken =
+    token ||
+    (typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null);
+
   return {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}`, 'X-Admin-Token': token } : {}),
+    ...(activeToken ? { Authorization: `Bearer ${activeToken}` } : {}),
   };
 }
 
