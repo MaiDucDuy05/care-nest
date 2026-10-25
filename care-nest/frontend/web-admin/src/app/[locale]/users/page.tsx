@@ -8,13 +8,15 @@ import { UserTable } from '@/components/users/user-table';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useDebounce } from '@/lib/hooks/use-debounce';
+import { useAuth } from '@/lib/hooks/use-auth';
 
-const ROLES = ['', 'BUYER', 'SELLER', 'ADMIN', 'CAREGIVER', 'MEDICAL_REVIEWER'];
-const STATUSES = ['', 'ACTIVE', 'SUSPENDED', 'PENDING'];
+const ROLES = ['', 'BUYER', 'SELLER', 'ADMIN', 'CAREGIVER'];
+const STATUSES = ['', 'ACTIVE', 'SUSPENDED', 'PENDING_VERIFICATION'];
 
 export default function UsersPage() {
   const t = useTranslations('users');
   const router = useRouter();
+  const { token } = useAuth();
   const [data, setData] = useState<UserAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -27,7 +29,7 @@ export default function UsersPage() {
   const fetchData = useCallback(async (p = 1) => {
     setLoading(true);
     try {
-      const res = await apiClient.users.list({ page: p, limit: 50, search: debouncedSearch, role: role || undefined, status: status || undefined });
+      const res = await apiClient.users.list({ page: p, limit: 50, search: debouncedSearch, role: role || undefined, status: status || undefined }, token ?? undefined);
       setData(res.data);
       setTotalPages(res.totalPages);
       setPage(res.page);
@@ -36,7 +38,7 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, role, status]);
+  }, [debouncedSearch, role, status, token]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -65,7 +67,7 @@ export default function UsersPage() {
           label={t('allStatuses')}
           value={status}
           onChange={(e) => setStatus(e.target.value)}
-          options={STATUSES.map((s) => ({ value: s, label: s ? t(s.toLowerCase() as 'active' | 'suspended' | 'pending') : t('allStatuses') }))}
+          options={STATUSES.map((s) => ({ value: s, label: s ? t(s.toLowerCase() as 'active' | 'suspended' | 'pending_verification') : t('allStatuses') }))}
         />
       </div>
 

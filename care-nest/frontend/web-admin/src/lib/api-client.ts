@@ -140,7 +140,7 @@ export const apiClient = {
       search?: string;
       role?: string;
       status?: string;
-    }) {
+    }, token?: string) {
       const q = new URLSearchParams();
       if (params?.page) q.set('page', String(params.page));
       if (params?.limit) q.set('limit', String(params.limit ?? 50));
@@ -148,7 +148,7 @@ export const apiClient = {
       if (params?.role) q.set('role', params.role);
       if (params?.status) q.set('status', params.status);
       const res = await fetch(`${AUTH_API}/api/v1/users/admin?${q}`, {
-        headers: authHeaders(),
+        headers: authHeaders(token),
       });
       return handleResponse<UserListResponse>(res);
     },
