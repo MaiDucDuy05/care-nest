@@ -42,7 +42,7 @@
     "learnMore": "Tìm hiểu thêm",
     "getStarted": "Bắt đầu",
     "callNow": "Gọi ngay",
-    "dashboard": "Dashboard",
+    "dashboard": "Tổng quan",
     "settings": "Cài đặt",
     "logout": "Đăng xuất",
     "profile": "Hồ sơ",
@@ -309,7 +309,7 @@
       "emailDesc": "Nhận thông báo qua địa chỉ email đã đăng ký",
       "sms": "SMS",
       "smsDesc": "Nhận tin nhắn SMS cảnh báo khẩn cấp",
-      "push": "Push Notification",
+      "push": "Thông báo đẩy (Push)",
       "pushDesc": "Nhận thông báo qua trình duyệt hoặc ứng dụng",
       "telegram": "Telegram",
       "telegramDesc": "Nhận cảnh báo qua bot Telegram"

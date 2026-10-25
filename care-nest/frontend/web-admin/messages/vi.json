@@ -41,7 +41,7 @@
     "readMore": "Đọc thêm",
     "learnMore": "Tìm hiểu thêm",
     "getStarted": "Bắt đầu",
-    "dashboard": "Dashboard",
+    "dashboard": "Tổng quan",
     "settings": "Cài đặt",
     "logout": "Đăng xuất",
     "profile": "Hồ sơ",
@@ -101,7 +101,7 @@
     "daysAgo": "{count} ngày trước"
   },
   "nav": {
-    "dashboard": "Dashboard",
+    "dashboard": "Tổng quan",
     "kyc": "KYC",
     "products": "Sản phẩm",
     "users": "Người dùng",
@@ -143,10 +143,10 @@
     "loginSuccess": "Đăng nhập thành công"
   },
   "kyc": {
-    "title": "KYC Review Queue",
+    "title": "Hàng đợi duyệt KYC",
     "pendingTitle": "Hàng đợi KYC",
     "pendingDesc": "Xem xét và phê duyệt hồ sơ KYC của người bán",
-    "reviewTitle": "Review KYC — {name}",
+    "reviewTitle": "Duyệt hồ sơ KYC — {name}",
     "reviewDesc": "Xem tài liệu và quyết định phê duyệt hoặc từ chối",
     "sellerId": "ID Người bán",
     "seller": "Người bán",
@@ -183,10 +183,10 @@
     "rejectedCount": "Đã từ chối"
   },
   "products": {
-    "title": "Product Review Queue",
+    "title": "Duyệt sản phẩm y tế",
     "pendingTitle": "Sản phẩm chờ duyệt",
     "pendingDesc": "Xem xét và duyệt sản phẩm mới của người bán",
-    "reviewTitle": "Review Sản phẩm",
+    "reviewTitle": "Duyệt sản phẩm — {name}",
     "reviewDesc": "Xem chi tiết sản phẩm và quyết định phê duyệt hoặc từ chối",
     "productId": "ID Sản phẩm",
     "productName": "Tên sản phẩm",
@@ -217,7 +217,7 @@
     "reviewedToday": "Đã duyệt hôm nay"
   },
   "users": {
-    "title": "User Management",
+    "title": "Quản lý người dùng",
     "pendingTitle": "Quản lý người dùng",
     "pendingDesc": "Xem, tìm kiếm và quản lý tài khoản người dùng",
     "searchPlaceholder": "Tìm theo tên, email, hoặc ID...",
@@ -264,7 +264,7 @@
     "viewSubscriptions": "Xem gói dịch vụ"
   },
   "orders": {
-    "title": "Order Oversight",
+    "title": "Giám sát đơn hàng",
     "pendingTitle": "Tất cả đơn hàng",
     "pendingDesc": "Xem và giám sát tất cả đơn hàng trên nền tảng",
     "searchPlaceholder": "Tìm theo mã đơn, tên người mua, hoặc người bán...",
@@ -308,7 +308,7 @@
     "viewKyc": "Xem KYC người bán"
   },
   "alerts": {
-    "title": "Alert Oversight",
+    "title": "Giám sát cảnh báo sức khỏe",
     "pendingTitle": "Cảnh báo trực tiếp",
     "pendingDesc": "Giám sát cảnh báo real-time trên toàn nền tảng",
     "alertId": "ID Cảnh báo",
@@ -359,7 +359,7 @@
     }
   },
   "audit": {
-    "title": "Audit Log",
+    "title": "Nhật ký kiểm toán hệ thống",
     "pendingTitle": "Nhật ký kiểm tra",
     "pendingDesc": "Xem lịch sử hành động trên toàn nền tảng",
     "eventId": "ID Sự kiện",
@@ -413,7 +413,7 @@
     "changed": "Thay đổi"
   },
   "subscriptions": {
-    "title": "Subscription Overview",
+    "title": "Tổng quan gói dịch vụ IoT",
     "pendingTitle": "Tổng quan gói dịch vụ",
     "pendingDesc": "Theo dõi doanh thu, tỷ lệ hủy và phân bổ gói",
     "mrr": "Doanh thu hàng tháng (MRR)",
@@ -454,7 +454,7 @@
     "totalRevenue": "Tổng doanh thu"
   },
   "shipping": {
-    "title": "Shipping Overview",
+    "title": "Tổng quan vận chuyển logistics",
     "pendingTitle": "Tổng quan vận chuyển",
     "pendingDesc": "Giám sát nhà cung cấp vận chuyển và failover",
     "providerHealth": "Tình trạng nhà cung cấp",
@@ -528,7 +528,7 @@
     "profileUpdated": "Hồ sơ đã được cập nhật"
   },
   "dashboard": {
-    "title": "Dashboard",
+    "title": "Bảng điều khiển tổng quan",
     "welcome": "Chào mừng, {name}",
     "subtitle": "Tổng quan hoạt động nền tảng CareNest",
     "pendingKyc": "KYC chờ duyệt",
