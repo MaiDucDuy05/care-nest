@@ -240,7 +240,6 @@ pnpm db:seed
 | Vai trò | Email | Mật khẩu | Ghi chú |
 | :--- | :--- | :--- | :--- |
 | **Admin** | `admin@carenest.vn` | `Admin@123456` | Quản trị viên hệ thống CareNest |
-| **Support** | `support@carenest.vn` | `Support@123456` | Nhân viên CSKH 24/7 |
 | **Seller** | `seller.wonlex@carenest.vn` | `Seller@123456` | Wonlex Vietnam Official Store |
 | **Seller** | `seller.medtech@carenest.vn` | `Seller@123456` | MedTech Healthcare Vietnam |
 | **Buyer** | `buyer@carenest.vn` | `Buyer@123456` | Người mua & quản lý người thân |

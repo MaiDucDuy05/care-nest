@@ -10,7 +10,7 @@ export class AuditController {
   constructor(private readonly auditService: AuditService) {}
 
   @Get(':entityType/:entityId')
-  @Roles('ADMIN', 'SUPPORT')
+  @Roles('ADMIN')
   async list(
     @Param('entityType') entityType: string,
     @Param('entityId') entityId: string,

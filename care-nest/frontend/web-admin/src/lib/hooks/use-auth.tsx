@@ -15,7 +15,7 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const TOKEN_KEY = 'admin_token';
-const ADMIN_ROLES: string[] = ['ADMIN', 'SUPPORT', 'MEDICAL_REVIEWER'];
+const ADMIN_ROLES: string[] = ['ADMIN', 'MEDICAL_REVIEWER'];
 
 function hasAdminRole(role?: string): boolean {
   return Boolean(role && ADMIN_ROLES.includes(role));
@@ -77,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
-  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPPORT' || user?.role === 'MEDICAL_REVIEWER';
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'MEDICAL_REVIEWER';
 
   return (
     <AuthContext.Provider value={{ user, token, isLoading, login, logout, isAdmin }}>

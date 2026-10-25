@@ -26,7 +26,7 @@ export class NotificationsController {
       throw new BadRequestException(parsed.error.errors);
     }
     // Non-admin users can only send to themselves
-    if (user.role !== 'ADMIN' && user.role !== 'SUPPORT' && parsed.data.userId !== user.id) {
+    if (user.role !== 'ADMIN' && parsed.data.userId !== user.id) {
       throw new BadRequestException('Chỉ admin mới có thể gửi notification cho user khác');
     }
     return this.notificationsService.send(parsed.data);

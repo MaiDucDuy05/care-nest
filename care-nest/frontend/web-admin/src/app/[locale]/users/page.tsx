@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useDebounce } from '@/lib/hooks/use-debounce';
 
-const ROLES = ['', 'USER', 'SELLER', 'ADMIN', 'SUPPORT', 'MEDICAL_REVIEWER'];
+const ROLES = ['', 'USER', 'SELLER', 'ADMIN', 'MEDICAL_REVIEWER'];
 const STATUSES = ['', 'ACTIVE', 'SUSPENDED', 'PENDING'];
 
 export default function UsersPage() {

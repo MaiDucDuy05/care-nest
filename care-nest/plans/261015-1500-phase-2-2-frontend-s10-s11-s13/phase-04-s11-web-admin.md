@@ -15,7 +15,7 @@
 
 - **Priority**: P1 (Sprint 11)
 - **Status**: Not started
-- **Brief**: Dựng Next.js 14 App Router app mới cho CareNest ops + medical reviewer. 8 module: KYC review queue, product review queue, user management, order oversight, alert oversight (live feed), audit log viewer, subscription overview (MRR/churn), shipping overview (provider health + failover). Role bắt buộc `ADMIN` hoặc `SUPPORT`.
+- **Brief**: Dựng Next.js 14 App Router app mới cho CareNest ops + medical reviewer. 8 module: KYC review queue, product review queue, user management, order oversight, alert oversight (live feed), audit log viewer, subscription overview (MRR/churn), shipping overview (provider health + failover). Role bắt buộc `ADMIN` hoặc `MEDICAL_REVIEWER`.
 
 ## Key Insights
 
@@ -39,7 +39,7 @@
 - FR-3.16: Audit log viewer — filter + paginate, view detail
 - FR-3.17: Subscription overview — MRR chart, churn chart, list all subs
 - FR-3.18: Shipping overview — provider health, failover events, recent shipments
-- FR-3.19: Admin login + role guard (ADMIN, SUPPORT, MEDICAL_REVIEWER)
+- FR-3.19: Admin login + role guard (ADMIN, MEDICAL_REVIEWER)
 - FR-3.20: Dashboard home (KPIs: pending KYC count, pending products count, today's orders, today's alerts)
 
 ### Non-functional
@@ -156,7 +156,7 @@ frontend/web-admin/
 │       ├── use-auth.ts
 │       ├── use-audit-filter.ts
 │       └── use-live-alerts.ts
-├── middleware.ts                       # role check (ADMIN/SUPPORT/MEDICAL_REVIEWER)
+├── middleware.ts                       # role check (ADMIN/MEDICAL_REVIEWER)
 ├── next.config.mjs
 ├── package.json
 ├── tsconfig.json
@@ -179,7 +179,7 @@ frontend/web-admin/
 
 1. **Bootstrap**: copy cấu trúc từ web-seller, đổi port 3005, package name `@carenest/web-admin`
 2. **Cài deps**: `next-intl`, `recharts`, `react-hook-form`, `zod`, `@hookform/resolvers`, `socket.io-client`, `date-fns`
-3. **i18n + middleware**: role check `ADMIN | SUPPORT | MEDICAL_REVIEWER` ở middleware
+3. **i18n + middleware**: role check `ADMIN | MEDICAL_REVIEWER` ở middleware
 4. **Auth pages**: `/login` (admin login), `/forbidden` (403)
 5. **Top nav layout**: full-width với dropdown menu cho từng module
 6. **Dashboard home (KPIs)**: 4 KPI cards (pending KYC, pending products, today orders, today alerts)

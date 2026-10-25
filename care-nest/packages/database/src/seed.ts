@@ -2,7 +2,7 @@
  * CareNest Complete Database Seeder
  *
  * Populates realistic, rich test data for:
- * 1. Users (Admin, Support, Sellers, Buyers, Caregivers)
+ * 1. Users (Admin, Sellers, Buyers, Caregivers)
  * 2. Sellers & Seller Wallets & KYC
  * 3. Categories & Products & Inventory & Images
  * 4. Plans (Basic, Family, Enterprise) & Active Subscriptions
@@ -67,21 +67,6 @@ async function main() {
       phone: '0901234567',
       passwordHash: PASSWORDS.ADMIN,
       role: UserRole.ADMIN,
-      status: UserStatus.ACTIVE,
-      pdpaConsent: true,
-      pdpaConsentedAt: new Date(),
-    },
-  });
-
-  await prisma.user.upsert({
-    where: { email: 'support@carenest.vn' },
-    update: {},
-    create: {
-      email: 'support@carenest.vn',
-      fullName: 'Trung Tâm CSKH CareNest',
-      phone: '0909998888',
-      passwordHash: PASSWORDS.SIMPLE,
-      role: UserRole.SUPPORT,
       status: UserStatus.ACTIVE,
       pdpaConsent: true,
       pdpaConsentedAt: new Date(),

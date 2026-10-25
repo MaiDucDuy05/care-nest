@@ -26,7 +26,6 @@ enum UserRole {
   BUYER
   SELLER
   ADMIN
-  SUPPORT
   CAREGIVER
 }
 

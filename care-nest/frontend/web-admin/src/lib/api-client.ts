@@ -375,7 +375,7 @@ export interface AuthUser {
   id: string;
   email: string;
   fullName: string;
-  role: 'ADMIN' | 'SUPPORT' | 'MEDICAL_REVIEWER' | 'USER' | 'SELLER' | 'BUYER' | 'CAREGIVER' | 'ELDER';
+  role: 'ADMIN' | 'MEDICAL_REVIEWER' | 'USER' | 'SELLER' | 'BUYER' | 'CAREGIVER' | 'ELDER';
   avatarUrl?: string;
   status: string;
   createdAt: string;

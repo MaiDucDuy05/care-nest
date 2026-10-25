@@ -240,7 +240,6 @@
       "USER": "User",
       "SELLER": "Seller",
       "ADMIN": "Admin",
-      "SUPPORT": "Support",
       "MEDICAL_REVIEWER": "Medical Reviewer"
     },
     "suspend": "Suspend",

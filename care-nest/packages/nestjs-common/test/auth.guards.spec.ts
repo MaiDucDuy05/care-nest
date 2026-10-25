@@ -98,7 +98,7 @@ describe('Auth Unification (JwtAuthGuard, RolesGuard, CurrentUser)', () => {
 
     it('allows access when user.role matches required role', () => {
       const mockReflector = {
-        getAllAndOverride: vi.fn().mockReturnValue(['ADMIN', 'SUPPORT']),
+        getAllAndOverride: vi.fn().mockReturnValue(['ADMIN']),
       } as unknown as Reflector;
       const guard = new RolesGuard(mockReflector);
       const ctx = createMockContext({}, { id: 'u1', role: 'ADMIN', roles: ['ADMIN'] });

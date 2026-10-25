@@ -36,7 +36,7 @@ export class OrdersController {
 
   @Get(':id')
   async getOne(@CurrentUser() user: { id: string; role?: string }, @Param('id') id: string): Promise<any> {
-    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPPORT';
+    const isAdmin = user.role === 'ADMIN';
     return this.ordersService.getOrder(user.id, id, isAdmin);
   }
 
@@ -51,7 +51,7 @@ export class OrdersController {
       throw new BadRequestException(parsed.error.errors);
     }
     // Authorization: sellers can move their orders forward; buyers can confirm delivery; admins can do anything.
-    if (user.role !== 'ADMIN' && user.role !== 'SUPPORT') {
+    if (user.role !== 'ADMIN') {
       const order = await this.ordersService.getOrder(user.id, id, false);
       const isSeller = order.sellerId === user.id;
       const isBuyerConfirmingDelivery = order.buyerId === user.id && parsed.data.status === OrderStatus.DELIVERED;
@@ -67,7 +67,7 @@ export class OrdersController {
     @CurrentUser() user: { id: string; role?: string },
     @Param('id') id: string,
   ): Promise<any> {
-    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPPORT';
+    const isAdmin = user.role === 'ADMIN';
     return this.ordersService.markAsDelivered(user.id, id, isAdmin);
   }
 }

@@ -15,7 +15,7 @@ interface UserActionsMenuProps {
   onRefresh: () => void;
 }
 
-const ROLES = ['USER', 'SELLER', 'ADMIN', 'SUPPORT', 'MEDICAL_REVIEWER'];
+const ROLES = ['USER', 'SELLER', 'ADMIN', 'MEDICAL_REVIEWER'];
 
 export function UserActionsMenu({ user, onRefresh }: UserActionsMenuProps) {
   const t = useTranslations('users');

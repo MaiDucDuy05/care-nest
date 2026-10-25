@@ -19,7 +19,7 @@ export class AlertsController {
     const p = parseInt(page, 10) || 1;
     const ps = Math.min(parseInt(pageSize, 10) || 20, 100);
     if (subjectId) return this.alertsService.listForSubject(subjectId, p, ps);
-    if (user.role === 'ADMIN' || user.role === 'SUPPORT') {
+    if (user.role === 'ADMIN') {
       return this.alertsService.listOpen(p, ps);
     }
     return this.alertsService.listForSubject(user.id, p, ps);

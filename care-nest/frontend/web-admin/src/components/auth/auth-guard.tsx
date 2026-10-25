@@ -28,7 +28,7 @@ export function AuthGuard({ children }: { children: ReactNode }) {
     return null;
   }
 
-  if (user.role !== 'ADMIN' && user.role !== 'SUPPORT' && user.role !== 'MEDICAL_REVIEWER') {
+  if (user.role !== 'ADMIN' && user.role !== 'MEDICAL_REVIEWER') {
     const locale = pathname.startsWith('/en') ? 'en' : 'vi';
     router.push(`/${locale}/auth/forbidden`);
     return null;

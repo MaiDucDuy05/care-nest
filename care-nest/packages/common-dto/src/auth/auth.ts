@@ -42,6 +42,5 @@ export const RoleEnum = z.enum([
   'BUYER',
   'CAREGIVER',
   'DEVICE',
-  'SUPPORT',
 ]);
 export type Role = z.infer<typeof RoleEnum>;
