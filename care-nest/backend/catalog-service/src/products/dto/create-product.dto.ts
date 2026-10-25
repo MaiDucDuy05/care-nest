@@ -2,8 +2,8 @@ import { z } from 'zod';
 import { nonEmptyStringSchema } from '@carenest/shared-types';
 
 export const CreateProductSchema = z.object({
-  sellerId: nonEmptyStringSchema,
-  categoryId: nonEmptyStringSchema,
+  sellerId: nonEmptyStringSchema.optional(),
+  categoryId: nonEmptyStringSchema.optional(),
   name: nonEmptyStringSchema.min(3, 'Tên sản phẩm tối thiểu 3 ký tự'),
   slug: z.string().trim().optional(),
   description: z.string().optional(),

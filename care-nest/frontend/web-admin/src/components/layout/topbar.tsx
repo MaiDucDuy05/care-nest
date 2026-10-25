@@ -61,3 +61,4 @@ export function Topbar({ onToggleMobile }: TopbarProps) {
     </header>
   );
 }
+

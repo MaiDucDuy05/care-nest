@@ -11,43 +11,54 @@ import { MrrChart } from '@/components/subscriptions/mrr-chart';
 import { ChurnChart } from '@/components/subscriptions/churn-chart';
 import { PlanDistribution } from '@/components/subscriptions/plan-distribution';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAuth } from '@/lib/hooks/use-auth';
 
 export default function SubscriptionsPage() {
   const t = useTranslations('subscriptions');
   const router = useRouter();
+  const { token, isLoading: authLoading } = useAuth();
   const [subs, setSubs] = useState<SubscriptionAdmin[]>([]);
   const [mrr, setMrr] = useState<MrrResponse | null>(null);
   const [churn, setChurn] = useState<ChurnResponse | null>(null);
   const [distribution, setDistribution] = useState<PlanDistributionResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [activeCount, setActiveCount] = useState(0);
+  const [pastDueCount, setPastDueCount] = useState(0);
 
   const fetchAll = useCallback(async () => {
+    if (authLoading) return;
+    if (!token) {
+      setError('No admin access token is available. Please sign in again.');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+    setError(null);
     try {
       const [s, m, c, d] = await Promise.all([
-        apiClient.subscriptions.list({ page: 1, limit: 50 }),
-        apiClient.subscriptions.mrr(),
-        apiClient.subscriptions.churn(),
-        apiClient.subscriptions.planDistribution(),
+        apiClient.subscriptions.list({ page: 1, limit: 50 }, token),
+        apiClient.subscriptions.mrr(token),
+        apiClient.subscriptions.churn(token),
+        apiClient.subscriptions.planDistribution(token),
       ]);
       setSubs(s.data);
       setTotalPages(s.totalPages);
       setMrr(m);
       setChurn(c);
       setDistribution(d);
-    } catch {
-      // ignore
+      setActiveCount(s.statusCounts.ACTIVE ?? 0);
+      setPastDueCount(s.statusCounts.PAST_DUE ?? 0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load subscription data.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authLoading, token]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
-
-  const activeCount = subs.filter((s) => s.status === 'ACTIVE').length;
-  const pausedCount = subs.filter((s) => s.status === 'PAUSED').length;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -61,8 +72,14 @@ export default function SubscriptionsPage() {
         <KpiCard title={t('mrr')} value={mrr ? `${(mrr.current / 1000000).toFixed(1)}M VND` : '—'} description={t('mrrDesc')} icon="💰" variant="primary" />
         <KpiCard title={t('churn')} value={churn ? `${churn.current.toFixed(1)}%` : '—'} description={t('churnDesc')} icon="📉" variant="danger" />
         <KpiCard title={t('activeSubs')} value={activeCount} icon="✅" variant="success" />
-        <KpiCard title={t('pausedSubs')} value={pausedCount} icon="⏸" variant="warning" />
+        <KpiCard title={t('pastDueSubs')} value={pastDueCount} icon="⏸" variant="warning" />
       </KpiGrid>
+
+      {error && (
+        <div role="alert" style={{ padding: '12px 16px', borderRadius: 'var(--radius-md)', color: 'var(--danger)', background: 'var(--danger-light)', fontSize: '13px', overflowWrap: 'anywhere' }}>
+          {error}
+        </div>
+      )}
 
       {/* Charts */}
       {mrr && <MrrChart data={mrr.history} />}

@@ -5,11 +5,12 @@ import { SubscriptionsService } from './subscriptions.service.js';
 import { SubscriptionsRepository } from './subscriptions.repository.js';
 import { PlansModule } from '../plans/plans.module.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { RolesGuard } from '@carenest/nestjs-common';
 
 @Module({
   imports: [JwtModule.register({}), PlansModule],
   controllers: [SubscriptionsController],
-  providers: [SubscriptionsService, SubscriptionsRepository, JwtAuthGuard],
+  providers: [SubscriptionsService, SubscriptionsRepository, JwtAuthGuard, RolesGuard],
   exports: [SubscriptionsService, SubscriptionsRepository],
 })
 export class SubscriptionsModule {}

@@ -40,7 +40,15 @@ export class ProductsRepository {
     };
 
     if (categoryId) where.categoryId = categoryId;
-    if (sellerId) where.sellerId = sellerId;
+    if (sellerId) {
+      const seller = await this.prisma.seller.findFirst({
+        where: {
+          OR: [{ id: sellerId }, { userId: sellerId }],
+        },
+        select: { id: true },
+      });
+      where.sellerId = seller ? seller.id : sellerId;
+    }
     if (isIotDevice !== undefined) where.isIotDevice = isIotDevice;
     if (search) {
       where.OR = [
@@ -93,13 +101,102 @@ export class ProductsRepository {
     return product ? withAvailableStock(product) : null;
   }
 
+  async resolveSellerId(userIdOrSellerId: string): Promise<string | null> {
+    const seller = await this.prisma.seller.findFirst({
+      where: {
+        OR: [{ id: userIdOrSellerId }, { userId: userIdOrSellerId }],
+      },
+      select: { id: true },
+    });
+    return seller ? seller.id : null;
+  }
+
+  async findManyForSeller(userIdOrSellerId: string, query: any): Promise<PaginatedProducts> {
+    const sellerId = await this.resolveSellerId(userIdOrSellerId);
+    if (!sellerId) {
+      return {
+        items: [],
+        total: 0,
+        page: parseInt(query?.page, 10) || 1,
+        pageSize: parseInt(query?.pageSize, 10) || 50,
+        hasMore: false,
+      };
+    }
+
+    const page = parseInt(query?.page, 10) || 1;
+    const pageSize = Math.min(parseInt(query?.pageSize, 10) || 50, 100);
+    const skip = (page - 1) * pageSize;
+
+    const where: Prisma.ProductWhereInput = {
+      sellerId,
+      deletedAt: null,
+    };
+
+    if (query?.categoryId) where.categoryId = query.categoryId;
+    if (query?.status) where.status = query.status;
+    if (query?.search) {
+      where.OR = [
+        { name: { contains: query.search, mode: 'insensitive' } },
+        { description: { contains: query.search, mode: 'insensitive' } },
+        { sku: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [items, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        skip,
+        take: pageSize,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          category: true,
+          images: true,
+          inventory: { select: { quantity: true, reserved: true } },
+        },
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return {
+      items: items.map((item) => withAvailableStock(item)),
+      total,
+      page,
+      pageSize,
+      hasMore: skip + items.length < total,
+    };
+  }
+
   async create(data: CreateProductDto): Promise<any> {
+    let sellerId = data.sellerId;
+    if (sellerId) {
+      const resolvedSeller = await this.resolveSellerId(sellerId);
+      if (resolvedSeller) sellerId = resolvedSeller;
+    }
+    if (!sellerId) {
+      const fallbackSeller = await this.prisma.seller.findFirst({ select: { id: true } });
+      if (!fallbackSeller) throw new Error('Không tìm thấy người bán hợp lệ');
+      sellerId = fallbackSeller.id;
+    }
+
+    let categoryId = data.categoryId;
+    if (categoryId) {
+      const cat = await this.prisma.category.findFirst({
+        where: { OR: [{ id: categoryId }, { slug: categoryId }, { name: categoryId }] },
+        select: { id: true },
+      });
+      if (cat) categoryId = cat.id;
+    }
+    if (!categoryId) {
+      const defaultCat = await this.prisma.category.findFirst({ select: { id: true } });
+      categoryId = defaultCat?.id;
+    }
+
     const slug = data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const created = await this.prisma.$transaction(async (tx) => {
       const product = await tx.product.create({
         data: {
-          sellerId: data.sellerId,
-          categoryId: data.categoryId,
+          sellerId,
+          categoryId,
           name: data.name,
           slug,
           description: data.description || '',
@@ -117,7 +214,7 @@ export class ProductsRepository {
       await tx.inventory.create({
         data: {
           productId: product.id,
-          sellerId: data.sellerId,
+          sellerId,
           warehouseCode: 'HN-01',
           quantity: data.stock,
           reserved: 0,

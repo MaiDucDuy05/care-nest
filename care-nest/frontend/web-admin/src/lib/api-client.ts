@@ -305,13 +305,13 @@ export const apiClient = {
   },
 
   subscriptions: {
-    async list(params?: { page?: number; limit?: number; status?: string }) {
+    async list(params?: { page?: number; limit?: number; status?: string }, token?: string) {
       const q = new URLSearchParams();
       if (params?.page) q.set('page', String(params.page));
       if (params?.limit) q.set('limit', String(params.limit ?? 50));
       if (params?.status) q.set('status', params.status);
       const res = await fetch(`${SUBSCRIPTION_API}/api/v1/subscriptions/admin?${q}`, {
-        headers: authHeaders(),
+        headers: authHeaders(token),
       });
       return handleResponse<SubscriptionListResponse>(res);
     },
@@ -321,21 +321,21 @@ export const apiClient = {
       });
       return handleResponse<SubscriptionDetailResponse>(res);
     },
-    async mrr() {
+    async mrr(token?: string) {
       const res = await fetch(`${SUBSCRIPTION_API}/api/v1/subscriptions/admin/mrr`, {
-        headers: authHeaders(),
+        headers: authHeaders(token),
       });
       return handleResponse<MrrResponse>(res);
     },
-    async churn() {
+    async churn(token?: string) {
       const res = await fetch(`${SUBSCRIPTION_API}/api/v1/subscriptions/admin/churn`, {
-        headers: authHeaders(),
+        headers: authHeaders(token),
       });
       return handleResponse<ChurnResponse>(res);
     },
-    async planDistribution() {
+    async planDistribution(token?: string) {
       const res = await fetch(`${SUBSCRIPTION_API}/api/v1/subscriptions/admin/distribution`, {
-        headers: authHeaders(),
+        headers: authHeaders(token),
       });
       return handleResponse<PlanDistributionResponse>(res);
     },
@@ -536,7 +536,9 @@ export interface AuditEventAdmin {
   createdAt: string;
 }
 
-export interface SubscriptionListResponse extends PaginatedResponse<SubscriptionAdmin> {}
+export interface SubscriptionListResponse extends PaginatedResponse<SubscriptionAdmin> {
+  statusCounts: Record<string, number>;
+}
 export interface SubscriptionAdmin {
   id: string;
   userId: string;

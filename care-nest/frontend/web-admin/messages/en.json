@@ -443,6 +443,7 @@
     "churnDesc": "Customer churn rate this month",
     "activeSubs": "Active Subscriptions",
     "pausedSubs": "Paused Subscriptions",
+    "pastDueSubs": "Past-Due Subscriptions",
     "totalSubs": "Total Subscriptions",
     "avgMrrPerUser": "Avg MRR per User",
     "planDistribution": "Plan Distribution",

@@ -3,11 +3,15 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Post,
+  Query,
   UseGuards,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { SubscriptionStatus } from '@carenest/database';
+import { Roles, RolesGuard } from '@carenest/nestjs-common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { ZodValidationPipe } from '@carenest/shared-utils';
@@ -27,6 +31,50 @@ export class SubscriptionsController {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly plansRepository: PlansRepository,
   ) {}
+
+  @Get('admin')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async listAdmin(@Query() query: Record<string, string | undefined>) {
+    const page = this.parsePositiveInteger(query.page, 'page', 1);
+    const limit = Math.min(this.parsePositiveInteger(query.limit, 'limit', 50), 100);
+    let status: SubscriptionStatus | undefined;
+    if (query.status) {
+      if (!Object.values(SubscriptionStatus).includes(query.status as SubscriptionStatus)) {
+        throw new BadRequestException(`Unsupported subscription status: ${query.status}`);
+      }
+      status = query.status as SubscriptionStatus;
+    }
+    return this.subscriptionsService.listForAdmin(page, limit, status);
+  }
+
+  @Get('admin/mrr')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async getAdminMrr() {
+    return this.subscriptionsService.getAdminMrr();
+  }
+
+  @Get('admin/churn')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async getAdminChurn() {
+    return this.subscriptionsService.getAdminChurn();
+  }
+
+  @Get('admin/distribution')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async getAdminPlanDistribution() {
+    return this.subscriptionsService.getAdminPlanDistribution();
+  }
+
+  @Get('admin/:id')
+  @UseGuards(RolesGuard)
+  @Roles('ADMIN')
+  async getAdminById(@Param('id', new ParseUUIDPipe()) id: string): Promise<any> {
+    return this.subscriptionsService.getForAdmin(id);
+  }
 
   @Get('me')
   async getMySubscription(@CurrentUser() user: { id: string }) {
@@ -144,5 +192,14 @@ export class SubscriptionsController {
     @Body(new ZodValidationPipe(CancelSubscriptionSchema)) dto: any,
   ) {
     return this.subscriptionsService.cancel(user.id, id, dto);
+  }
+
+  private parsePositiveInteger(value: string | undefined, field: string, fallback: number): number {
+    if (value === undefined || value === '') return fallback;
+    const parsed = Number(value);
+    if (!Number.isInteger(parsed) || parsed < 1) {
+      throw new BadRequestException(`${field} must be a positive integer`);
+    }
+    return parsed;
   }
 }

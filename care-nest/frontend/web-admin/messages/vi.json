@@ -443,6 +443,7 @@
     "churnDesc": "Tỷ lệ khách hàng hủy gói trong tháng",
     "activeSubs": "Gói đang hoạt động",
     "pausedSubs": "Gói bị tạm dừng",
+    "pastDueSubs": "Gói quá hạn thanh toán",
     "totalSubs": "Tổng số gói",
     "avgMrrPerUser": "MRR trung bình/người dùng",
     "planDistribution": "Phân bổ theo gói",

@@ -18,6 +18,88 @@ export class SubscriptionsRepository {
     return this.prisma.subscription.findUnique({ where: { id } });
   }
 
+  async listForAdmin(page: number, limit: number, status?: SubscriptionStatus) {
+    const where: Prisma.SubscriptionWhereInput = status ? { status } : {};
+    const [items, total, statusGroups] = await Promise.all([
+      this.prisma.subscription.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          userId: true,
+          sellerId: true,
+          plan: true,
+          planId: true,
+          status: true,
+          startedAt: true,
+          currentPeriodEnd: true,
+          cancelledAt: true,
+          user: { select: { fullName: true, email: true } },
+          seller: {
+            select: {
+              storeName: true,
+              userId: true,
+              user: { select: { fullName: true, email: true } },
+            },
+          },
+          planRecord: { select: { id: true, code: true, name: true, priceMonthly: true } },
+        },
+      }),
+      this.prisma.subscription.count({ where }),
+      this.prisma.subscription.groupBy({ by: ['status'], _count: { _all: true } }),
+    ]);
+
+    return {
+      items,
+      total,
+      statusCounts: Object.fromEntries(statusGroups.map((group) => [group.status, group._count._all])) as Record<string, number>,
+    };
+  }
+
+  async findForAdmin(id: string) {
+    return this.prisma.subscription.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        userId: true,
+        sellerId: true,
+        plan: true,
+        planId: true,
+        status: true,
+        startedAt: true,
+        currentPeriodEnd: true,
+        cancelledAt: true,
+        user: { select: { fullName: true, email: true } },
+        seller: {
+          select: {
+            storeName: true,
+            userId: true,
+            user: { select: { fullName: true, email: true } },
+          },
+        },
+        planRecord: { select: { id: true, code: true, name: true, priceMonthly: true } },
+        reminders: { orderBy: { scheduledFor: 'asc' }, select: { id: true, reminderType: true, scheduledFor: true } },
+      },
+    });
+  }
+
+  async findAllForAnalytics() {
+    return this.prisma.subscription.findMany({
+      select: {
+        id: true,
+        plan: true,
+        planId: true,
+        status: true,
+        startedAt: true,
+        currentPeriodEnd: true,
+        cancelledAt: true,
+        planRecord: { select: { id: true, code: true, name: true, priceMonthly: true } },
+      },
+    });
+  }
+
   async findActiveByUserId(userId: string): Promise<any[]> {
     return this.prisma.subscription.findMany({
       where: { userId, status: SubscriptionStatus.ACTIVE },

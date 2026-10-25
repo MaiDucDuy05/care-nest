@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   Body,
+  UseGuards,
   BadRequestException,
 } from '@nestjs/common';
 import type { Product, Prisma } from '@carenest/database';
@@ -14,6 +15,8 @@ import { ProductsService } from './products.service.js';
 import { ProductQuerySchema, type ProductQueryDto } from './dto/product-query.dto.js';
 import { CreateProductSchema, type CreateProductDto } from './dto/create-product.dto.js';
 import { UpdateProductSchema, type UpdateProductDto } from './dto/update-product.dto.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
 
 export interface PaginatedProducts {
   items: (Product & { category: any; images: any[] })[];
@@ -26,6 +29,43 @@ export interface PaginatedProducts {
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
+
+  @Get('seller')
+  @UseGuards(JwtAuthGuard)
+  async listSeller(
+    @CurrentUser() user: { id: string },
+    @Query() query: any,
+  ): Promise<PaginatedProducts> {
+    return this.productsService.listForSeller(user.id, query);
+  }
+
+  @Post('seller')
+  @UseGuards(JwtAuthGuard)
+  async createSeller(
+    @CurrentUser() user: { id: string },
+    @Body() body: any,
+  ): Promise<Product> {
+    return this.productsService.createForSeller(user.id, body);
+  }
+
+  @Put('seller/:id')
+  @UseGuards(JwtAuthGuard)
+  async updateSeller(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+    @Body() body: any,
+  ): Promise<Product> {
+    return this.productsService.updateForSeller(user.id, id, body);
+  }
+
+  @Delete('seller/:id')
+  @UseGuards(JwtAuthGuard)
+  async deleteSeller(
+    @CurrentUser() user: { id: string },
+    @Param('id') id: string,
+  ): Promise<Product> {
+    return this.productsService.deleteForSeller(user.id, id);
+  }
 
   @Get()
   async list(@Query() query: unknown): Promise<PaginatedProducts> {

@@ -20,6 +20,7 @@ export const GATEWAY_ROUTES: RouteMapping[] = [
   { prefix: `${API_PREFIX}/categories`, targetEnvKey: 'CATALOG_SERVICE_URL', defaultUrl: 'http://localhost:3002', serviceName: 'catalog-service' },
   { prefix: `${API_PREFIX}/kyc`, targetEnvKey: 'CATALOG_SERVICE_URL', defaultUrl: 'http://localhost:3002', serviceName: 'catalog-service' },
   { prefix: `${API_PREFIX}/seller/kyc`, targetEnvKey: 'CATALOG_SERVICE_URL', defaultUrl: 'http://localhost:3002', serviceName: 'catalog-service' },
+  { prefix: `${API_PREFIX}/seller/products`, targetEnvKey: 'CATALOG_SERVICE_URL', defaultUrl: 'http://localhost:3002', serviceName: 'catalog-service' },
   { prefix: `${API_PREFIX}/imei`, targetEnvKey: 'CATALOG_SERVICE_URL', defaultUrl: 'http://localhost:3002', serviceName: 'catalog-service' },
   { prefix: `${API_PREFIX}/seller/imeis`, targetEnvKey: 'CATALOG_SERVICE_URL', defaultUrl: 'http://localhost:3002', serviceName: 'catalog-service' },
 

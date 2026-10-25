@@ -50,4 +50,37 @@ export class ProductsService {
     await this.getProductById(id);
     return this.productsRepository.softDelete(id);
   }
+
+  async listForSeller(userId: string, query: any): Promise<PaginatedProducts> {
+    return this.productsRepository.findManyForSeller(userId, query);
+  }
+
+  async createForSeller(userId: string, dto: any): Promise<Product> {
+    const sellerId = await this.productsRepository.resolveSellerId(userId);
+    if (!sellerId) {
+      throw new NotFoundException('Không tìm thấy thông tin người bán. Vui lòng hoàn tất đăng ký hoặc KYC.');
+    }
+    return this.productsRepository.create({
+      ...dto,
+      sellerId,
+    });
+  }
+
+  async updateForSeller(userId: string, productId: string, dto: any): Promise<Product> {
+    const sellerId = await this.productsRepository.resolveSellerId(userId);
+    const existing = await this.getProductById(productId);
+    if (!sellerId || existing.sellerId !== sellerId) {
+      throw new NotFoundException(`Không tìm thấy sản phẩm ${productId}`);
+    }
+    return this.productsRepository.update(productId, dto);
+  }
+
+  async deleteForSeller(userId: string, productId: string): Promise<Product> {
+    const sellerId = await this.productsRepository.resolveSellerId(userId);
+    const existing = await this.getProductById(productId);
+    if (!sellerId || existing.sellerId !== sellerId) {
+      throw new NotFoundException(`Không tìm thấy sản phẩm ${productId}`);
+    }
+    return this.productsRepository.softDelete(productId);
+  }
 }

@@ -83,7 +83,7 @@ function toSellerProduct(product: CatalogProduct): Product {
 }
 
 export const productsService = {
-  async list(params?: { search?: string; status?: ProductStatus }): Promise<Product[]> {
+  async list(params?: { search?: string; status?: ProductStatus; sellerId?: string }): Promise<Product[]> {
     if (USE_MOCK) {
       let result = [...MOCK_PRODUCTS];
       if (params?.search) {
@@ -100,11 +100,37 @@ export const productsService = {
     const query = new URLSearchParams();
     if (params?.search) query.set('search', params.search);
     if (params?.status) query.set('status', params.status);
+    if (params?.sellerId) query.set('sellerId', params.sellerId);
+
+    // Call dedicated seller products endpoint
+    try {
+      const res = await apiFetch<ProductListResponse>(
+        `${CATALOG_API}/api/v1/seller/products?${query.toString()}`,
+        { token }
+      );
+      if (res && Array.isArray(res.items)) {
+        return res.items.map(toSellerProduct);
+      }
+    } catch {
+      // Fallback to /api/v1/products/seller
+      try {
+        const res = await apiFetch<ProductListResponse>(
+          `${CATALOG_API}/api/v1/products/seller?${query.toString()}`,
+          { token }
+        );
+        if (res && Array.isArray(res.items)) {
+          return res.items.map(toSellerProduct);
+        }
+      } catch {
+        // Fallback to /api/v1/products?sellerId=...
+      }
+    }
+
     const res = await apiFetch<ProductListResponse>(
       `${CATALOG_API}/api/v1/products?${query.toString()}`,
       { token }
     );
-    return res.items.map(toSellerProduct);
+    return (res?.items || []).map(toSellerProduct);
   },
 
   async getById(id: string): Promise<Product> {
@@ -137,12 +163,21 @@ export const productsService = {
     const token = getToken();
     if (!token) throw new Error('not authenticated');
     const { priceVnd, ...productInput } = input;
-    const product = await apiFetch<CatalogProduct>(`${CATALOG_API}/api/v1/products`, {
-      method: 'POST',
-      body: JSON.stringify({ ...productInput, price: priceVnd }),
-      token,
-    });
-    return toSellerProduct(product);
+    try {
+      const product = await apiFetch<CatalogProduct>(`${CATALOG_API}/api/v1/seller/products`, {
+        method: 'POST',
+        body: JSON.stringify({ ...productInput, price: priceVnd }),
+        token,
+      });
+      return toSellerProduct(product);
+    } catch {
+      const product = await apiFetch<CatalogProduct>(`${CATALOG_API}/api/v1/products/seller`, {
+        method: 'POST',
+        body: JSON.stringify({ ...productInput, price: priceVnd }),
+        token,
+      });
+      return toSellerProduct(product);
+    }
   },
 
   async update(id: string, input: Partial<ProductInput>): Promise<Product> {
@@ -155,15 +190,27 @@ export const productsService = {
     const token = getToken();
     if (!token) throw new Error('not authenticated');
     const { priceVnd, ...productInput } = input;
-    const product = await apiFetch<CatalogProduct>(`${CATALOG_API}/api/v1/products/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify({
-        ...productInput,
-        ...(priceVnd === undefined ? {} : { price: priceVnd }),
-      }),
-      token,
-    });
-    return toSellerProduct(product);
+    try {
+      const product = await apiFetch<CatalogProduct>(`${CATALOG_API}/api/v1/seller/products/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          ...productInput,
+          ...(priceVnd === undefined ? {} : { price: priceVnd }),
+        }),
+        token,
+      });
+      return toSellerProduct(product);
+    } catch {
+      const product = await apiFetch<CatalogProduct>(`${CATALOG_API}/api/v1/products/seller/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          ...productInput,
+          ...(priceVnd === undefined ? {} : { price: priceVnd }),
+        }),
+        token,
+      });
+      return toSellerProduct(product);
+    }
   },
 
   async remove(id: string): Promise<void> {
@@ -173,9 +220,16 @@ export const productsService = {
     }
     const token = getToken();
     if (!token) throw new Error('not authenticated');
-    return apiFetch<void>(`${CATALOG_API}/api/v1/products/${id}`, {
-      method: 'DELETE',
-      token,
-    });
+    try {
+      return await apiFetch<void>(`${CATALOG_API}/api/v1/seller/products/${id}`, {
+        method: 'DELETE',
+        token,
+      });
+    } catch {
+      return await apiFetch<void>(`${CATALOG_API}/api/v1/products/seller/${id}`, {
+        method: 'DELETE',
+        token,
+      });
+    }
   },
 };

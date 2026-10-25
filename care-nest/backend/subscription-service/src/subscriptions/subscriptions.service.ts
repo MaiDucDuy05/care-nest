@@ -171,6 +171,107 @@ export class SubscriptionsService {
     return updated;
   }
 
+  async listForAdmin(page: number, limit: number, status?: SubscriptionStatus) {
+    const [result, plans] = await Promise.all([
+      this.subscriptionsRepository.listForAdmin(page, limit, status),
+      this.plansRepository.findAll(),
+    ]);
+    const prices = this.planPrices(plans);
+    return {
+      data: result.items.map((subscription) => this.toAdminRow(subscription, prices)),
+      total: result.total,
+      page,
+      limit,
+      totalPages: Math.ceil(result.total / limit) || 1,
+      statusCounts: result.statusCounts,
+    };
+  }
+
+  async getForAdmin(id: string) {
+    const [subscription, plans] = await Promise.all([
+      this.subscriptionsRepository.findForAdmin(id),
+      this.plansRepository.findAll(),
+    ]);
+    if (!subscription) throw new NotFoundException(`KhÃ´ng tÃ¬m tháº¥y subscription ${id}`);
+    return {
+      ...this.toAdminRow(subscription, this.planPrices(plans)),
+      reminders: subscription.reminders.map((reminder: { id: string; reminderType: string; scheduledFor: Date }) => ({
+        id: reminder.id,
+        kind: reminder.reminderType,
+        triggerAt: reminder.scheduledFor.toISOString(),
+      })),
+    };
+  }
+
+  async getAdminMrr(now = new Date()) {
+    const [subscriptions, plans] = await Promise.all([
+      this.subscriptionsRepository.findAllForAnalytics(),
+      this.plansRepository.findAll(),
+    ]);
+    const prices = this.planPrices(plans);
+    const monthStarts = this.lastSixMonthStarts(now);
+    const history = monthStarts.map((monthStart) => {
+      const nextMonth = this.nextMonthStart(monthStart);
+      const asOf = nextMonth.getTime() > now.getTime() ? now : new Date(nextMonth.getTime() - 1);
+      return {
+        month: this.monthLabel(monthStart),
+        mrr: this.mrrAt(subscriptions, prices, asOf, asOf.getTime() === now.getTime()),
+      };
+    });
+    const current = this.mrrAt(subscriptions, prices, now, true);
+    const previous = history.length > 1 ? history[history.length - 2].mrr : 0;
+    const trend = previous === 0 ? (current === 0 ? 0 : 100) : ((current - previous) / previous) * 100;
+    return { current, previous, trend, history };
+  }
+
+  async getAdminChurn(now = new Date()) {
+    const subscriptions = await this.subscriptionsRepository.findAllForAnalytics();
+    const history = this.lastSixMonthStarts(now).map((monthStart) => {
+      const nextMonth = this.nextMonthStart(monthStart);
+      const activeAtStart = subscriptions.filter((subscription) =>
+        this.wasActiveAt(subscription, monthStart),
+      ).length;
+      const cancelledInMonth = subscriptions.filter((subscription) =>
+        subscription.cancelledAt &&
+        subscription.cancelledAt.getTime() >= monthStart.getTime() &&
+        subscription.cancelledAt.getTime() < nextMonth.getTime(),
+      ).length;
+      return {
+        month: this.monthLabel(monthStart),
+        rate: activeAtStart === 0 ? 0 : (cancelledInMonth / activeAtStart) * 100,
+      };
+    });
+    const current = history[history.length - 1]?.rate ?? 0;
+    const previous = history[history.length - 2]?.rate ?? 0;
+    return { current, previous, trend: current - previous, history };
+  }
+
+  async getAdminPlanDistribution() {
+    const [subscriptions, plans] = await Promise.all([
+      this.subscriptionsRepository.findAllForAnalytics(),
+      this.plansRepository.findAll(),
+    ]);
+    const prices = this.planPrices(plans);
+    const grouped = new Map<string, { planId: string; planName: string; count: number; revenueVnd: number }>();
+
+    for (const subscription of subscriptions) {
+      if (subscription.status !== SubscriptionStatus.ACTIVE) continue;
+      const row = this.toAdminRow(subscription, prices);
+      const key = row.planId;
+      const current = grouped.get(key) ?? {
+        planId: key,
+        planName: row.planName,
+        count: 0,
+        revenueVnd: 0,
+      };
+      current.count += 1;
+      current.revenueVnd += row.priceVnd;
+      grouped.set(key, current);
+    }
+
+    return { distribution: [...grouped.values()] };
+  }
+
   async getMySubscriptions(userId: string) {
     return this.subscriptionsRepository.findActiveByUserId(userId);
   }
@@ -204,5 +305,73 @@ export class SubscriptionsService {
         scheduledFor,
       );
     }
+  }
+
+  private planPrices(plans: any[]): Map<string, number> {
+    return new Map(plans.map((plan) => [String(plan.code).toUpperCase(), Number(plan.priceMonthly)]));
+  }
+
+  private toAdminRow(subscription: any, prices: Map<string, number>) {
+    const planCode = String(subscription.plan);
+    const fallbackName = planCode.charAt(0) + planCode.slice(1).toLowerCase();
+    return {
+      id: subscription.id,
+      userId: subscription.userId ?? subscription.seller?.userId ?? '',
+      userName:
+        subscription.user?.fullName ??
+        subscription.seller?.storeName ??
+        subscription.seller?.user?.fullName ??
+        '—',
+      userEmail: subscription.user?.email ?? subscription.seller?.user?.email ?? '',
+      planId: subscription.planId ?? subscription.planRecord?.id ?? planCode,
+      planName: subscription.planRecord?.name ?? fallbackName,
+      interval: 'MONTHLY',
+      status: subscription.status,
+      priceVnd: Number(subscription.planRecord?.priceMonthly ?? prices.get(planCode.toUpperCase()) ?? 0),
+      currentPeriodStart: subscription.startedAt.toISOString(),
+      currentPeriodEnd: subscription.currentPeriodEnd.toISOString(),
+      cancelledAt: subscription.cancelledAt?.toISOString(),
+    };
+  }
+
+  private mrrAt(subscriptions: any[], prices: Map<string, number>, at: Date, currentOnly: boolean): number {
+    return subscriptions.reduce((total, subscription) => {
+      if (currentOnly) {
+        if (subscription.status !== SubscriptionStatus.ACTIVE || subscription.cancelledAt) return total;
+      } else if (subscription.status === SubscriptionStatus.TRIALING) {
+        return total;
+      }
+
+      const hasStarted = subscription.startedAt.getTime() <= at.getTime();
+      const periodHasNotEnded = subscription.currentPeriodEnd.getTime() > at.getTime();
+      const wasNotCancelled = !subscription.cancelledAt || subscription.cancelledAt.getTime() > at.getTime();
+      if (!hasStarted || !periodHasNotEnded || !wasNotCancelled) return total;
+
+      const planCode = String(subscription.plan).toUpperCase();
+      return total + Number(subscription.planRecord?.priceMonthly ?? prices.get(planCode) ?? 0);
+    }, 0);
+  }
+
+  private wasActiveAt(subscription: any, at: Date): boolean {
+    if (subscription.status === SubscriptionStatus.TRIALING) return false;
+    return (
+      subscription.startedAt.getTime() <= at.getTime() &&
+      subscription.currentPeriodEnd.getTime() > at.getTime() &&
+      (!subscription.cancelledAt || subscription.cancelledAt.getTime() > at.getTime())
+    );
+  }
+
+  private lastSixMonthStarts(now: Date): Date[] {
+    return Array.from({ length: 6 }, (_, index) =>
+      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (5 - index), 1)),
+    );
+  }
+
+  private nextMonthStart(monthStart: Date): Date {
+    return new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1));
+  }
+
+  private monthLabel(monthStart: Date): string {
+    return `${monthStart.getUTCFullYear()}-${String(monthStart.getUTCMonth() + 1).padStart(2, '0')}`;
   }
 }
