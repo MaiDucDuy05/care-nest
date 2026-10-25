@@ -131,3 +131,16 @@ tbody tr:hover { background: var(--bg-card-subtle); }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 .spinner { width: 18px; height: 18px; border: 2px solid var(--border-color); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; }
+
+.imei-grid-layout {
+  display: grid;
+  grid-template-columns: minmax(360px, 440px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .imei-grid-layout {
+    grid-template-columns: 1fr;
+  }
+}

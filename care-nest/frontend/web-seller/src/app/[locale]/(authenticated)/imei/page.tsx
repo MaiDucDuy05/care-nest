@@ -121,153 +121,218 @@ export default function ImeiPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 720 }}>
-      <h1 className="text-h2">{t('title')}</h1>
-      <p className="text-muted">{t('subtitle')}</p>
-
-      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            type="button"
-            className={`btn ${scannerOn ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setScannerOn(!scannerOn)}
-          >
-            <Camera size={16} /> {t('scan')}
-          </button>
-          <button
-            type="button"
-            className={`btn ${!scannerOn ? 'btn-primary' : 'btn-secondary'}`}
-            onClick={() => setScannerOn(false)}
-          >
-            <ScanLine size={16} /> {t('manual')}
-          </button>
-        </div>
-
-        {scannerOn ? (
-          <div
-            style={{
-              background: 'var(--bg-card-subtle)',
-              borderRadius: 'var(--radius-md)',
-              padding: 40,
-              textAlign: 'center',
-              color: 'var(--text-muted)',
-            }}
-          >
-            <Camera size={32} />
-            <p style={{ marginTop: 8 }}>Camera scanner (qr-scanner integration stub)</p>
-            <p className="text-sm">Quét từng IMEI hoặc nhập thủ công bên dưới</p>
-          </div>
-        ) : null}
-
-        <div>
-          <label className="label">{t('product')}</label>
-          <select className="select" value={productId} onChange={(e) => setProductId(e.target.value)}>
-            <option value="">-- Chọn sản phẩm --</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} ({p.sku})
-                {p.requiresImei ? ' · IMEI' : ''}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="label">{t('imei')} (mỗi dòng một IMEI, hoặc phân cách bằng dấu phẩy)</label>
-          <textarea
-            className="textarea"
-            rows={6}
-            placeholder={'352099001761488\n490154203237518\n...'}
-            value={imeiText}
-            onChange={(e) => setImeiText(e.target.value)}
-          />
-        </div>
-
-        {error && (
-          <div
-            style={{
-              background: 'var(--danger-light)',
-              color: 'var(--danger)',
-              padding: 8,
-              borderRadius: 'var(--radius-md)',
-              fontSize: 13,
-            }}
-          >
-            {error}
-          </div>
-        )}
-        {success && (
-          <div
-            style={{
-              background: 'var(--success-light, #ecfdf5)',
-              color: 'var(--success, #047857)',
-              padding: 8,
-              borderRadius: 'var(--radius-md)',
-              fontSize: 13,
-            }}
-          >
-            {success}
-          </div>
-        )}
-
-        <button
-          type="button"
-          className="btn btn-primary"
-          onClick={handleImport}
-          disabled={submitting}
-        >
-          {submitting ? <span className="spinner" /> : <><Upload size={16} /> {t('success')}</>}
-        </button>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%' }}>
+      <div>
+        <h1 className="text-h2">{t('title')}</h1>
+        <p className="text-muted" style={{ marginTop: 4 }}>{t('subtitle')}</p>
       </div>
 
-      <div className="card" style={{ padding: 0 }}>
-        <table>
-          <thead>
-            <tr>
-              <th>{t('imei')}</th>
-              <th>{t('product')}</th>
-              <th>Trạng thái</th>
-              <th>Tạo lúc</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loadingImeis ? (
-              <tr>
-                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>
-                  {tCommon('loading')}
-                </td>
-              </tr>
-            ) : imeiLoadError ? (
-              <tr>
-                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--danger)', padding: 24 }}>
-                  {t('listLoadError')}{' '}
-                  <button type="button" className="btn btn-secondary" onClick={reloadImeis}>
-                    {tCommon('retry')}
-                  </button>
-                </td>
-              </tr>
-            ) : imeis.length === 0 ? (
-              <tr>
-                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>
-                  {t('emptyList')}
-                </td>
-              </tr>
+      <div className="imei-grid-layout">
+        {/* Left Column: Input Form Card */}
+        <div
+          className="card"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 16,
+            position: 'sticky',
+            top: 24,
+          }}
+        >
+          <div>
+            <h2 className="text-h3" style={{ fontSize: 16, marginBottom: 4 }}>
+              {t('addNew')}
+            </h2>
+            <p className="text-sm text-muted">{t('addNewDesc')}</p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              type="button"
+              className={`btn ${scannerOn ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setScannerOn(!scannerOn)}
+              style={{ flex: 1, padding: '8px 12px', fontSize: 14 }}
+            >
+              <Camera size={16} /> {t('scan')}
+            </button>
+            <button
+              type="button"
+              className={`btn ${!scannerOn ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setScannerOn(false)}
+              style={{ flex: 1, padding: '8px 12px', fontSize: 14 }}
+            >
+              <ScanLine size={16} /> {t('manual')}
+            </button>
+          </div>
+
+          {scannerOn ? (
+            <div
+              style={{
+                background: 'var(--bg-card-subtle)',
+                borderRadius: 'var(--radius-md)',
+                padding: 32,
+                textAlign: 'center',
+                color: 'var(--text-muted)',
+              }}
+            >
+              <Camera size={32} style={{ margin: '0 auto' }} />
+              <p style={{ marginTop: 8, fontWeight: 500, color: 'var(--text-main)' }}>
+                Camera scanner
+              </p>
+              <p className="text-sm">Quét mã vạch hoặc nhập mã IMEI bên dưới</p>
+            </div>
+          ) : null}
+
+          <div>
+            <label className="label">{t('product')}</label>
+            <select
+              className="select"
+              value={productId}
+              onChange={(e) => setProductId(e.target.value)}
+            >
+              <option value="">-- Chọn sản phẩm --</option>
+              {products.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.sku})
+                  {p.requiresImei ? ' · IMEI' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="label">
+              {t('imei')} (mỗi dòng một IMEI, hoặc cách nhau dấu phẩy)
+            </label>
+            <textarea
+              className="textarea"
+              rows={6}
+              placeholder={'352099001761488\n490154203237518\n...'}
+              value={imeiText}
+              onChange={(e) => setImeiText(e.target.value)}
+              style={{ fontFamily: 'monospace', fontSize: 13 }}
+            />
+          </div>
+
+          {error && (
+            <div
+              style={{
+                background: 'var(--danger-light)',
+                color: 'var(--danger)',
+                padding: '10px 12px',
+                borderRadius: 'var(--radius-md)',
+                fontSize: 13,
+              }}
+            >
+              {error}
+            </div>
+          )}
+          {success && (
+            <div
+              style={{
+                background: 'var(--success-light, #ecfdf5)',
+                color: 'var(--success, #047857)',
+                padding: '10px 12px',
+                borderRadius: 'var(--radius-md)',
+                fontSize: 13,
+              }}
+            >
+              {success}
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={handleImport}
+            disabled={submitting}
+            style={{ width: '100%', justifyContent: 'center' }}
+          >
+            {submitting ? (
+              <span className="spinner" />
             ) : (
-              imeis.map((i) => (
-                <tr key={i.id}>
-                  <td style={{ fontFamily: 'monospace' }}>{i.imei}</td>
-                  <td>{i.productName ?? i.productId}</td>
-                  <td>
-                    <span className={`badge ${STATUS_BADGE[i.status]}`}>
-                      {tInv(STATUS_I18N_MAP[i.status] ?? 'inStock')}
-                    </span>
-                  </td>
-                  <td className="text-sm text-muted">{new Date(i.createdAt).toLocaleString('vi-VN')}</td>
-                </tr>
-              ))
+              <>
+                <Upload size={16} /> {t('saveImei')}
+              </>
             )}
-          </tbody>
-        </table>
+          </button>
+        </div>
+
+        {/* Right Column: Inventory Table Card */}
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div
+            style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid var(--border-color)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+            }}
+          >
+            <div>
+              <h2 className="text-h3" style={{ fontSize: 16 }}>
+                {t('recentList')}
+              </h2>
+              <p className="text-sm text-muted" style={{ marginTop: 2 }}>
+                {t('recentListDesc')}
+              </p>
+            </div>
+            <span className="badge badge-slate" style={{ fontSize: 12 }}>
+              {t('devicesCount', { count: imeis.length })}
+            </span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>{t('imei')}</th>
+                <th>{t('product')}</th>
+                <th>{t('status')}</th>
+                <th>{t('createdAt')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingImeis ? (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 32 }}>
+                    <div className="spinner" style={{ marginRight: 8 }} /> {tCommon('loading')}
+                  </td>
+                </tr>
+              ) : imeiLoadError ? (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', color: 'var(--danger)', padding: 32 }}>
+                    {t('listLoadError')}{' '}
+                    <button type="button" className="btn btn-secondary" style={{ marginLeft: 8 }} onClick={reloadImeis}>
+                      {tCommon('retry')}
+                    </button>
+                  </td>
+                </tr>
+              ) : imeis.length === 0 ? (
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 48 }}>
+                    {t('emptyList')}
+                  </td>
+                </tr>
+              ) : (
+                imeis.map((i) => (
+                  <tr key={i.id}>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{i.imei}</td>
+                    <td>{i.productName ?? i.productId}</td>
+                    <td>
+                      <span className={`badge ${STATUS_BADGE[i.status]}`}>
+                        {tInv(STATUS_I18N_MAP[i.status] ?? 'inStock')}
+                      </span>
+                    </td>
+                    <td className="text-sm text-muted">
+                      {i.createdAt ? new Date(i.createdAt).toLocaleString('vi-VN') : '—'}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
