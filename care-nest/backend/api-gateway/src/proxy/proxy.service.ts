@@ -92,8 +92,19 @@ export class ProxyService {
         resolve();
       });
 
-      // Stream request body to downstream
-      req.pipe(proxyReq);
+      // Handle request body and stream to downstream
+      if (['GET', 'HEAD'].includes(req.method)) {
+        proxyReq.end();
+      } else if (req.body && (typeof req.body === 'string' || Object.keys(req.body).length > 0)) {
+        const payload = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        proxyReq.setHeader('content-length', Buffer.byteLength(payload));
+        proxyReq.write(payload);
+        proxyReq.end();
+      } else if (req.readableEnded || req.complete) {
+        proxyReq.end();
+      } else {
+        req.pipe(proxyReq);
+      }
     });
   }
 }
