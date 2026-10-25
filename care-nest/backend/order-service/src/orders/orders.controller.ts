@@ -50,13 +50,24 @@ export class OrdersController {
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.errors);
     }
-    // Authorization: sellers can move their orders forward; admins/support can do anything.
+    // Authorization: sellers can move their orders forward; buyers can confirm delivery; admins can do anything.
     if (user.role !== 'ADMIN' && user.role !== 'SUPPORT') {
       const order = await this.ordersService.getOrder(user.id, id, false);
-      if (order.sellerId !== user.id) {
+      const isSeller = order.sellerId === user.id;
+      const isBuyerConfirmingDelivery = order.buyerId === user.id && parsed.data.status === OrderStatus.DELIVERED;
+      if (!isSeller && !isBuyerConfirmingDelivery) {
         throw new NotFoundException(`Không tìm thấy đơn hàng ${id}`);
       }
     }
     return this.ordersService.updateStatus(id, parsed.data);
+  }
+
+  @Post(':id/deliver')
+  async markDelivered(
+    @CurrentUser() user: { id: string; role?: string },
+    @Param('id') id: string,
+  ): Promise<any> {
+    const isAdmin = user.role === 'ADMIN' || user.role === 'SUPPORT';
+    return this.ordersService.markAsDelivered(user.id, id, isAdmin);
   }
 }

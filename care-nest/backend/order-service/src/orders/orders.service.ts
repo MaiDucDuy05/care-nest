@@ -106,6 +106,19 @@ export class OrdersService {
     const order = await this.ordersRepository.findById(orderId);
     if (!order) throw new NotFoundException(`Không tìm thấy đơn hàng ${orderId}`);
 
+    if (order.status === dto.status) {
+      return order;
+    }
+
+    // Support direct delivery confirmation if order is in progress
+    if (
+      dto.status === OrderStatus.DELIVERED &&
+      order.status !== OrderStatus.CANCELLED &&
+      order.status !== OrderStatus.RETURNED
+    ) {
+      return this.ordersRepository.updateStatus(orderId, OrderStatus.DELIVERED);
+    }
+
     assertTransition(order.status, dto.status);
 
     // S12 IMEI guard: SHIPPED requires every IMEI-required item to have
@@ -164,6 +177,24 @@ export class OrdersService {
     }
 
     return updated;
+  }
+
+  /**
+   * Mark an order as DELIVERED (e.g. buyer confirms receipt or admin updates).
+   */
+  async markAsDelivered(userId: string, orderId: string, isAdmin = false): Promise<any> {
+    const order = await this.ordersRepository.findById(orderId);
+    if (!order) throw new NotFoundException(`Không tìm thấy đơn hàng ${orderId}`);
+    if (!isAdmin && order.buyerId !== userId && order.sellerId !== userId) {
+      throw new NotFoundException(`Không tìm thấy đơn hàng ${orderId}`);
+    }
+    if (order.status === OrderStatus.DELIVERED) {
+      return order;
+    }
+    if (order.status === OrderStatus.CANCELLED || order.status === OrderStatus.RETURNED) {
+      throw new BadRequestException('Không thể xác nhận giao hàng cho đơn đã hủy hoặc hoàn trả');
+    }
+    return this.ordersRepository.updateStatus(orderId, OrderStatus.DELIVERED);
   }
 
   /**

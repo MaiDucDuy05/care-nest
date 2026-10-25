@@ -76,6 +76,32 @@ export function saveLocalOrder(order: Order): void {
   }
 }
 
+export function updateLocalOrderStatus(
+  orderId: string,
+  status: OrderStatus,
+  paymentStatus = 'PAID',
+  paidAt = new Date().toISOString()
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const existing = getLocalOrders();
+    const updated = existing.map((o) => {
+      if (o.id === orderId || o.orderNumber === orderId) {
+        return {
+          ...o,
+          status,
+          paymentStatus,
+          paidAt,
+        };
+      }
+      return o;
+    });
+    window.localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify(updated));
+  } catch {
+    // Ignore quota errors
+  }
+}
+
 function getAuthHeaders(): Record<string, string> {
   const token = getToken();
   return {
@@ -199,6 +225,28 @@ export const ordersService = {
     } catch {
       return foundLocal || null;
     }
+  },
+
+  /**
+   * Người mua xác nhận đã nhận hàng (hoặc mô phỏng giao hàng thành công)
+   */
+  async confirmDelivery(orderId: string): Promise<Order | null> {
+    // 1. Cập nhật local storage trước để trải nghiệm tức thì
+    updateLocalOrderStatus(orderId, 'DELIVERED');
+
+    const token = getToken();
+    if (token) {
+      try {
+        await fetch(`${ORDER_API}/api/v1/orders/${encodeURIComponent(orderId)}/deliver`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+        });
+      } catch {
+        // Fallback silently if offline/backend unreachable
+      }
+    }
+
+    return this.getOrder(orderId);
   },
 
   /**

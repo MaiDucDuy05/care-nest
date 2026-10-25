@@ -20,8 +20,9 @@ import {
   Phone,
   User,
 } from 'lucide-react';
-import { ordersService, type Order } from '@/services/orders.service';
+import { ordersService, type Order, updateLocalOrderStatus } from '@/services/orders.service';
 import { cartService, emitCartUpdated } from '@/services/cart.service';
+import { PaymentSimulatorModal, PaymentGatewayType } from '@/components/payment/payment-simulator-modal';
 
 const formatVnd = (price: number) => {
   return new Intl.NumberFormat('vi-VN').format(price) + ' đ';
@@ -51,6 +52,8 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isReordering, setIsReordering] = useState(false);
+  const [isConfirmingDelivery, setIsConfirmingDelivery] = useState(false);
+  const [showSimulator, setShowSimulator] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -97,6 +100,23 @@ export default function OrderDetailPage() {
       console.error('Lỗi khi mua lại đơn hàng:', err);
     } finally {
       setIsReordering(false);
+    }
+  };
+
+  const handleConfirmDelivery = async () => {
+    if (!order) return;
+    setIsConfirmingDelivery(true);
+    try {
+      const updated = await ordersService.confirmDelivery(order.id);
+      if (updated) {
+        setOrder(updated);
+      } else {
+        setOrder({ ...order, status: 'DELIVERED' });
+      }
+    } catch (err) {
+      console.error('Lỗi khi xác nhận giao hàng:', err);
+    } finally {
+      setIsConfirmingDelivery(false);
     }
   };
 
@@ -385,15 +405,78 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
+            {/* Nút Giả lập thanh toán Sandbox */}
+            <button
+              type="button"
+              onClick={() => setShowSimulator(true)}
+              className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200/80 transition-colors shadow-2xs mb-3 cursor-pointer"
+            >
+              <CreditCard size={15} className="text-teal-600" />
+              <span>Thử Nghiệm Giả Lập Thanh Toán</span>
+            </button>
+
             {/* Các nút hành động */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {/* Nút Người mua xác nhận đã nhận hàng */}
+              {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && order.status !== 'RETURNED' && (
+                <button
+                  type="button"
+                  onClick={handleConfirmDelivery}
+                  disabled={isConfirmingDelivery}
+                  className="btn btn-primary"
+                  style={{
+                    padding: '11px',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'linear-gradient(135deg, #0d9488 0%, #059669 100%)',
+                  }}
+                >
+                  {isConfirmingDelivery ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" /> Đang cập nhật...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={16} /> Đã Nhận Được Hàng (Xác nhận giao)
+                    </>
+                  )}
+                </button>
+              )}
+
               {/* Nút đánh giá review sản phẩm */}
               <Link
                 href={`/orders/${order.id}/review`}
                 className="btn btn-secondary"
-                style={{ padding: '11px', justifyContent: 'center', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                style={{
+                  padding: '11px',
+                  justifyContent: 'center',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  ...(order.status === 'DELIVERED'
+                    ? {
+                        border: '1.5px solid #d97706',
+                        color: '#b45309',
+                        background: '#fffbeb',
+                        fontWeight: 700,
+                      }
+                    : {}),
+                }}
               >
-                <Star size={16} style={{ color: '#d97706' }} /> Đánh giá đơn hàng
+                <Star
+                  size={16}
+                  style={{
+                    color: '#d97706',
+                    fill: order.status === 'DELIVERED' ? '#d97706' : 'transparent',
+                  }}
+                />
+                <span>
+                  {order.status === 'DELIVERED' ? 'Đánh giá đơn hàng (Đã nhận hàng)' : 'Đánh giá đơn hàng'}
+                </span>
               </Link>
 
               {/* Nút mua lại */}
@@ -430,6 +513,22 @@ export default function OrderDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Payment Simulator Modal */}
+      {showSimulator && order && (
+        <PaymentSimulatorModal
+          isOpen={showSimulator}
+          orderId={order.id}
+          orderNumber={order.orderNumber}
+          amount={order.total || order.subtotal}
+          initialMethod={(order.paymentMethod as PaymentGatewayType) || 'VNPAY'}
+          onClose={() => setShowSimulator(false)}
+          onSuccess={(details) => {
+            updateLocalOrderStatus(order.id, 'CONFIRMED', 'PAID', details.paidAt);
+            setOrder((prev) => (prev ? { ...prev, status: 'CONFIRMED' } : prev));
+          }}
+        />
+      )}
     </div>
   );
 }
