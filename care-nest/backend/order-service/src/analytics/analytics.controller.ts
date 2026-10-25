@@ -6,13 +6,13 @@ import { CurrentUser } from '../cart/decorators/current-user.decorator.js';
 const VALID_DAYS = [1, 7, 30, 90];
 
 /**
- * Seller analytics. Mounted at /api/v1/orders/analytics so the seller
- * portal can call it directly with a bearer token. Supports either
+ * Seller analytics. Mounted at /api/v1/analytics so the seller portal
+ * can call it directly with a bearer token. Supports either
  * the seller passing their own sellerId (admin/support) or — for the
  * self-serve case — the controller looks up the seller's sellerId
  * from their JWT user-id.
  */
-@Controller('orders/analytics')
+@Controller('analytics')
 @UseGuards(JwtAuthGuard)
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}

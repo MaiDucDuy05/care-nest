@@ -28,6 +28,6 @@ export const analyticsService = {
     if (USE_MOCK) return { ...MOCK_ANALYTICS, rangeDays: days };
     const token = getToken();
     if (!token) throw new Error('not authenticated');
-    return apiFetch<AnalyticsSummary>(`${ORDER_API}/api/v1/orders/analytics?days=${days}`, { token });
+    return apiFetch<AnalyticsSummary>(`${ORDER_API}/api/v1/analytics?days=${days}`, { token });
   },
 };

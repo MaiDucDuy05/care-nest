@@ -16,7 +16,7 @@ export interface KYCSubmitInput {
 }
 
 export const kycService = {
-  async getStatus(): Promise<KYCApplication | null> {
+  async getStatus(): Promise<KYCStatus | null> {
     if (USE_MOCK) {
       // Return null for "not started" so the UI knows to start the wizard.
       return null;
@@ -24,7 +24,11 @@ export const kycService = {
     const token = getToken();
     if (!token) return null;
     try {
-      return await apiFetch<KYCApplication>(`${CATALOG_API}/api/v1/seller/kyc`, { token });
+      const seller = await apiFetch<{ kycStatus?: KYCStatus; status?: KYCStatus } | null>(
+        `${CATALOG_API}/api/v1/kyc/me`,
+        { token }
+      );
+      return seller?.kycStatus ?? seller?.status ?? null;
     } catch (err) {
       if ((err as { status?: number }).status === 404) return null;
       throw err;

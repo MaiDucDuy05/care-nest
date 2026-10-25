@@ -15,7 +15,7 @@ export class ProductsService {
   }
 
   async getProductById(id: string): Promise<any> {
-    const cacheKey = `product:${id}`;
+    const cacheKey = `product:v2:${id}`;
     try {
       const cached = await cacheGet<any>(cacheKey);
       if (cached) return cached;

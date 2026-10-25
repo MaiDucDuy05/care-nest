@@ -39,20 +39,20 @@ export class AnalyticsService {
   }
 
   /**
-   * Get the seller's user-id from their seller row. Throws if the
-   * seller doesn't exist.
+   * Validate and return the canonical seller id. Order.sellerId references
+   * Seller.id, not User.id.
    */
-  private async resolveSellerUserId(sellerId: string): Promise<string> {
+  private async resolveSellerId(sellerId: string): Promise<string> {
     const seller = await this.prisma.seller.findUnique({
       where: { id: sellerId },
-      select: { id: true, userId: true },
+      select: { id: true },
     });
     if (!seller) throw new NotFoundException(`Seller ${sellerId} not found`);
-    return seller.userId;
+    return seller.id;
   }
 
   async getSellerAnalytics(sellerId: string, days: number): Promise<AnalyticsSummary> {
-    const userId = await this.resolveSellerUserId(sellerId);
+    const resolvedSellerId = await this.resolveSellerId(sellerId);
 
     const since = new Date();
     since.setUTCHours(0, 0, 0, 0);
@@ -61,7 +61,7 @@ export class AnalyticsService {
     // Pull all completed orders in range (DELIVERED counts as revenue)
     const orders = await this.prisma.order.findMany({
       where: {
-        sellerId: userId,
+        sellerId: resolvedSellerId,
         status: { in: [OrderStatus.DELIVERED, OrderStatus.SHIPPED, OrderStatus.PACKING, OrderStatus.CONFIRMED] },
         createdAt: { gte: since },
         deletedAt: null,

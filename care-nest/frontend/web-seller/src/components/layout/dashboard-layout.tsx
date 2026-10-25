@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from '@/i18n/routing';
+import { usePathname, useRouter } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Topbar } from '@/components/layout/topbar';
@@ -12,6 +12,7 @@ import type { KYCStatus, SellerProfile } from '@/lib/types';
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const t = useTranslations('common');
   const [seller, setSeller] = useState<SellerProfile | null>(null);
   const [kycStatus, setKycStatus] = useState<KYCStatus>('NOT_STARTED');
@@ -22,10 +23,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         const me = await authService.me();
-        const kyc = await kycService.getStatus();
+        let latestKycStatus: KYCStatus | null = null;
+        try {
+          latestKycStatus = await kycService.getStatus();
+        } catch {
+          // If the KYC service is temporarily unavailable, keep the seller
+          // restricted unless the authenticated profile already says approved.
+        }
         if (!mounted) return;
         setSeller(me);
-        setKycStatus(me.kycStatus ?? kyc?.status ?? 'NOT_STARTED');
+        setKycStatus(latestKycStatus ?? me.kycStatus ?? 'NOT_STARTED');
       } catch {
         router.replace('/login');
       } finally {
@@ -37,7 +44,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
-  if (loading) {
+  const kycApproved = kycStatus === 'APPROVED';
+  const isKycExemptRoute = pathname?.startsWith('/kyc') || pathname?.startsWith('/settings');
+  const isBlockedByKyc = !loading && !kycApproved && Boolean(pathname) && !isKycExemptRoute;
+
+  useEffect(() => {
+    if (isBlockedByKyc) router.replace('/kyc');
+  }, [isBlockedByKyc, router]);
+
+  if (loading || isBlockedByKyc) {
     return (
       <div
         style={{

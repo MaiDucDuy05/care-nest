@@ -26,11 +26,11 @@ export function Sidebar({ kycApproved, onLogout }: SidebarProps) {
   const pathname = usePathname();
 
   const items = [
-    { href: '/dashboard' as const, label: t('dashboard'), icon: LayoutDashboard, enabled: true },
+    { href: '/dashboard' as const, label: t('dashboard'), icon: LayoutDashboard, enabled: kycApproved },
     { href: '/kyc' as const, label: t('kyc'), icon: FileCheck2, enabled: !kycApproved },
     { href: '/products' as const, label: t('products'), icon: Package, enabled: kycApproved },
     { href: '/orders' as const, label: t('orders'), icon: ShoppingCart, enabled: kycApproved },
-    { href: '/chat' as const, label: t('chat'), icon: MessageSquare, enabled: true },
+    { href: '/chat' as const, label: t('chat'), icon: MessageSquare, enabled: kycApproved },
     { href: '/imei' as const, label: t('imei'), icon: ScanLine, enabled: kycApproved },
     { href: '/inventory' as const, label: t('inventory'), icon: Boxes, enabled: kycApproved },
     { href: '/payouts' as const, label: t('payouts'), icon: Wallet, enabled: kycApproved },

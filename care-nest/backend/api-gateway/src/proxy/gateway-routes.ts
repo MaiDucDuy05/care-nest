@@ -19,6 +19,7 @@ export const GATEWAY_ROUTES: RouteMapping[] = [
   { prefix: `${API_PREFIX}/categories`, targetEnvKey: 'CATALOG_SERVICE_URL', defaultUrl: 'http://localhost:3002', serviceName: 'catalog-service' },
   { prefix: `${API_PREFIX}/kyc`, targetEnvKey: 'CATALOG_SERVICE_URL', defaultUrl: 'http://localhost:3002', serviceName: 'catalog-service' },
   { prefix: `${API_PREFIX}/imei`, targetEnvKey: 'CATALOG_SERVICE_URL', defaultUrl: 'http://localhost:3002', serviceName: 'catalog-service' },
+  { prefix: `${API_PREFIX}/seller/imeis`, targetEnvKey: 'CATALOG_SERVICE_URL', defaultUrl: 'http://localhost:3002', serviceName: 'catalog-service' },
 
   // Device Service (Port 3003)
   { prefix: `${API_PREFIX}/devices`, targetEnvKey: 'DEVICE_SERVICE_URL', defaultUrl: 'http://localhost:3003', serviceName: 'device-service' },
