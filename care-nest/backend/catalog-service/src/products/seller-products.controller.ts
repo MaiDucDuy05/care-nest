@@ -53,3 +53,4 @@ export class SellerProductsController {
     return this.productsService.deleteForSeller(user.id, id);
   }
 }
+

@@ -24,6 +24,15 @@ const STATUS_BADGE: Record<IMEIStatus, string> = {
   FAULTY: 'badge-red',
 };
 
+const STATUS_I18N_MAP: Record<IMEIStatus, 'inStock' | 'reserved' | 'shipped' | 'activated' | 'returned' | 'faulty'> = {
+  IN_STOCK: 'inStock',
+  RESERVED: 'reserved',
+  SHIPPED: 'shipped',
+  ACTIVATED: 'activated',
+  RETURNED: 'returned',
+  FAULTY: 'faulty',
+};
+
 export default function InventoryPage() {
   const t = useTranslations('inventory');
   const tCommon = useTranslations('common');
@@ -82,17 +91,36 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody>
-              {items.map((i) => (
-                <tr key={i.id}>
-                  <td style={{ fontFamily: 'monospace' }}>{i.imei}</td>
-                  <td>{i.productName ?? i.productId}</td>
-                  <td>
-                    <span className={`badge ${STATUS_BADGE[i.status]}`}>{i.status}</span>
+              {items.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    style={{
+                      textAlign: 'center',
+                      padding: '48px 16px',
+                      color: 'var(--text-muted)',
+                    }}
+                  >
+                    {t('empty')}
                   </td>
-                  <td className="text-sm text-muted">{i.orderId ?? '—'}</td>
-                  <td className="text-sm text-muted">{new Date(i.createdAt).toLocaleString('vi-VN')}</td>
                 </tr>
-              ))}
+              ) : (
+                items.map((i) => (
+                  <tr key={i.id}>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 500 }}>{i.imei}</td>
+                    <td>{i.productName ?? i.productId}</td>
+                    <td>
+                      <span className={`badge ${STATUS_BADGE[i.status] || 'badge-slate'}`}>
+                        {t(STATUS_I18N_MAP[i.status] ?? 'inStock')}
+                      </span>
+                    </td>
+                    <td className="text-sm text-muted">{i.orderId ?? '—'}</td>
+                    <td className="text-sm text-muted">
+                      {i.createdAt ? new Date(i.createdAt).toLocaleString('vi-VN') : '—'}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         )}

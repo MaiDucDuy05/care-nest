@@ -86,6 +86,13 @@
     "price": "Price",
     "stock": "Stock",
     "category": "Category",
+    "categorySelect": {
+      "loading": "Loading categories...",
+      "loadFailed": "Could not load categories",
+      "empty": "No categories available",
+      "placeholder": "Select a category",
+      "loadError": "Could not load categories. Please reload the page."
+    },
     "status": "Status",
     "actions": "Actions",
     "active": "Active",
@@ -143,10 +150,13 @@
     "assign": "Assign to order",
     "assignTo": "Assign IMEI to order",
     "remaining": "Remaining",
-    "success": "IMEI saved"
+    "success": "IMEI saved",
+    "listLoadError": "Could not load the IMEI list.",
+    "emptyList": "There are no IMEIs in inventory yet."
   },
   "inventory": {
     "title": "Inventory",
+    "all": "All",
     "imei": "IMEI",
     "product": "Product",
     "status": "Status",
@@ -154,7 +164,13 @@
     "createdAt": "Created at",
     "inStock": "In stock",
     "reserved": "Reserved",
-    "sold": "Sold"
+    "shipped": "Shipped",
+    "activated": "Activated",
+    "returned": "Returned",
+    "faulty": "Faulty",
+    "sold": "Sold",
+    "empty": "No devices found in inventory",
+    "noData": "No matching records found"
   },
   "analytics": {
     "title": "Sales analytics",

@@ -24,7 +24,8 @@ export class ImeiService {
    * Bulk-import IMEIs for a product. Validates Luhn before any DB write.
    * Idempotent: re-running the same batch is safe (duplicates are reported).
    */
-  async bulkImport(sellerId: string, dto: BulkImportImeiDto): Promise<BulkImportResult> {
+  async bulkImport(userIdOrSellerId: string, dto: BulkImportImeiDto): Promise<BulkImportResult> {
+    const sellerId = (await this.repository.resolveSellerId(userIdOrSellerId)) ?? userIdOrSellerId;
     const product = await this.repository['prisma'].product.findFirst({
       where: { id: dto.productId, sellerId, deletedAt: null },
     });

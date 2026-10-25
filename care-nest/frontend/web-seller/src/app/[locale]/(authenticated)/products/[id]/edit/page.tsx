@@ -3,12 +3,13 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { productsService } from '@/lib/services/products.service';
 import { ChevronLeft } from 'lucide-react';
 import { Link } from '@/i18n/routing';
+import { CategorySelectField } from '@/components/products/category-select-field';
 
 const schema = z.object({
   name: z.string().min(2),
@@ -32,6 +33,7 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
@@ -97,7 +99,18 @@ export default function EditProductPage({ params }: { params: { id: string } }) 
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
           <Field label={t('sku')} reg={register('sku')} err={errors.sku} />
-          <Field label={t('category')} reg={register('categoryId')} err={errors.categoryId} />
+          <Controller
+            name="categoryId"
+            control={control}
+            render={({ field }) => (
+              <CategorySelectField
+                {...field}
+                value={field.value}
+                inputRef={field.ref}
+                error={errors.categoryId?.message}
+              />
+            )}
+          />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
           <Field label={t('price')} reg={register('priceVnd')} err={errors.priceVnd} type="number" />

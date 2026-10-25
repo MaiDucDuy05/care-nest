@@ -16,11 +16,23 @@ const STATUS_BADGE: Record<IMEIStatus, string> = {
   FAULTY: 'badge-red',
 };
 
+const STATUS_I18N_MAP: Record<IMEIStatus, 'inStock' | 'reserved' | 'shipped' | 'activated' | 'returned' | 'faulty'> = {
+  IN_STOCK: 'inStock',
+  RESERVED: 'reserved',
+  SHIPPED: 'shipped',
+  ACTIVATED: 'activated',
+  RETURNED: 'returned',
+  FAULTY: 'faulty',
+};
+
 export default function ImeiPage() {
   const t = useTranslations('imei');
+  const tInv = useTranslations('inventory');
   const tCommon = useTranslations('common');
   const [products, setProducts] = useState<Product[]>([]);
   const [imeis, setImeis] = useState<IMEIRecord[]>([]);
+  const [loadingImeis, setLoadingImeis] = useState(true);
+  const [imeiLoadError, setImeiLoadError] = useState(false);
   const [productId, setProductId] = useState('');
   const [imeiText, setImeiText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -31,16 +43,44 @@ export default function ImeiPage() {
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const [p, i] = await Promise.all([productsService.list(), imeiService.list()]);
+      const [productsResult, imeisResult] = await Promise.allSettled([
+        productsService.list(),
+        imeiService.list(),
+      ]);
       if (!mounted) return;
-      setProducts(p);
-      setImeis(i);
-      if (p.length > 0) setProductId((cur) => cur || p[0].id);
+
+      if (productsResult.status === 'fulfilled') {
+        setProducts(productsResult.value);
+        if (productsResult.value.length > 0) {
+          setProductId((current) => current || productsResult.value[0].id);
+        }
+      } else {
+        setError(productsResult.reason instanceof Error ? productsResult.reason.message : tCommon('error'));
+      }
+
+      if (imeisResult.status === 'fulfilled') {
+        setImeis(imeisResult.value);
+      } else {
+        setImeiLoadError(true);
+      }
+      setLoadingImeis(false);
     })();
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [tCommon]);
+
+  const reloadImeis = async () => {
+    setLoadingImeis(true);
+    setImeiLoadError(false);
+    try {
+      setImeis(await imeiService.list());
+    } catch {
+      setImeiLoadError(true);
+    } finally {
+      setLoadingImeis(false);
+    }
+  };
 
   const handleImport = async () => {
     if (!productId) {
@@ -72,6 +112,7 @@ export default function ImeiPage() {
       // refresh list
       const fresh = await imeiService.list({ productId });
       setImeis(fresh);
+      setImeiLoadError(false);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -190,10 +231,25 @@ export default function ImeiPage() {
             </tr>
           </thead>
           <tbody>
-            {imeis.length === 0 ? (
+            {loadingImeis ? (
               <tr>
                 <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>
                   {tCommon('loading')}
+                </td>
+              </tr>
+            ) : imeiLoadError ? (
+              <tr>
+                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--danger)', padding: 24 }}>
+                  {t('listLoadError')}{' '}
+                  <button type="button" className="btn btn-secondary" onClick={reloadImeis}>
+                    {tCommon('retry')}
+                  </button>
+                </td>
+              </tr>
+            ) : imeis.length === 0 ? (
+              <tr>
+                <td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24 }}>
+                  {t('emptyList')}
                 </td>
               </tr>
             ) : (
@@ -202,7 +258,9 @@ export default function ImeiPage() {
                   <td style={{ fontFamily: 'monospace' }}>{i.imei}</td>
                   <td>{i.productName ?? i.productId}</td>
                   <td>
-                    <span className={`badge ${STATUS_BADGE[i.status]}`}>{i.status}</span>
+                    <span className={`badge ${STATUS_BADGE[i.status]}`}>
+                      {tInv(STATUS_I18N_MAP[i.status] ?? 'inStock')}
+                    </span>
                   </td>
                   <td className="text-sm text-muted">{new Date(i.createdAt).toLocaleString('vi-VN')}</td>
                 </tr>

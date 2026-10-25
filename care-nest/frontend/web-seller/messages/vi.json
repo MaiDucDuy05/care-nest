@@ -86,6 +86,13 @@
     "price": "Giá",
     "stock": "Tồn kho",
     "category": "Danh mục",
+    "categorySelect": {
+      "loading": "Đang tải danh mục...",
+      "loadFailed": "Không tải được danh mục",
+      "empty": "Chưa có danh mục",
+      "placeholder": "Chọn danh mục",
+      "loadError": "Không thể tải danh mục. Vui lòng thử tải lại trang."
+    },
     "status": "Trạng thái",
     "actions": "Hành động",
     "active": "Đang bán",
@@ -143,10 +150,13 @@
     "assign": "Gán vào đơn",
     "assignTo": "Gán IMEI vào đơn hàng",
     "remaining": "Còn lại",
-    "success": "Đã lưu IMEI"
+    "success": "Đã lưu IMEI",
+    "listLoadError": "Không tải được danh sách IMEI.",
+    "emptyList": "Chưa có IMEI nào trong kho."
   },
   "inventory": {
     "title": "Kho hàng",
+    "all": "Tất cả",
     "imei": "IMEI",
     "product": "Sản phẩm",
     "status": "Trạng thái",
@@ -154,7 +164,13 @@
     "createdAt": "Tạo lúc",
     "inStock": "Trong kho",
     "reserved": "Đã đặt",
-    "sold": "Đã bán"
+    "shipped": "Đang giao",
+    "activated": "Đã kích hoạt",
+    "returned": "Đã trả lại",
+    "faulty": "Lỗi kỹ thuật",
+    "sold": "Đã bán",
+    "empty": "Chưa có thiết bị nào trong kho",
+    "noData": "Không tìm thấy dữ liệu phù hợp"
   },
   "analytics": {
     "title": "Phân tích bán hàng",

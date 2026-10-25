@@ -7,8 +7,12 @@ import type {
   ReleaseImeiDto,
 } from './dto/imei.dto.js';
 
+export interface ImeiWithProduct extends ImeiRecord {
+  productName?: string;
+}
+
 export interface PaginatedImei {
-  items: ImeiRecord[];
+  items: ImeiWithProduct[];
   total: number;
   page: number;
   pageSize: number;
@@ -29,16 +33,27 @@ export class ImeiRepository {
     this.prisma = getPrismaClient();
   }
 
+  async resolveSellerId(userIdOrSellerId: string): Promise<string | null> {
+    const seller = await this.prisma.seller.findFirst({
+      where: {
+        OR: [{ id: userIdOrSellerId }, { userId: userIdOrSellerId }],
+      },
+      select: { id: true },
+    });
+    return seller ? seller.id : null;
+  }
+
   /**
    * Bulk import. Existing IMEIs (unique-constraint conflict) are reported
    * back as `duplicates`. Luhn-failed inputs are reported as `invalid`
    * and never reach the DB.
    */
   async bulkImport(
-    sellerId: string,
+    userIdOrSellerId: string,
     dto: BulkImportImeiDto,
     luhnValid: (s: string) => boolean
   ): Promise<BulkImportResult> {
+    const sellerId = (await this.resolveSellerId(userIdOrSellerId)) ?? userIdOrSellerId;
     const validImeis: string[] = [];
     const invalid: string[] = [];
     for (const imei of dto.imeis) {
@@ -84,23 +99,45 @@ export class ImeiRepository {
     };
   }
 
-  async findMany(sellerId: string, query: ListImeiQueryDto): Promise<PaginatedImei> {
+  async findMany(userIdOrSellerId: string, query: ListImeiQueryDto): Promise<PaginatedImei> {
+    const sellerId = await this.resolveSellerId(userIdOrSellerId);
+    if (!sellerId) {
+      return {
+        items: [],
+        total: 0,
+        page: query.page,
+        pageSize: query.pageSize,
+        hasMore: false,
+      };
+    }
+
     const { productId, status, page, pageSize } = query;
-    const where = {
+    const where: any = {
       sellerId,
       ...(productId ? { productId } : {}),
       ...(status ? { status } : {}),
     };
     const skip = (page - 1) * pageSize;
-    const [items, total] = await Promise.all([
+    const [records, total] = await Promise.all([
       this.prisma.imeiRecord.findMany({
         where,
         skip,
         take: pageSize,
         orderBy: { createdAt: 'desc' },
+        include: {
+          product: {
+            select: { id: true, name: true, sku: true },
+          },
+        },
       }),
       this.prisma.imeiRecord.count({ where }),
     ]);
+
+    const items = records.map((r) => ({
+      ...r,
+      productName: r.product?.name,
+    }));
+
     return {
       items,
       total,
@@ -122,7 +159,8 @@ export class ImeiRepository {
    * reserved; the operation is atomic — if any IMEI is not eligible,
    * the entire call throws and no state changes.
    */
-  async allocate(sellerId: string, dto: AllocateImeiDto): Promise<ImeiRecord[]> {
+  async allocate(userIdOrSellerId: string, dto: AllocateImeiDto): Promise<ImeiRecord[]> {
+    const sellerId = (await this.resolveSellerId(userIdOrSellerId)) ?? userIdOrSellerId;
     return this.prisma.$transaction(async (tx) => {
       const records = await tx.imeiRecord.findMany({
         where: { imei: { in: dto.imeis }, sellerId },
@@ -158,7 +196,8 @@ export class ImeiRepository {
    * Release IMEIs back to IN_STOCK. Used when an order is cancelled
    * before shipping.
    */
-  async release(sellerId: string, dto: ReleaseImeiDto): Promise<ImeiRecord[]> {
+  async release(userIdOrSellerId: string, dto: ReleaseImeiDto): Promise<ImeiRecord[]> {
+    const sellerId = (await this.resolveSellerId(userIdOrSellerId)) ?? userIdOrSellerId;
     return this.prisma.$transaction(async (tx) => {
       const records = await tx.imeiRecord.findMany({
         where: { orderId: dto.orderId, sellerId, status: ImeiStatus.RESERVED },

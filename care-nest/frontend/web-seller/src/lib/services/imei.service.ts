@@ -93,7 +93,7 @@ export const imeiService = {
     }
     const token = getToken();
     if (!token) throw new Error('not authenticated');
-    return apiFetch<{ imported: number; skipped: number }>(
+    const res = await apiFetch<any>(
       `${CATALOG_API}/api/v1/seller/imeis/bulk`,
       {
         method: 'POST',
@@ -101,6 +101,14 @@ export const imeiService = {
         token,
       }
     );
+    const importedCount = Array.isArray(res?.imported) ? res.imported.length : Number(res?.imported || 0);
+    const duplicatesCount = Array.isArray(res?.duplicates) ? res.duplicates.length : 0;
+    const invalidCount = Array.isArray(res?.invalid) ? res.invalid.length : 0;
+    const skippedCount = duplicatesCount + invalidCount || Number(res?.skipped || 0);
+    return {
+      imported: importedCount,
+      skipped: skippedCount,
+    };
   },
 
   /**
