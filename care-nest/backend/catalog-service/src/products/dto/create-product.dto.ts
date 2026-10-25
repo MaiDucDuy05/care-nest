@@ -8,6 +8,7 @@ export const CreateProductSchema = z.object({
   slug: z.string().trim().optional(),
   description: z.string().optional(),
   price: z.coerce.number().positive('Giá phải lớn hơn 0'),
+  status: z.enum(['DRAFT', 'ACTIVE', 'INACTIVE']).optional(),
   compareAtPrice: z.coerce.number().positive().optional(),
   sku: z.string().trim().optional(),
   stock: z.coerce.number().int().min(0).default(0),

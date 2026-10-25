@@ -8,12 +8,14 @@ import {
   Query,
   Body,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import type { Product } from '@carenest/database';
 import { ProductsService } from './products.service.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { PaginatedProducts } from './products.repository.js';
+import { UpdateProductSchema } from './dto/update-product.dto.js';
 
 @Controller('seller/products')
 @UseGuards(JwtAuthGuard)
@@ -40,9 +42,13 @@ export class SellerProductsController {
   async update(
     @CurrentUser() user: { id: string },
     @Param('id') id: string,
-    @Body() body: any,
+    @Body() body: unknown,
   ): Promise<Product> {
-    return this.productsService.updateForSeller(user.id, id, body);
+    const parsed = UpdateProductSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new BadRequestException(parsed.error.errors);
+    }
+    return this.productsService.updateForSeller(user.id, id, parsed.data);
   }
 
   @Delete(':id')

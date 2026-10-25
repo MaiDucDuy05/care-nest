@@ -203,7 +203,7 @@ export class ProductsRepository {
           basePrice: data.price,
           compareAtPrice: data.compareAtPrice,
           sku: data.sku,
-          status: 'ACTIVE',
+          status: data.status ?? 'ACTIVE',
           isMedical: data.isMedical || false,
           isIotDevice: data.isIotDevice || false,
           iotDeviceModel: data.iotDeviceModel,
@@ -231,6 +231,9 @@ export class ProductsRepository {
     if (data.name !== undefined) updateData.name = data.name;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.price !== undefined) updateData.basePrice = data.price;
+    if (data.sku !== undefined) updateData.sku = data.sku;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.requiresImei !== undefined) updateData.requiresImei = data.requiresImei;
     if (data.categoryId !== undefined) updateData.category = { connect: { id: data.categoryId } };
 
     return this.prisma.$transaction(async (tx) => {
