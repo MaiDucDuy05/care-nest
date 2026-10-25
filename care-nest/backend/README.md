@@ -6,7 +6,7 @@ Kiến trúc Backend phân tán theo hướng **Event-driven Microservices**, s�
 
 ## 📋 Danh Mục Toàn Bộ Dịch Vụ (Service Catalog)
 
-Hệ thống backend CareNest bao gồm **11 dịch vụ độc lập** (10 HTTP/WebSocket/Kafka services và 1 TCP IoT Gateway):
+Hệ thống backend CareNest bao gồm **12 dịch vụ độc lập** (11 HTTP/WebSocket/Kafka services và 1 TCP IoT Gateway):
 
 | Service | Port | Giao Thức | Trách Nhiệm & Chức Năng Chính | Endpoint Kiểm Tra | Grafana Dashboard |
 | :--- | :---: | :---: | :--- | :---: | :---: |
@@ -14,12 +14,13 @@ Hệ thống backend CareNest bao gồm **11 dịch vụ độc lập** (10 HTTP
 | **`auth-service`** | `3001` | HTTP / REST | Đăng ký, đăng nhập, JWT tokens, RBAC, MFA TOTP, audit log, KYC | [`:3001/health/livez`](http://localhost:3001/health/livez) | [Dashboard](http://localhost:3100/d/carenest-auth-service) |
 | **`catalog-service`** | `3002` | HTTP / REST | Quản lý sản phẩm, danh mục y tế, KYC seller onboarding, Redis Caching | [`:3002/health/livez`](http://localhost:3002/health/livez) | [Dashboard](http://localhost:3100/d/carenest-catalog-service) |
 | **`device-service`** | `3003` | HTTP + Kafka | Đăng ký IMEI Wonlex, gán thiết bị, geofence, theo dõi telemetry | [`:3003/health/livez`](http://localhost:3003/health/livez) | [Dashboard](http://localhost:3100/d/carenest-device-service) |
-| **`order-service`** | `3004` | HTTP + Kafka | Multi-vendor cart, state machine đơn hàng, inventory hold | [`:3004/health/livez`](http://localhost:3004/health/livez) | [Dashboard](http://localhost:3100/d/carenest-order-service) |
-| **`payment-service`** | `3005` | HTTP + Webhooks | VNPay (HMAC-SHA512), MoMo (HMAC-SHA256), COD; escrow 7 ngày | [`:3005/health/livez`](http://localhost:3005/health/livez) | [Dashboard](http://localhost:3100/d/carenest-payment-service) |
+| **`order-service`** | `3004` | HTTP + Kafka | Multi-vendor cart, state machine đơn hàng, review đánh giá | [`:3004/health/livez`](http://localhost:3004/health/livez) | [Dashboard](http://localhost:3100/d/carenest-order-service) |
+| **`payment-service`** | `3005` | HTTP + Webhooks | VNPay, MoMo, VietQR, COD; Giả lập thanh toán đa kênh | [`:3005/health/livez`](http://localhost:3005/health/livez) | [Dashboard](http://localhost:3100/d/carenest-payment-service) |
 | **`notification-service`** | `3006` | HTTP + Kafka | Email (SES), SMS (ESMS), Push (VAPID), ZNS (Zalo); Handlebars | [`:3006/health/livez`](http://localhost:3006/health/livez) | [Dashboard](http://localhost:3100/d/carenest-notification-service) |
 | **`alert-service`** | `3007` | HTTP + Kafka + WS | Ngưỡng sinh tồn, cảnh báo SOS, ngã té, pin yếu, Socket.IO push <5s | [`:3007/metrics`](http://localhost:3007/metrics) | [Dashboard](http://localhost:3100/d/carenest-alert-service) |
 | **`subscription-service`** | `3008` | HTTP + Kafka + Cron | Gói dịch vụ định kỳ, tính cước proration, cron gia hạn & hủy | [`:3008/health/livez`](http://localhost:3008/health/livez) | [Dashboard](http://localhost:3100/d/carenest-subscription-service) |
 | **`shipping-service`** | `3009` | HTTP + Webhooks | Tích hợp GHN + GHTK (Sandbox), verify webhook HMAC | [`:3009/health/livez`](http://localhost:3009/health/livez) | [Dashboard](http://localhost:3100/d/carenest-shipping-service) |
+| **`chat-service`** | `3010` | HTTP + WS | Socket.IO Chat Realtime Buyer <-> Seller, Dược sĩ, Card tương tác | [`:3010/api/v1/chat/health`](http://localhost:3010/api/v1/chat/health) | [Dashboard](http://localhost:3100/d/carenest-chat-service) |
 | **`iot-gateway`** | `18800` | TCP Raw Socket | Xử lý gói tin Wonlex V3.2 (`[3G*...]`), giải mã sinh tồn, publish Kafka | `TCP :18800` | — |
 
 ---
@@ -126,7 +127,10 @@ pnpm --filter @carenest/subscription-service dev
 # 10. Shipping Service (Port 3009)
 pnpm --filter @carenest/shipping-service dev
 
-# 11. IoT Gateway (TCP Port 18800)
+# 11. Chat Service (Port 3010)
+pnpm --filter @carenest/chat-service dev
+
+# 12. IoT Gateway (TCP Port 18800)
 pnpm --filter @carenest/iot-gateway dev
 ```
 

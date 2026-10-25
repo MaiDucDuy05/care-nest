@@ -1,4 +1,4 @@
-z# CareNest — Hệ Sinh Thái TMĐT Y Tế & Giám Sát Sức Khỏe IoT
+# CareNest — Hệ Sinh Thái TMĐT Y Tế & Giám Sát Sức Khỏe IoT
 
 Chào mừng bạn đến với kho lưu trữ tổng thể của dự án **CareNest** (Medical E-Commerce + Wonlex IoT Telehealth Platform).
 
@@ -24,10 +24,15 @@ tmdt/
 Xem chi tiết kiến trúc, công nghệ và hướng dẫn cài đặt chạy monorepo tại:  
 👉 **[Xem tài liệu CareNest Monorepo](./care-nest/README.md)**
 
-- **Frontend**: Next.js 14 App Router (`web-buyer`, `web-seller`, `web-admin`)
-- **Backend Microservices**: NestJS 10 (`auth-service`, `catalog-service`, `device-service`, `iot-gateway`, v.v.)
-- **Cơ sở dữ liệu**: PostgreSQL 16 + TimescaleDB + Prisma ORM
-- **Hàng đợi & Cache**: Apache Kafka 3.7+ & Redis 7
+- **Frontend Applications**: Next.js 14 App Router
+  - `web-buyer` (Port `3000`): Sàn TMĐT CareNest Mall, Gian hàng người bán, Giỏ hàng, Giả lập thanh toán đa kênh, Giám sát sinh tồn 24/7, Bản đồ Vùng An Toàn Geofence, Widget Chat Dược Sĩ & Shop thời gian thực.
+  - `web-seller` (Port `3020`): Cổng quản lý nhà bán hàng y tế, thẩm định KYC, quản trị sản phẩm & tồn kho, quét IMEI thiết bị IoT, Trung tâm tin nhắn tư vấn 3 cột (Live Chat).
+  - `web-admin` (Port `3030`): Cổng quản trị sàn, phê duyệt KYC, giám sát đơn hàng, trực ban cảnh báo SOS và kiểm toán hệ thống.
+- **Backend Microservices**: NestJS 10 & Node.js Raw Sockets
+  - 11 HTTP/WebSocket/Kafka microservices (`api-gateway`, `auth-service`, `catalog-service`, `device-service`, `order-service`, `payment-service`, `notification-service`, `alert-service`, `subscription-service`, `shipping-service`, `chat-service`).
+  - 1 Raw TCP Gateway (`iot-gateway` - Port `18800`) giải mã giao thức Wonlex V3.2.
+- **Cơ sở dữ liệu**: PostgreSQL 16 + TimescaleDB + Prisma ORM (23 Data Models).
+- **Hàng đợi & Cache**: Apache Kafka 3.7+ & Redis 7.
 
 ```bash
 # Di chuyển vào monorepo

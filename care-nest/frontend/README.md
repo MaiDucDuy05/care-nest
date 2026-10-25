@@ -27,21 +27,33 @@ Hệ thống frontend của CareNest phục vụ trọn vẹn 3 nhóm người d
 ## 🧭 Chi Tiết & Tính Năng Của Từng Ứng Dụng
 
 ### 1. 🛒 Cổng Mua Sắm & Giám Sát Người Thân — `web-buyer` (Port `3000`)
-- **E-Commerce Y Tế**:
+- **E-Commerce Y Tế & CareNest Mall**:
   - Tìm kiếm, lọc sản phẩm y tế (máy đo huyết áp, que thử đường huyết, đồng hồ định vị Wonlex, tã người lớn, thiết bị hỗ trợ vận động).
   - Chi tiết sản phẩm kèm thông số y tế, chứng nhận kiểm định, đánh giá từ khách hàng.
+  - **Gian hàng người bán chính hãng (CareNest Mall)**: Xem thông tin pháp lý nhà phân phối, chứng nhận Bộ Y Tế, lưu voucher độc quyền, bộ lọc phân loại sản phẩm và xem 128+ đánh giá xác thực.
   - Giỏ hàng và quy trình thanh toán đa kênh: COD, VNPay, MoMo, ZaloPay.
-  - Quản lý lịch sử đơn hàng và hành trình giao vận.
+  - **Chức năng Giả Lập Thanh Toán (`/shop/payment-simulator`)**: Hỗ trợ quét mã VietQR giả lập, thẻ tín dụng Visa/MasterCard, ví điện tử với tỷ lệ thành công/thất bại tùy chọn.
+  - Quản lý lịch sử đơn hàng, hành trình giao vận và tính năng **Xác nhận đã nhận hàng & Đánh giá đơn hàng 5 sao (`/orders/[orderId]/review`)**.
+- **Chat Realtime Tư Vấn Y Tế & Dược Sĩ (`FloatingChatWidget`)**:
+  - Widget chat nổi toàn cục kết nối Socket.IO tới `chat-service` (Port 3010).
+  - Khởi tạo hội thoại 1-click từ banner gian hàng hoặc từng thẻ sản phẩm.
+  - Đính kèm thẻ sản phẩm tương tác (có nút "Thêm Giỏ Hàng" trực tiếp) và thẻ đơn hàng.
+  - Gợi ý câu hỏi nhanh (Quick Pills), thông báo đang nhập (Typing indicator), và phản hồi tư vấn tự động.
 - **Tele-health & IoT Dashboard**:
   - Kết nối và hiển thị dữ liệu từ đồng hồ/thiết bị y tế IoT qua Gateway/WebSocket thời gian thực.
   - Giám sát các chỉ số sinh tồn: Nhịp tim (BPM), nồng độ oxy trong máu (SpO2), huyết áp (SYS/DIA), thân nhiệt.
-  - Bản đồ giám sát vị trí GPS người cao tuổi thời gian thực (tích hợp Leaflet GIS).
+  - **Bản đồ Vùng An Toàn GPS (Geofence GIS)**: Tích hợp Leaflet hiển thị các vùng an toàn (Nhà riêng, Bệnh viện, Công viên) với bán kính tùy chỉnh và cảnh báo ra/vào vùng an toàn tức thời.
 - **Cảnh Báo Khẩn Cấp (SOS & Fall Detection)**:
-  - Tiếp nhận tức thời cảnh báo té ngã hoặc bấm nút khẩn cấp SOS từ người thân qua Socket.IO.
+  - Tiếp nhận tức thời cảnh báo té ngã hoặc bấm nút khẩn cấp SOS từ người thân qua Socket.IO < 2s.
 
 ### 2. 🏪 Cổng Quản Lý Bán Hàng Y Tế — `web-seller` (Port `3020`)
 - **Đăng Ký & Thẩm Định Y Tế (KYC)**:
   - Quy trình nộp giấy phép kinh doanh thiết bị y tế, chứng nhận nhà phân phối và giấy tờ pháp lý.
+- **Trung Tâm Tin Nhắn & Tư Vấn Khách Hàng Realtime (`/chat`)**:
+  - Bố cục 3 cột chuẩn Shopee/Lazada Seller Chat:
+    - *Cột 1*: Danh sách hội thoại kèm bộ lọc (Tất cả, Chưa đọc, Khách VIP) và tìm kiếm khách hàng.
+    - *Cột 2*: Khung chat chính, thanh câu trả lời mẫu nhanh (*Quick Macros*), nút 1-click gửi voucher 50k và thẻ sản phẩm có nút mua.
+    - *Cột 3 (Customer 360)*: Hồ sơ chi tiết khách mua, tổng chi tiêu, lịch sử đơn hàng gần nhất, sản phẩm đang hỏi mua và ghi chú nội bộ.
 - **Quản Trị Sản Phẩm & Kho Hàng**:
   - Đăng tải sản phẩm y tế với đầy đủ thông số kỹ thuật, hình ảnh, mã SKU, chứng nhận kiểm định.
   - Quản lý tồn kho theo lô, cảnh báo hàng sắp hết hạn/hết tồn.
