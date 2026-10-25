@@ -68,7 +68,18 @@ export const kycService = {
       headers: { Authorization: `Bearer ${token}` },
       body: form,
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+      let errorMsg = 'Lỗi gửi hồ sơ KYC';
+      try {
+        const errJson = await res.json();
+        errorMsg = Array.isArray(errJson.message)
+          ? errJson.message.join(', ')
+          : errJson.message || errJson.error || errorMsg;
+      } catch {
+        errorMsg = await res.text();
+      }
+      throw new Error(errorMsg);
+    }
     return res.json();
   },
 };

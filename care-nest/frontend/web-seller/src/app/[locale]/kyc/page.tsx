@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from '@/i18n/routing';
 import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { kycService } from '@/lib/services/kyc.service';
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import type { KYCStatus } from '@/lib/types';
+import { ChevronLeft, ChevronRight, Check, Clock, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 
 const step1Schema = z.object({
   businessName: z.string().min(2, 'Bắt buộc'),
@@ -33,6 +34,9 @@ export default function KycPage() {
   const tFields = useTranslations('kyc.fields');
   const router = useRouter();
 
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [kycStatus, setKycStatus] = useState<KYCStatus | null>(null);
+
   const [step, setStep] = useState(0);
   const [step1, setStep1] = useState<Step1Values | null>(null);
   const [step3, setStep3] = useState<Step3Values | null>(null);
@@ -44,6 +48,21 @@ export default function KycPage() {
   const step3Form = useForm<Step3Values>({ resolver: zodResolver(step3Schema) });
 
   const stepLabels = [tSteps('business'), tSteps('documents'), tSteps('bank'), tSteps('review')];
+
+  useEffect(() => {
+    let mounted = true;
+    kycService.getStatus().then((status) => {
+      if (mounted) {
+        setKycStatus(status);
+        setInitialLoading(false);
+      }
+    }).catch(() => {
+      if (mounted) setInitialLoading(false);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const handleStep1 = (data: Step1Values) => {
     setStep1(data);
@@ -71,13 +90,139 @@ export default function KycPage() {
       setSubmitError(null);
       const files = [documents.license!, documents.idFront!, documents.idBack!].filter(Boolean) as File[];
       await kycService.submit({ ...step1, ...step3 }, files);
-      router.replace('/dashboard');
+      setKycStatus('IN_REVIEW');
     } catch (err) {
       setSubmitError((err as Error).message);
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (initialLoading) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="spinner" />
+      </div>
+    );
+  }
+
+  // Display status screen if already submitted
+  if (kycStatus === 'IN_REVIEW') {
+    return (
+      <div style={{ maxWidth: 640, margin: '40px auto', textAlign: 'center' }}>
+        <div className="card" style={{ padding: '40px 32px' }}>
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              background: '#fef3c7',
+              color: '#d97706',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px',
+            }}
+          >
+            <Clock size={32} />
+          </div>
+          <h2 className="text-h2" style={{ marginBottom: 12 }}>
+            Hồ sơ đang được xét duyệt
+          </h2>
+          <p className="text-muted" style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 24 }}>
+            Hồ sơ xác minh danh tính người bán của bạn đã được tiếp nhận thành công.
+            Đội ngũ thẩm định CareNest đang tiến hành kiểm tra thông tin và tài liệu pháp lý.
+            Kết quả sẽ được cập nhật trong vòng 24 giờ làm việc.
+          </p>
+          <div
+            style={{
+              background: 'var(--bg-card-subtle, #f8fafc)',
+              borderRadius: 'var(--radius-md, 8px)',
+              padding: '16px',
+              marginBottom: 24,
+              textAlign: 'left',
+              fontSize: 14,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Trạng thái:</span>
+              <span style={{ fontWeight: 600, color: '#d97706' }}>Đang xét duyệt (IN_REVIEW)</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Thời gian gửi:</span>
+              <span>Đã tiếp nhận</span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                setKycStatus(null);
+                setStep(0);
+              }}
+            >
+              Cập nhật / Nộp lại hồ sơ
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={async () => {
+                const s = await kycService.getStatus();
+                setKycStatus(s);
+                if (s === 'APPROVED') {
+                  router.replace('/dashboard');
+                }
+              }}
+            >
+              <RefreshCw size={16} /> Kiểm tra lại
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (kycStatus === 'APPROVED') {
+    return (
+      <div style={{ maxWidth: 640, margin: '40px auto', textAlign: 'center' }}>
+        <div className="card" style={{ padding: '40px 32px' }}>
+          <div
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: '50%',
+              background: 'var(--success-light, #dcfce7)',
+              color: 'var(--success, #16a34a)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px',
+            }}
+          >
+            <CheckCircle2 size={32} />
+          </div>
+          <h2 className="text-h2" style={{ marginBottom: 12 }}>
+            Hồ sơ đã được phê duyệt!
+          </h2>
+          <p className="text-muted" style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 24 }}>
+            Chúc mừng! Bạn đã hoàn tất xác minh KYC và tài khoản người bán đã kích hoạt.
+            Bây giờ bạn có thể đăng tải sản phẩm, quản lý đơn hàng và sử dụng đầy đủ các tính năng.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => router.replace('/dashboard')}
+          >
+            Đi đến Bảng điều khiển
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto', padding: '24px 0' }}>
