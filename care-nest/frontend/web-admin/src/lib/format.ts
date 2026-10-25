@@ -23,8 +23,9 @@ export function formatRelative(dateStr: string, locale = 'vi') {
   }
 }
 
-export function formatCurrency(vnd: number): string {
-  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(vnd);
+export function formatCurrency(vnd?: number | null): string {
+  const amount = typeof vnd === 'number' && !isNaN(vnd) ? vnd : Number(vnd || 0);
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(isNaN(amount) ? 0 : amount);
 }
 
 export function formatNumber(num: number): string {

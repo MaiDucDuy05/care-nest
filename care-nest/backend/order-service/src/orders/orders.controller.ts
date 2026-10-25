@@ -46,6 +46,15 @@ export class OrdersController {
     return this.ordersService.getOrder(user.id, id, true);
   }
 
+  @Post('admin/:id/refund')
+  async refundAdmin(
+    @CurrentUser() user: { id: string; role?: string },
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+  ): Promise<any> {
+    return this.ordersService.refund(id, body?.reason);
+  }
+
   @Get(':id')
   async getOne(@CurrentUser() user: { id: string; role?: string }, @Param('id') id: string): Promise<any> {
     const isAdmin = user.role === 'ADMIN';

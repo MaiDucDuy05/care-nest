@@ -21,6 +21,8 @@ export class OrdersRepository {
     return this.prisma.order.findUnique({
       where: { id },
       include: {
+        buyer: { select: { id: true, fullName: true, email: true, phone: true } },
+        seller: { select: { id: true, userId: true, storeName: true } },
         items: { include: { product: { select: { id: true, name: true, requiresImei: true } } } },
         payment: true,
         shipment: true,

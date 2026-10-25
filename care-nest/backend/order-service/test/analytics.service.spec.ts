@@ -85,7 +85,7 @@ describe('AnalyticsService', () => {
   it('aggregates totals and top products across the date range', async () => {
     prismaState.orders.set('o-1', {
       id: 'o-1',
-      sellerId: 'user-1',
+      sellerId: 'seller-1',
       status: 'DELIVERED',
       createdAt: daysAgo(1),
       deletedAt: null,
@@ -96,7 +96,7 @@ describe('AnalyticsService', () => {
     });
     prismaState.orders.set('o-2', {
       id: 'o-2',
-      sellerId: 'user-1',
+      sellerId: 'seller-1',
       status: 'SHIPPED',
       createdAt: daysAgo(2),
       deletedAt: null,
@@ -109,7 +109,7 @@ describe('AnalyticsService', () => {
     // Old (outside 7d window) — should be ignored
     prismaState.orders.set('o-old', {
       id: 'o-old',
-      sellerId: 'user-1',
+      sellerId: 'seller-1',
       status: 'DELIVERED',
       createdAt: daysAgo(40),
       deletedAt: null,
@@ -119,7 +119,7 @@ describe('AnalyticsService', () => {
     // Cancelled — should be ignored
     prismaState.orders.set('o-cancelled', {
       id: 'o-cancelled',
-      sellerId: 'user-1',
+      sellerId: 'seller-1',
       status: 'CANCELLED',
       createdAt: daysAgo(1),
       deletedAt: null,

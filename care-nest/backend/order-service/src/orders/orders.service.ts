@@ -81,13 +81,102 @@ export class OrdersService {
     return { orders: createdOrders };
   }
 
+  formatOrder(order: any): any {
+    if (!order) return null;
+
+    const shippingAddress = typeof order.shippingAddress === 'object' && order.shippingAddress !== null
+      ? {
+          ...order.shippingAddress,
+          fullName: order.shippingAddress.fullName || order.shippingAddress.name || order.buyer?.fullName || 'Khách hàng',
+          name: order.shippingAddress.name || order.shippingAddress.fullName || order.buyer?.fullName || 'Khách hàng',
+          phone: order.shippingAddress.phone || order.buyer?.phone || '',
+          addressLine: order.shippingAddress.addressLine || order.shippingAddress.line1 || '',
+          line1: order.shippingAddress.line1 || order.shippingAddress.addressLine || '',
+          ward: order.shippingAddress.ward || '',
+          district: order.shippingAddress.district || '',
+          province: order.shippingAddress.province || '',
+          country: order.shippingAddress.country || 'VN',
+        }
+      : {
+          fullName: order.buyer?.fullName || 'Khách hàng',
+          name: order.buyer?.fullName || 'Khách hàng',
+          phone: order.buyer?.phone || '',
+          addressLine: '',
+          line1: '',
+          ward: '',
+          district: '',
+          province: '',
+          country: 'VN',
+        };
+
+    const items = (order.items || []).map((item: any) => {
+      const unitPriceNum = Number(item.unitPrice || 0);
+      const quantityNum = Number(item.quantity || 1);
+      const lineTotalNum = item.lineTotal !== undefined && item.lineTotal !== null
+        ? Number(item.lineTotal)
+        : unitPriceNum * quantityNum;
+      const itemName = item.name || item.productName || item.product?.name || 'Sản phẩm y tế';
+
+      return {
+        ...item,
+        name: itemName,
+        productName: itemName,
+        unitPrice: unitPriceNum,
+        unitPriceVnd: unitPriceNum,
+        quantity: quantityNum,
+        lineTotal: lineTotalNum,
+        totalVnd: lineTotalNum,
+      };
+    });
+
+    const totalNum = Number(order.total || 0);
+    const subtotalNum = Number(order.subtotal || 0);
+    const shippingFeeNum = Number(order.shippingFee || 0);
+    const discountNum = Number(order.discount || 0);
+
+    const createdAtStr = order.createdAt instanceof Date ? order.createdAt.toISOString() : (order.createdAt || new Date().toISOString());
+    const updatedAtStr = order.updatedAt instanceof Date ? order.updatedAt.toISOString() : (order.updatedAt || createdAtStr);
+
+    const timeline = [
+      { status: 'CREATED', timestamp: createdAtStr },
+    ];
+    if (order.status && order.status !== OrderStatus.CREATED) {
+      timeline.unshift({ status: order.status, timestamp: updatedAtStr });
+    }
+
+    return {
+      ...order,
+      orderNumber: order.orderNumber || order.id?.slice(0, 8),
+      buyerName: order.buyer?.fullName || shippingAddress.fullName || 'Khách hàng',
+      buyerEmail: order.buyer?.email || '',
+      buyerPhone: order.buyer?.phone || shippingAddress.phone || '',
+      sellerName: order.seller?.storeName || 'Nhà bán hàng CareNest',
+      total: totalNum,
+      totalVnd: totalNum,
+      subtotal: subtotalNum,
+      subtotalVnd: subtotalNum,
+      shippingFee: shippingFeeNum,
+      shippingFeeVnd: shippingFeeNum,
+      discount: discountNum,
+      paymentMethod: order.payment?.method || 'COD',
+      shippingAddress,
+      items,
+      timeline,
+      shipmentId: order.shipment?.id || undefined,
+      createdAt: createdAtStr,
+      updatedAt: updatedAtStr,
+    };
+  }
+
   async getOrder(userId: string, orderId: string, isAdmin = false): Promise<any> {
     const order = await this.ordersRepository.findById(orderId);
     if (!order) throw new NotFoundException(`Không tìm thấy đơn hàng ${orderId}`);
-    if (!isAdmin && order.buyerId !== userId) {
+    const isBuyer = order.buyerId === userId;
+    const isSeller = order.sellerId === userId || order.seller?.userId === userId;
+    if (!isAdmin && !isBuyer && !isSeller) {
       throw new NotFoundException(`Không tìm thấy đơn hàng ${orderId}`);
     }
-    return order;
+    return this.formatOrder(order);
   }
 
   async listForBuyer(buyerId: string, page = 1, pageSize = 20): Promise<any> {
@@ -195,6 +284,26 @@ export class OrdersService {
       throw new BadRequestException('Không thể xác nhận giao hàng cho đơn đã hủy hoặc hoàn trả');
     }
     return this.ordersRepository.updateStatus(orderId, OrderStatus.DELIVERED);
+  }
+
+  async refund(orderId: string, reason?: string): Promise<any> {
+    const order = await this.ordersRepository.findById(orderId);
+    if (!order) throw new NotFoundException(`Không tìm thấy đơn hàng ${orderId}`);
+
+    let targetStatus: OrderStatus = OrderStatus.CANCELLED;
+    if (order.status === OrderStatus.DELIVERED || order.status === OrderStatus.SHIPPED) {
+      targetStatus = OrderStatus.RETURNED;
+    }
+
+    const updated = await this.ordersRepository.updateStatus(orderId, targetStatus);
+
+    if (targetStatus === OrderStatus.CANCELLED) {
+      for (const item of order.items || []) {
+        try { await this.inventoryService.release(item.productId, item.quantity); } catch { /* swallow */ }
+      }
+    }
+
+    return { success: true, order: this.formatOrder(updated) };
   }
 
   /**

@@ -11,10 +11,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function OrderDetailPage() {
   const t = useTranslations('orders');
+  const tCommon = useTranslations('common');
   const params = useParams();
   const router = useRouter();
   const orderId = params.id as string;
-  const { token } = useAuth();
+  const { token, isLoading: authLoading } = useAuth();
   const [data, setData] = useState<OrderDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -30,22 +31,39 @@ export default function OrderDetailPage() {
     }
   }
 
-  useEffect(() => { fetchData(); }, [orderId]);
+  useEffect(() => {
+    if (!authLoading) {
+      fetchData();
+    }
+  }, [orderId, token, authLoading]);
 
-  if (loading) {
-    return <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}><Skeleton width="200px" height="32px" /><Skeleton width="100%" height="300px" /></div>;
+  if (loading || authLoading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <Skeleton width="200px" height="32px" />
+        <Skeleton width="100%" height="300px" />
+      </div>
+    );
   }
 
   if (!data) {
-    return <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>Order not found</div>;
+    return (
+      <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+        {t('noOrders')}
+      </div>
+    );
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <Button variant="ghost" onClick={() => router.back()}>← Back</Button>
+        <Button variant="ghost" onClick={() => router.back()}>
+          ← {tCommon('back')}
+        </Button>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: 800 }}>{t('orderId')}: {orderId.slice(0, 8)}...</h1>
+          <h1 style={{ fontSize: '22px', fontWeight: 800 }}>
+            {t('orderId')}: {(data as any).orderNumber || `${orderId.slice(0, 8)}...`}
+          </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-muted)' }}>{t('pendingTitle')}</p>
         </div>
       </div>
