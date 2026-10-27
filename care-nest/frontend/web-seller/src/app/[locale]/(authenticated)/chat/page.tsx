@@ -25,6 +25,8 @@ import {
   ChevronRight,
   Filter,
 } from 'lucide-react';
+import { chatService, connectChatSocket, disconnectChatSocket } from '@/lib/services/chat.service';
+import { getToken } from '@/lib/api-client';
 
 interface SellerConversation {
   id: string;
@@ -184,6 +186,88 @@ export default function SellerChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isCustomerTyping]);
 
+  // Connect to real Chat WebSocket and fetch real conversations
+  useEffect(() => {
+    let mounted = true;
+    const token = getToken();
+    const socket = connectChatSocket(token || undefined);
+
+    const onMessage = (msg: any) => {
+      if (!mounted) return;
+      const formatted: SellerChatMessage = {
+        id: msg.id || 'm-' + Date.now(),
+        sender: msg.sender?.role === 'SELLER' ? 'seller' : 'customer',
+        content: msg.content,
+        time: new Date(msg.createdAt || Date.now()).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        status: msg.status || 'DELIVERED',
+        type: msg.type || 'TEXT',
+        metadata: msg.metadata,
+      };
+      setMessages((prev) => [...prev, formatted]);
+    };
+
+    socket.on('chat:message', onMessage);
+
+    (async () => {
+      try {
+        const serverConvs = await chatService.getConversations();
+        if (mounted && serverConvs && serverConvs.length > 0) {
+          const mapped: SellerConversation[] = serverConvs.map((sc) => ({
+            id: sc.id,
+            customerName: sc.otherParticipant?.fullName || sc.title || 'Khách hàng CareNest',
+            customerPhone: sc.otherParticipant?.email || 'CareNest User',
+            customerLocation: 'Việt Nam',
+            customerTier: 'REGULAR',
+            totalSpent: 0,
+            totalOrders: 0,
+            avatarBg: '#0d9488',
+            lastMessage: sc.lastMessage?.content || 'Chưa có tin nhắn',
+            lastMessageTime: sc.lastMessageAt ? new Date(sc.lastMessageAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '',
+            unreadCount: sc.unreadCount || 0,
+            isOnline: true,
+          }));
+          setConversations(mapped);
+          setActiveConvId(mapped[0].id);
+        }
+      } catch {
+        // keep initial fallback
+      }
+    })();
+
+    return () => {
+      mounted = false;
+      socket.off('chat:message', onMessage);
+      disconnectChatSocket();
+    };
+  }, []);
+
+  // Fetch real messages when active conversation changes
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const msgs = await chatService.getMessages(activeConvId);
+        if (mounted && msgs && msgs.length > 0) {
+          const mapped: SellerChatMessage[] = msgs.map((m) => ({
+            id: m.id,
+            sender: m.sender?.role === 'SELLER' ? 'seller' : 'customer',
+            content: m.content,
+            time: new Date(m.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+            status: m.status || 'READ',
+            type: m.type as any,
+            metadata: m.metadata,
+          }));
+          setMessages(mapped);
+        }
+      } catch {
+        // silent
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, [activeConvId]);
+
   const filteredConversations = conversations.filter((c) => {
     if (filterTab === 'UNREAD' && c.unreadCount === 0) return false;
     if (filterTab === 'VIP' && c.customerTier !== 'VIP') return false;
@@ -197,7 +281,7 @@ export default function SellerChatPage() {
     return true;
   });
 
-  const handleSendMessage = (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
     if (!text) return;
 
@@ -219,24 +303,11 @@ export default function SellerChatPage() {
       prev.map((c) => (c.id === activeConvId ? { ...c, unreadCount: 0, lastMessage: text } : c))
     );
 
-    // Simulate customer auto-reply
-    if (activeConvId === 'conv-01') {
-      setTimeout(() => {
-        setIsCustomerTyping(true);
-      }, 1500);
-
-      setTimeout(() => {
-        setIsCustomerTyping(false);
-        const reply: SellerChatMessage = {
-          id: 'm-reply-' + Date.now(),
-          sender: 'customer',
-          content: 'Cảm ơn dược sĩ MedTech đã giải thích rõ ràng! Tôi vừa bấm đặt đơn hỏa tốc trên CareNest rồi nhé.',
-          time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-          status: 'READ',
-          type: 'TEXT',
-        };
-        setMessages((prev) => [...prev, reply]);
-      }, 3500);
+    // Call real chat service API
+    try {
+      await chatService.sendMessage(activeConvId, text, 'TEXT');
+    } catch (err) {
+      console.warn('Real chat send failed:', err);
     }
   };
 
@@ -244,18 +315,24 @@ export default function SellerChatPage() {
     handleSendMessage('Dạ shop xin gửi tặng anh/chị mã voucher độc quyền "MEDTECH50K" giảm ngay 50.000đ khi thanh toán đơn hàng này trên CareNest Mall ạ!');
   };
 
-  const handleSendProductCard = () => {
-    if (!activeConv.relatedProduct) return;
+  const handleSendProductCard = async () => {
+    if (!activeConv?.relatedProduct) return;
+    const content = `Dạ đây là thông tin chi tiết thiết bị ${activeConv.relatedProduct.name}:`;
     const productMsg: SellerChatMessage = {
       id: 'm-prod-' + Date.now(),
       sender: 'seller',
-      content: `Dạ đây là thông tin chi tiết thiết bị ${activeConv.relatedProduct.name}:`,
+      content,
       time: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       status: 'SENT',
       type: 'PRODUCT_CARD',
       metadata: activeConv.relatedProduct,
     };
     setMessages((prev) => [...prev, productMsg]);
+    try {
+      await chatService.sendMessage(activeConvId, content, 'PRODUCT_CARD', activeConv.relatedProduct);
+    } catch (err) {
+      console.warn('Real product card send failed:', err);
+    }
   };
 
   const handleSaveNotes = () => {

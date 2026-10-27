@@ -55,6 +55,14 @@ export const apiClient = {
       });
       return handleResponse<{ token: string }>(res);
     },
+    async updateProfile(data: { fullName?: string; phone?: string }, token?: string) {
+      const res = await fetch(`${AUTH_API}/api/v1/auth/me`, {
+        method: 'PUT',
+        headers: authHeaders(token),
+        body: JSON.stringify(data),
+      });
+      return handleResponse<{ user: AuthUser }>(res);
+    },
   },
 
   kyc: {

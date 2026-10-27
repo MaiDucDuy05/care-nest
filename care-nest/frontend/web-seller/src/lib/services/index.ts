@@ -5,6 +5,7 @@ import { ordersService } from './orders.service';
 import { imeiService } from './imei.service';
 import { payoutsService } from './payouts.service';
 import { analyticsService } from './analytics.service';
+import { chatService } from './chat.service';
 
 export {
   authService,
@@ -14,4 +15,5 @@ export {
   imeiService,
   payoutsService,
   analyticsService,
+  chatService,
 };

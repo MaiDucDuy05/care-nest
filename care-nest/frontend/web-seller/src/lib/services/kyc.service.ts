@@ -101,4 +101,18 @@ export const kycService = {
     }
     return res.json();
   },
+
+  async updateStoreProfile(data: { storeName?: string; storeSlug?: string; description?: string }) {
+    if (USE_MOCK) {
+      return { success: true, ...data };
+    }
+    const token = getToken();
+    if (!token) throw new Error('not authenticated');
+    return apiFetch(`${CATALOG_API}/api/v1/seller/kyc/profile`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+      token,
+    });
+  },
 };
+

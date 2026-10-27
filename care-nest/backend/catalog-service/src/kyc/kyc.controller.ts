@@ -2,6 +2,7 @@ import {
   Controller,
   Post,
   Get,
+  Put,
   Param,
   Query,
   Body,
@@ -58,6 +59,17 @@ export class SellerKycController {
   @Get()
   async getStatus(@CurrentUser() user: { id: string }): Promise<any> {
     return this.kycService.getByUserId(user.id);
+  }
+
+  /**
+   * Seller updates their store profile settings.
+   */
+  @Put('profile')
+  async updateProfile(
+    @CurrentUser() user: { id: string },
+    @Body() body: { storeName?: string; storeSlug?: string; description?: string },
+  ): Promise<any> {
+    return this.kycService.updateSellerProfile(user.id, body);
   }
 }
 
@@ -128,6 +140,14 @@ export class KycController {
   @Get('me')
   async me(@CurrentUser() user: { id: string }): Promise<any> {
     return this.kycService.getByUserId(user.id);
+  }
+
+  @Put('profile')
+  async updateProfile(
+    @CurrentUser() user: { id: string },
+    @Body() body: { storeName?: string; storeSlug?: string; description?: string },
+  ): Promise<any> {
+    return this.kycService.updateSellerProfile(user.id, body);
   }
 
   /**

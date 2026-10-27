@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/lib/hooks/use-auth';
+import { apiClient } from '@/lib/api-client';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,15 +11,15 @@ import { toast } from '@/components/ui/toast';
 
 export default function ProfilePage() {
   const t = useTranslations('settings');
-  const { user } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [loading, setLoading] = useState(false);
 
   async function handleSave() {
     setLoading(true);
     try {
-      // TODO: call profile update API
-      await new Promise((r) => setTimeout(r, 500));
+      await apiClient.auth.updateProfile({ fullName: fullName.trim() }, token ?? undefined);
+      await refreshUser();
       toast('success', t('profileUpdated'));
     } catch {
       toast('error', 'Error updating profile');

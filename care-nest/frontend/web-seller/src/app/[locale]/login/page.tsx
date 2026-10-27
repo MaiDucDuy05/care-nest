@@ -99,9 +99,8 @@ export default function LoginPage() {
             </Link>
           </p>
 
-          <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-light)' }}>
-            {tErr('error')} dev? Set <code>NEXT_PUBLIC_USE_MOCK_AUTH=true</code>; demo seller:{' '}
-            <code>demo.seller@carenest.vn</code> / <code>Seller@123456</code>
+          <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
+            Tài khoản người bán thử nghiệm: <code>seller.wonlex@carenest.vn</code> / <code>Seller@123456</code>
           </p>
         </form>
       </div>

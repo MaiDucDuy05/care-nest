@@ -105,4 +105,8 @@ export class AuthService {
       },
     };
   }
+
+  async updateProfile(id: string, data: { fullName?: string; phone?: string }) {
+    return this.usersService.updateProfile(id, data);
+  }
 }

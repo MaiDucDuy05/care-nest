@@ -167,4 +167,25 @@ export class UsersRepository {
       data: { mfaEnabled: false, mfaSecret: null },
     });
   }
+
+  async updateProfile(id: string, data: { fullName?: string; phone?: string }) {
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        ...(data.fullName ? { fullName: data.fullName } : {}),
+        ...(data.phone ? { phone: data.phone } : {}),
+      },
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        lastLoginAt: true,
+      },
+    });
+  }
 }
+

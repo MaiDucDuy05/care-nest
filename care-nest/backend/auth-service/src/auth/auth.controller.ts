@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, Get, Put, UseGuards, BadRequestException } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { LoginSchema } from './dto/login.dto.js';
 import { RegisterSchema } from './dto/register.dto.js';
@@ -40,6 +40,17 @@ export class AuthController {
   async me(@CurrentUser() user: JwtUser) {
     const userId = user.userId ?? user.id ?? user.sub;
     return { user: await this.authService.getCurrentUser(userId) };
+  }
+
+  @Put('me')
+  @UseGuards(JwtAuthGuard)
+  async updateMe(
+    @CurrentUser() user: JwtUser,
+    @Body() body: { fullName?: string; phone?: string },
+  ) {
+    const userId = user.userId ?? user.id ?? user.sub;
+    const updated = await this.authService.updateProfile(userId, body);
+    return { user: updated };
   }
 
   @Post('logout')

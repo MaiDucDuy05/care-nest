@@ -10,6 +10,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   isAdmin: boolean;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -25,6 +26,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const refreshUser = useCallback(async () => {
+    const activeToken = token || localStorage.getItem(TOKEN_KEY);
+    if (!activeToken) return;
+    try {
+      const u = await apiClient.auth.me(activeToken);
+      if (hasAdminRole(u.role)) {
+        setUser(u);
+      }
+    } catch {
+      // ignore
+    }
+  }, [token]);
 
   useEffect(() => {
     const stored = localStorage.getItem(TOKEN_KEY);
@@ -80,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'MEDICAL_REVIEWER';
 
   return (
-    <AuthContext.Provider value={{ user, token, isLoading, login, logout, isAdmin }}>
+    <AuthContext.Provider value={{ user, token, isLoading, login, logout, isAdmin, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

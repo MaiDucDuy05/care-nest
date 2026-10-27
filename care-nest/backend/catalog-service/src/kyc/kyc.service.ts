@@ -434,4 +434,37 @@ export class KycService {
       })),
     };
   }
+
+  async updateSellerProfile(
+    userId: string,
+    data: { storeName?: string; storeSlug?: string; description?: string },
+  ): Promise<any> {
+    let seller = await this.prisma.seller.findUnique({ where: { userId } });
+    if (!seller) {
+      const baseSlug = (data.storeSlug || data.storeName || 'store').toLowerCase().replace(/\s+/g, '-');
+      seller = await this.prisma.seller.create({
+        data: {
+          userId,
+          storeName: data.storeName || 'Cửa hàng',
+          storeSlug: `${baseSlug}-${Date.now().toString().slice(-4)}`,
+        },
+      });
+      return seller;
+    }
+
+    if (data.storeSlug && data.storeSlug !== seller.storeSlug) {
+      const clash = await this.prisma.seller.findUnique({ where: { storeSlug: data.storeSlug } });
+      if (clash && clash.id !== seller.id) {
+        throw new BadRequestException('Slug cửa hàng này đã được sử dụng.');
+      }
+    }
+
+    return this.prisma.seller.update({
+      where: { id: seller.id },
+      data: {
+        ...(data.storeName ? { storeName: data.storeName } : {}),
+        ...(data.storeSlug ? { storeSlug: data.storeSlug } : {}),
+      },
+    });
+  }
 }

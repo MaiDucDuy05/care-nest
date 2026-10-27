@@ -103,4 +103,9 @@ export class UsersService {
     const user = await this.usersRepository.updateRole(id, role);
     return { success: true, user };
   }
+
+  async updateProfile(id: string, data: { fullName?: string; phone?: string }) {
+    await this.findById(id);
+    return this.usersRepository.updateProfile(id, data);
+  }
 }

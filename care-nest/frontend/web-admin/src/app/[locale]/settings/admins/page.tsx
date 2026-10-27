@@ -1,13 +1,45 @@
 'use client';
 
+import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/hooks/use-auth';
 import { canManageAdmins } from '@/lib/role-guard';
-import { Badge } from '@/components/ui/badge';
+import { apiClient, type UserAdmin } from '@/lib/api-client';
+import { UserTable } from '@/components/users/user-table';
 
 export default function AdminsPage() {
   const t = useTranslations('settings');
-  const { user } = useAuth();
+  const { user, token } = useAuth();
+  const router = useRouter();
+
+  const [admins, setAdmins] = useState<UserAdmin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const fetchAdmins = useCallback(async (p = 1) => {
+    setLoading(true);
+    try {
+      const res = await apiClient.users.list(
+        { page: p, limit: 50, role: 'ADMIN' },
+        token ?? undefined
+      );
+      setAdmins(res.data);
+      setTotalPages(res.totalPages);
+      setPage(res.page);
+    } catch {
+      setAdmins([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (user && canManageAdmins(user.role)) {
+      fetchAdmins(1);
+    }
+  }, [user, fetchAdmins]);
 
   if (!user || !canManageAdmins(user.role)) {
     return (
@@ -24,11 +56,14 @@ export default function AdminsPage() {
         <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>{t('adminsDesc')}</p>
       </div>
 
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '16px' }}>
-        <p style={{ color: 'var(--text-muted)', fontSize: '14px' }}>
-          Admin management features will be available in a future update.
-        </p>
-      </div>
+      <UserTable
+        data={admins}
+        loading={loading}
+        page={page}
+        totalPages={totalPages}
+        onPageChange={(p) => fetchAdmins(p)}
+        onView={(u) => router.push(`/users/${u.id}`)}
+      />
     </div>
   );
 }
