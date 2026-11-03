@@ -2,7 +2,7 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { User, Mail, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { User, Mail, Clock, CheckCircle, XCircle, HeartHandshake } from 'lucide-react';
 import { EmptyState } from '../ui/empty-state';
 import { useTranslations } from 'next-intl';
 import type { Caregiver } from '@/services/caregivers.service';
@@ -65,12 +65,43 @@ export function CaregiverList({ caregivers, onRevoke, onResend, isLoading }: Car
 
           {/* Info */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, fontSize: '15px' }}>
-              {cg.fullName ?? cg.email}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px', flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: '15px' }}>
+                {cg.fullName || cg.email || 'Người chăm sóc'}
+              </span>
+              <span style={{
+                fontSize: '11px',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                fontWeight: 600,
+                background: cg.relationship === 'DOCTOR' ? '#e0e7ff' : cg.relationship === 'NURSE' ? '#ccfbf1' : '#fef3c7',
+                color: cg.relationship === 'DOCTOR' ? '#3730a3' : cg.relationship === 'NURSE' ? '#0f766e' : '#92400e',
+              }}>
+                {cg.relationship === 'DOCTOR' ? 'Bác sĩ' : cg.relationship === 'NURSE' ? 'Điều dưỡng' : 'Gia đình'}
+              </span>
             </div>
             <div style={{ fontSize: '13px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Mail size={12} /> {cg.email}
             </div>
+            {cg.permissions && (
+              <div style={{ display: 'flex', gap: '6px', marginTop: '6px', flexWrap: 'wrap' }}>
+                {cg.permissions.viewHealth && (
+                  <span style={{ fontSize: '11px', background: 'var(--bg-main)', padding: '1px 6px', borderRadius: '4px', color: 'var(--text-muted)' }}>
+                    ✓ Xem sinh hiệu
+                  </span>
+                )}
+                {cg.permissions.receiveAlerts && (
+                  <span style={{ fontSize: '11px', background: 'var(--bg-main)', padding: '1px 6px', borderRadius: '4px', color: 'var(--text-muted)' }}>
+                    ✓ Nhận SOS
+                  </span>
+                )}
+                {cg.permissions.manageDevices && (
+                  <span style={{ fontSize: '11px', background: 'var(--bg-main)', padding: '1px 6px', borderRadius: '4px', color: 'var(--text-muted)' }}>
+                    ✓ Quản lý thiết bị
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Status badge */}

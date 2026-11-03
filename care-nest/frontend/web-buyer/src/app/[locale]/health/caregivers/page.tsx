@@ -29,9 +29,12 @@ export default function CaregiversPage() {
     return () => { cancelled = true; };
   }, []);
 
-  const handleInvite = async (email: string) => {
-    const newCg = await caregiversService.invite(email);
-    setCaregivers((prev) => [...prev, newCg]);
+  const handleInvite = async (
+    email: string,
+    relationship: 'FAMILY' | 'NURSE' | 'DOCTOR' | 'OTHER' = 'FAMILY',
+  ) => {
+    const newCg = await caregiversService.invite(email, relationship);
+    setCaregivers((prev) => [newCg, ...prev.filter((c) => c.id !== newCg.id)]);
   };
 
   const handleRevoke = async (id: string) => {

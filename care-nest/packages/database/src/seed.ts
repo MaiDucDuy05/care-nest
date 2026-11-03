@@ -47,6 +47,7 @@ const PASSWORDS = {
   ADMIN: '$2b$10$v1b/2mRDSXIHyFYyRFPFVO6YGuE6K5wu521G/ct92b6wx.KBnp5zW',
   SELLER: '$2b$10$VB.xZ7bhtKi1sTAy/EsZjuvvgMCOhocJu3NUo7c2Xqm8x8q/NHX1m',
   BUYER: '$2b$10$KfDD8FDk6ICrRKmgm8E4buuR7ptJAu5gKcZtruybhORRRN0EL9Znm',
+  CAREGIVER: '$2b$10$9Tp.h7cumhWTeOAtv.ZxguFZZabj3KPxIfKsPpkWU4F6uyj09GO5e',
   SIMPLE: '$2b$10$TyQ7QMGTH9.q4b9oHF7Ya.uhzmDs3qhQDVKj8ZAiOuDqpd19R9CcG',
 };
 
@@ -174,6 +175,23 @@ async function main() {
       fullName: 'BS.CKII Nguyễn Văn Minh (Lão Khoa)',
       phone: '0966554433',
       passwordHash: PASSWORDS.SIMPLE,
+      role: UserRole.CAREGIVER,
+      status: UserStatus.ACTIVE,
+      pdpaConsent: true,
+      pdpaConsentedAt: new Date(),
+    },
+  });
+
+  const caregiverMai = await prisma.user.upsert({
+    where: { email: 'caregiver@carenest.vn' },
+    update: {
+      passwordHash: PASSWORDS.CAREGIVER,
+    },
+    create: {
+      email: 'caregiver@carenest.vn',
+      fullName: 'BS. Trần Thị Mai',
+      phone: '0988765432',
+      passwordHash: PASSWORDS.CAREGIVER,
       role: UserRole.CAREGIVER,
       status: UserStatus.ACTIVE,
       pdpaConsent: true,
@@ -936,6 +954,27 @@ async function main() {
     },
   });
 
+  await prisma.caregiver.upsert({
+    where: {
+      userId_caretakerId: {
+        userId: buyer.id,
+        caretakerId: caregiverMai.id,
+      },
+    },
+    update: {},
+    create: {
+      userId: buyer.id,
+      caretakerId: caregiverMai.id,
+      relationship: 'FAMILY',
+      permissions: {
+        viewHealth: true,
+        receiveAlerts: true,
+        manageDevices: true,
+      },
+      acceptedAt: new Date(),
+    },
+  });
+
   // ---------------------------------------------------------------------------
   // 10. Orders, Order Items, Payments & Shipments
   // ---------------------------------------------------------------------------
@@ -1182,7 +1221,8 @@ async function main() {
   console.log('  👑 Admin:     admin@carenest.vn      | Password: Admin@123456');
   console.log('  🏪 Seller:    seller.wonlex@carenest.vn | Password: Seller@123456');
   console.log('  🛒 Buyer:     buyer@carenest.vn      | Password: Buyer@123456');
-  console.log('  🩺 Caregiver: bs.minh@carenest.vn    | Password: 123456');
+  console.log('  🩺 Caregiver: caregiver@carenest.vn  | Password: Caregiver@123456');
+  console.log('  🩺 Doctor:    bs.minh@carenest.vn    | Password: 123456');
   console.log('----------------------------------------------------');
 }
 

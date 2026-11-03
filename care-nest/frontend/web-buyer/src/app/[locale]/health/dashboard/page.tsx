@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { ShieldAlert, RefreshCw, MapPin, Watch } from 'lucide-react';
+import { ShieldAlert, RefreshCw, MapPin, Watch, Users, CheckCircle, ChevronDown, HeartHandshake } from 'lucide-react';
 import { Link, useRouter } from '@/i18n/routing';
 import { VitalsGrid } from '@/components/health/vitals-grid';
 import { AlertsList } from '@/components/health/alerts-list';
@@ -10,6 +10,7 @@ import { DeviceStatusBar } from '@/components/health/device-status-bar';
 import { useRealtimeVitals } from '@/lib/hooks/use-realtime-vitals';
 import { devicesService } from '@/services/devices.service';
 import { alertsService } from '@/services/alerts.service';
+import { caregiversService } from '@/services/caregivers.service';
 import { authService } from '@/services/auth.service';
 import { getToken } from '@/lib/api-client';
 import dynamic from 'next/dynamic';
@@ -27,13 +28,28 @@ const LiveDeviceMap = dynamic(
   }
 );
 
+interface SelectableDevice {
+  id: string;
+  imei: string;
+  name: string;
+  isOwner: boolean;
+  patientName?: string;
+  patientPhone?: string;
+  relationship?: string;
+  permissions?: {
+    viewHealth: boolean;
+    receiveAlerts: boolean;
+    manageDevices: boolean;
+  };
+}
+
 export default function DashboardPage() {
   const t = useTranslations('health');
   const router = useRouter();
 
-  const [deviceId, setDeviceId] = useState<string>('');
+  const [availableDevices, setAvailableDevices] = useState<SelectableDevice[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
   const [userId, setUserId] = useState<string>('');
-  const [deviceInfo, setDeviceInfo] = useState<{ name: string; imei: string; isReal: boolean } | null>(null);
 
   const [initialVitals, setInitialVitals] = useState<any>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
@@ -42,11 +58,40 @@ export default function DashboardPage() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Active selected device metadata
+  const currentDevice = useMemo(() => {
+    return availableDevices.find((d) => d.id === selectedDeviceId) || availableDevices[0] || null;
+  }, [availableDevices, selectedDeviceId]);
+
+  const loadVitalsForDevice = useCallback(async (devId: string) => {
+    if (!devId) return;
+    try {
+      const latest = await devicesService.getLatestVitals(devId).catch(() => null);
+      if (latest) {
+        setInitialVitals({
+          deviceId: devId,
+          timestamp: latest.timestamp,
+          heartRate: latest.heartRate,
+          bloodPressureSystolic: latest.bloodPressureSystolic,
+          bloodPressureDiastolic: latest.bloodPressureDiastolic,
+          spo2: latest.spo2,
+          temperature: latest.temperature,
+          battery: latest.battery,
+          lat: latest.lat,
+          lng: latest.lng,
+          inGeofence: latest.inGeofence,
+        });
+      }
+    } catch (e) {
+      console.warn('Failed to load vitals for device:', devId, e);
+    }
+  }, []);
+
   const loadDashboardData = useCallback(async () => {
     setIsRefreshing(true);
     const token = getToken();
 
-    // Bắt buộc phải đăng nhập mới xem được thiết bị của mình
+    // Bắt buộc phải đăng nhập
     if (!token) {
       setIsAuthenticated(false);
       setIsAuthChecking(false);
@@ -69,43 +114,68 @@ export default function DashboardPage() {
       setIsAuthChecking(false);
       setUserId(userRes.user.id);
 
-      // 2. CHỈ lấy danh sách thiết bị được gán cho chính tài khoản người dùng này
-      const myDevices = await devicesService.getMyDevices().catch(() => []);
-      if (Array.isArray(myDevices) && myDevices.length > 0) {
-        const primary = myDevices[0];
-        const devId = primary.deviceId || primary.id;
-        setDeviceId(devId);
-        setDeviceInfo({
-          name: primary.model || 'Thiết Bị CareNest',
-          imei: devId,
-          isReal: true,
-        });
+      // 2. Lấy thiết bị của chính mình + thiết bị được chia sẻ qua quyền Caregiver
+      const [myDevices, patientGroups] = await Promise.all([
+        devicesService.getMyDevices().catch(() => []),
+        caregiversService.getPatients().catch(() => []),
+      ]);
 
-        // 3. Lấy telemetry sinh tồn mới nhất của thiết bị
-        const latest = await devicesService.getLatestVitals(devId).catch(() => null);
-        if (latest) {
-          setInitialVitals({
-            deviceId: devId,
-            timestamp: latest.timestamp,
-            heartRate: latest.heartRate,
-            bloodPressureSystolic: latest.bloodPressureSystolic,
-            bloodPressureDiastolic: latest.bloodPressureDiastolic,
-            spo2: latest.spo2,
-            temperature: latest.temperature,
-            battery: latest.battery,
-            lat: latest.lat,
-            lng: latest.lng,
-            inGeofence: latest.inGeofence,
-          });
+      const deviceList: SelectableDevice[] = [];
+
+      // Thiết bị do chính user sở hữu
+      if (Array.isArray(myDevices)) {
+        for (const d of myDevices) {
+          const devId = d.deviceId || d.id;
+          if (devId) {
+            deviceList.push({
+              id: devId,
+              imei: d.imei || devId,
+              name: d.model || 'Thiết Bị Của Tôi',
+              isOwner: true,
+              patientName: 'Chính tôi',
+            });
+          }
         }
+      }
+
+      // Thiết bị của người thân / bệnh nhân ủy quyền cho user làm Caregiver
+      if (Array.isArray(patientGroups)) {
+        for (const p of patientGroups) {
+          for (const d of p.devices || []) {
+            const devId = d.deviceId || d.id;
+            if (devId && !deviceList.some((item) => item.id === devId)) {
+              deviceList.push({
+                id: devId,
+                imei: d.imei || devId,
+                name: d.model || 'Thiết Bị Giám Sát',
+                isOwner: false,
+                patientName: p.fullName || p.email,
+                patientPhone: p.phone,
+                relationship: p.relationship,
+                permissions: p.permissions,
+              });
+            }
+          }
+        }
+      }
+
+      setAvailableDevices(deviceList);
+
+      // Quyết định thiết bị đang chọn
+      let activeId = selectedDeviceId;
+      if (!activeId || !deviceList.some((d) => d.id === activeId)) {
+        activeId = deviceList[0]?.id || '';
+        setSelectedDeviceId(activeId);
+      }
+
+      // 3. Lấy telemetry sinh tồn của thiết bị đang chọn
+      if (activeId) {
+        await loadVitalsForDevice(activeId);
       } else {
-        // Tài khoản chưa được gán thiết bị nào
-        setDeviceId('');
-        setDeviceInfo(null);
         setInitialVitals(null);
       }
 
-      // 4. Lấy cảnh báo thật của người dùng
+      // 4. Lấy cảnh báo
       const alertsRes = await alertsService.listAlerts({ limit: 10 }).catch(() => null);
       if (alertsRes?.items && Array.isArray(alertsRes.items)) {
         setAlerts(alertsRes.items);
@@ -117,7 +187,14 @@ export default function DashboardPage() {
     } finally {
       setIsRefreshing(false);
     }
-  }, [router]);
+  }, [router, selectedDeviceId, loadVitalsForDevice]);
+
+  const handleDeviceChange = async (newDeviceId: string) => {
+    setSelectedDeviceId(newDeviceId);
+    setIsRefreshing(true);
+    await loadVitalsForDevice(newDeviceId);
+    setIsRefreshing(false);
+  };
 
   const handleAcknowledgeAlert = async (alertId: string) => {
     try {
@@ -138,8 +215,9 @@ export default function DashboardPage() {
   }, [loadDashboardData]);
 
   const token = getToken();
+  const effectiveDeviceId = currentDevice?.id || '';
   const { vitals, isConnected } = useRealtimeVitals({
-    deviceId,
+    deviceId: effectiveDeviceId,
     userId,
     authToken: token || undefined,
     initialVitals,
@@ -166,7 +244,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Nếu chưa đăng nhập (đang chờ redirect hoặc chưa có token)
+  // Nếu chưa đăng nhập
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
@@ -192,6 +270,65 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-10">
+        
+        {/* Patient / Device Switcher Bar (Caregiver View) */}
+        {availableDevices.length > 0 && (
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 mb-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                currentDevice?.isOwner ? 'bg-teal-50 text-teal-600' : 'bg-indigo-50 text-indigo-600'
+              }`}>
+                {currentDevice?.isOwner ? <Watch size={20} /> : <HeartHandshake size={20} />}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    {currentDevice?.isOwner ? 'Thiết bị của bạn' : 'Chế độ Người Chăm Sóc (Caregiver)'}
+                  </span>
+                  {!currentDevice?.isOwner && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      <CheckCircle size={10} /> Đã ủy quyền
+                    </span>
+                  )}
+                </div>
+                <div className="font-bold text-slate-900 text-sm sm:text-base">
+                  {currentDevice?.isOwner ? (
+                    'Theo dõi sinh hiệu cá nhân'
+                  ) : (
+                    <>Đang theo dõi: <span className="text-indigo-600">{currentDevice?.patientName}</span> ({currentDevice?.relationship === 'DOCTOR' ? 'Bác sĩ' : currentDevice?.relationship === 'NURSE' ? 'Điều dưỡng' : 'Gia đình'})</>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Selector Dropdown if multiple devices / patients exist */}
+            {availableDevices.length > 1 && (
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <label htmlFor="device-selector" className="text-xs font-semibold text-slate-500 whitespace-nowrap">
+                  Chuyển người theo dõi:
+                </label>
+                <div className="relative flex-1 sm:w-64">
+                  <select
+                    id="device-selector"
+                    value={effectiveDeviceId}
+                    onChange={(e) => handleDeviceChange(e.target.value)}
+                    className="w-full appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 pr-8 text-xs sm:text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer transition-all"
+                  >
+                    {availableDevices.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.isOwner
+                          ? `[Của tôi] ${d.name}`
+                          : `[${d.patientName}] ${d.name} (${d.relationship || 'Người thân'})`}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Header bar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
@@ -207,13 +344,12 @@ export default function DashboardPage() {
               {t('title')}
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              {deviceInfo?.isReal ? (
+              {currentDevice ? (
                 <>
-                  Thiết bị giám sát: <strong className="font-semibold text-slate-800">{deviceInfo.name}</strong> (IMEI: <span className="font-mono text-slate-600">{deviceInfo.imei}</span>)
-                </>
-              ) : deviceInfo ? (
-                <>
-                  Thiết bị: <strong className="font-semibold text-slate-800">{deviceInfo.name}</strong> (IMEI: <span className="font-mono text-slate-600">{deviceInfo.imei}</span>)
+                  Thiết bị: <strong className="font-semibold text-slate-800">{currentDevice.name}</strong> (IMEI: <span className="font-mono text-slate-600">{currentDevice.imei}</span>)
+                  {!currentDevice.isOwner && (
+                    <> — Người thân: <strong className="text-indigo-600 font-semibold">{currentDevice.patientName}</strong></>
+                  )}
                 </>
               ) : (
                 <>
@@ -227,6 +363,12 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/health/caregivers"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 shadow-xs transition-all"
+            >
+              <Users size={16} /> Mời Người Chăm Sóc
+            </Link>
             <button
               id="dashboard-refresh-btn"
               onClick={loadDashboardData}
@@ -244,8 +386,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Banner nếu chưa có thiết bị nào được gán */}
-        {!deviceInfo && (
+        {/* Banner nếu chưa có thiết bị nào */}
+        {availableDevices.length === 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center flex-shrink-0">
@@ -253,7 +395,7 @@ export default function DashboardPage() {
               </div>
               <div>
                 <div className="font-bold text-sm text-amber-900">Tài khoản của bạn chưa có thiết bị giám sát nào</div>
-                <div className="text-xs text-amber-700 mt-0.5">Vui lòng kích hoạt thiết bị IoT mới để bắt đầu theo dõi sức khỏe và vị trí của người thân.</div>
+                <div className="text-xs text-amber-700 mt-0.5">Vui lòng kích hoạt thiết bị IoT mới hoặc nhờ người thân gửi lời mời theo dõi sức khỏe.</div>
               </div>
             </div>
             <Link
@@ -267,8 +409,8 @@ export default function DashboardPage() {
 
         {/* Device Status Bar */}
         <DeviceStatusBar
-          imei={deviceInfo?.imei ?? '--'}
-          model={deviceInfo?.name ?? 'Thiết bị'}
+          imei={currentDevice?.imei ?? '--'}
+          model={currentDevice ? (currentDevice.isOwner ? currentDevice.name : `${currentDevice.name} (${currentDevice.patientName})`) : 'Thiết bị'}
           battery={vitals?.battery ?? initialVitals?.battery ?? 0}
           isConnected={isConnected}
           lastUpdated={t('justNow')}
@@ -314,7 +456,7 @@ export default function DashboardPage() {
             <LiveDeviceMap
               lat={vitals?.lat ?? initialVitals?.lat ?? 21.0381}
               lng={vitals?.lng ?? initialVitals?.lng ?? 105.8234}
-              deviceName={deviceInfo?.name ?? 'Thiết Bị CareNest'}
+              deviceName={currentDevice?.name ?? 'Thiết Bị CareNest'}
               locationName={vitals?.inGeofence || 'Nhà riêng'}
               inGeofence={vitals?.inGeofence ?? initialVitals?.inGeofence ?? 'Vùng an toàn (Nhà)'}
               isConnected={isConnected}

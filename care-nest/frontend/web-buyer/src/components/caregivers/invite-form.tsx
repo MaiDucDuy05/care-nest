@@ -2,16 +2,17 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Mail, Send } from 'lucide-react';
+import { Mail, Send, HeartHandshake } from 'lucide-react';
 
 interface InviteFormProps {
-  onInvite: (email: string) => Promise<void>;
+  onInvite: (email: string, relationship: 'FAMILY' | 'NURSE' | 'DOCTOR' | 'OTHER') => Promise<void>;
   disabled?: boolean;
 }
 
 export function InviteForm({ onInvite, disabled }: InviteFormProps) {
   const t = useTranslations('caregivers');
   const [email, setEmail] = useState('');
+  const [relationship, setRelationship] = useState<'FAMILY' | 'NURSE' | 'DOCTOR' | 'OTHER'>('FAMILY');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -28,25 +29,26 @@ export function InviteForm({ onInvite, disabled }: InviteFormProps) {
 
     setIsLoading(true);
     try {
-      await onInvite(email);
+      await onInvite(email, relationship);
       setSuccess(true);
       setEmail('');
-    } catch (err) {
-      setError(t('inviteError'));
+    } catch (err: any) {
+      setError(err?.message || t('inviteError'));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
       <div>
         <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>
           {t('emailLabel')}
         </label>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <div style={{
-            flex: 1,
+            flex: 2,
+            minWidth: '220px',
             display: 'flex',
             alignItems: 'center',
             gap: '10px',
@@ -60,7 +62,7 @@ export function InviteForm({ onInvite, disabled }: InviteFormProps) {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder={t('emailPlaceholder')}
+              placeholder="caregiver@carenest.vn hoặc email người thân..."
               disabled={disabled || isLoading}
               style={{
                 border: 'none',
@@ -71,26 +73,63 @@ export function InviteForm({ onInvite, disabled }: InviteFormProps) {
               }}
             />
           </div>
+
+          <div style={{
+            flex: 1,
+            minWidth: '150px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 12px',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-md)',
+            background: '#ffffff',
+          }}>
+            <HeartHandshake size={18} color="var(--text-muted)" />
+            <select
+              value={relationship}
+              onChange={(e) => setRelationship(e.target.value as any)}
+              disabled={disabled || isLoading}
+              style={{
+                border: 'none',
+                outline: 'none',
+                width: '100%',
+                fontSize: '14px',
+                fontFamily: 'inherit',
+                background: 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="FAMILY">Gia đình / Người thân</option>
+              <option value="DOCTOR">Bác sĩ gia đình</option>
+              <option value="NURSE">Điều dưỡng viên</option>
+              <option value="OTHER">Khác</option>
+            </select>
+          </div>
+
           <button
             type="submit"
             className="btn btn-primary"
             disabled={disabled || isLoading || !email}
-            style={{ whiteSpace: 'nowrap' }}
+            style={{ whiteSpace: 'nowrap', minWidth: '130px' }}
           >
             {isLoading ? t('inviting') : (
-              <>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Send size={16} /> {t('inviteBtn')}
-              </>
+              </span>
             )}
           </button>
         </div>
         {error && (
-          <p style={{ color: 'var(--danger)', fontSize: '12px', marginTop: '4px' }}>{error}</p>
+          <p style={{ color: 'var(--danger)', fontSize: '13px', marginTop: '6px', fontWeight: 500 }}>{error}</p>
         )}
         {success && (
-          <p style={{ color: 'var(--success)', fontSize: '12px', marginTop: '4px' }}>{t('inviteSuccess')}</p>
+          <p style={{ color: 'var(--success)', fontSize: '13px', marginTop: '6px', fontWeight: 500 }}>
+            🎉 Đã gửi lời mời và kích hoạt quyền theo dõi thành công!
+          </p>
         )}
       </div>
     </form>
   );
 }
+
