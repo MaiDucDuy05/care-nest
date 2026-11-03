@@ -141,15 +141,12 @@ export const notificationService = {
       },
     };
 
-    try {
-      await fetch(`${NOTIFICATION_API}/api/v1/notifications/preferences`, {
-        method: 'PATCH',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(backendPayload),
-      });
-    } catch (err) {
-      console.warn('Backend preferences patch error:', err);
-    }
+    const res = await fetch(`${NOTIFICATION_API}/api/v1/notifications/preferences`, {
+      method: 'PATCH',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(backendPayload),
+    });
+    if (!res.ok) throw new Error(await res.text());
 
     return normalized;
   },

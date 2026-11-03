@@ -1,6 +1,5 @@
 /**
- * Orders Service — handles querying orders for buyers.
- * Supports fallback to local storage if backend order-service is offline.
+ * Orders Service — handles querying orders for buyers directly from order-service API.
  */
 import { ORDER_API, getToken } from '../lib/api-client';
 
@@ -51,57 +50,6 @@ export interface Order {
   items: OrderItem[];
 }
 
-const LOCAL_ORDERS_KEY = 'buyer_orders';
-
-export function getLocalOrders(): Order[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = window.localStorage.getItem(LOCAL_ORDERS_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw);
-  } catch {
-    return [];
-  }
-}
-
-export function saveLocalOrder(order: Order): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const existing = getLocalOrders();
-    // Prepend new order, deduplicate by id
-    const filtered = existing.filter((o) => o.id !== order.id && o.orderNumber !== order.orderNumber);
-    window.localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify([order, ...filtered]));
-  } catch {
-    // Ignore quota errors
-  }
-}
-
-export function updateLocalOrderStatus(
-  orderId: string,
-  status: OrderStatus,
-  paymentStatus = 'PAID',
-  paidAt = new Date().toISOString()
-): void {
-  if (typeof window === 'undefined') return;
-  try {
-    const existing = getLocalOrders();
-    const updated = existing.map((o) => {
-      if (o.id === orderId || o.orderNumber === orderId) {
-        return {
-          ...o,
-          status,
-          paymentStatus,
-          paidAt,
-        };
-      }
-      return o;
-    });
-    window.localStorage.setItem(LOCAL_ORDERS_KEY, JSON.stringify(updated));
-  } catch {
-    // Ignore quota errors
-  }
-}
-
 function getAuthHeaders(): Record<string, string> {
   const token = getToken();
   return {
@@ -116,63 +64,49 @@ export const ordersService = {
    */
   async listOrders(page = 1, pageSize = 20): Promise<{ items: Order[]; total: number }> {
     const token = getToken();
-    const localOrders = getLocalOrders();
-
     if (!token) {
-      return { items: localOrders, total: localOrders.length };
+      return { items: [], total: 0 };
     }
 
-    try {
-      const res = await fetch(`${ORDER_API}/api/v1/orders?page=${page}&pageSize=${pageSize}`, {
-        headers: getAuthHeaders(),
-      });
+    const res = await fetch(`${ORDER_API}/api/v1/orders?page=${page}&pageSize=${pageSize}`, {
+      headers: getAuthHeaders(),
+    });
 
-      if (!res.ok) {
-        return { items: localOrders, total: localOrders.length };
-      }
-
-      const data = await res.json();
-      const serverItems: Order[] = (data.items || []).map((o: any) => ({
-        id: o.id,
-        orderNumber: o.orderNumber || o.id,
-        buyerId: o.buyerId,
-        sellerId: o.sellerId,
-        status: o.status || 'CREATED',
-        subtotal: Number(o.subtotal || 0),
-        shippingFee: Number(o.shippingFee || 0),
-        discount: Number(o.discount || 0),
-        total: Number(o.total || 0),
-        shippingAddress: o.shippingAddress || {},
-        paymentMethod: o.payment?.method || o.paymentMethod || 'COD',
-        note: o.note,
-        createdAt: o.createdAt || new Date().toISOString(),
-        items: (o.items || []).map((i: any) => ({
-          id: i.id,
-          productId: i.productId,
-          productName: i.productName || i.name || 'Thiết bị y tế',
-          name: i.productName || i.name || 'Thiết bị y tế',
-          unitPrice: Number(i.unitPrice || 0),
-          quantity: Number(i.quantity || 1),
-          lineTotal: Number(i.lineTotal || (i.unitPrice * i.quantity) || 0),
-          imageUrl: i.imageUrl,
-        })),
-      }));
-
-      // Gộp cùng các đơn lưu local (nếu có đơn mới tạo offline)
-      const combined = [...serverItems];
-      for (const loc of localOrders) {
-        if (!combined.some((c) => c.id === loc.id || c.orderNumber === loc.orderNumber)) {
-          combined.push(loc);
-        }
-      }
-
-      return {
-        items: combined,
-        total: Math.max(combined.length, data.total || 0),
-      };
-    } catch {
-      return { items: localOrders, total: localOrders.length };
+    if (!res.ok) {
+      throw new Error(`Failed to load orders: HTTP ${res.status}`);
     }
+
+    const data = await res.json();
+    const serverItems: Order[] = (data.items || []).map((o: any) => ({
+      id: o.id,
+      orderNumber: o.orderNumber || o.id,
+      buyerId: o.buyerId,
+      sellerId: o.sellerId,
+      status: o.status || 'CREATED',
+      subtotal: Number(o.subtotal || 0),
+      shippingFee: Number(o.shippingFee || 0),
+      discount: Number(o.discount || 0),
+      total: Number(o.total || 0),
+      shippingAddress: o.shippingAddress || {},
+      paymentMethod: o.payment?.method || o.paymentMethod || 'COD',
+      note: o.note,
+      createdAt: o.createdAt || new Date().toISOString(),
+      items: (o.items || []).map((i: any) => ({
+        id: i.id,
+        productId: i.productId,
+        productName: i.productName || i.name || 'Thiết bị y tế',
+        name: i.productName || i.name || 'Thiết bị y tế',
+        unitPrice: Number(i.unitPrice || 0),
+        quantity: Number(i.quantity || 1),
+        lineTotal: Number(i.lineTotal || (i.unitPrice * i.quantity) || 0),
+        imageUrl: i.imageUrl,
+      })),
+    }));
+
+    return {
+      items: serverItems,
+      total: Number(data.total || serverItems.length),
+    };
   },
 
   /**
@@ -180,70 +114,58 @@ export const ordersService = {
    */
   async getOrder(orderId: string): Promise<Order | null> {
     const token = getToken();
-    const localOrders = getLocalOrders();
-    const foundLocal = localOrders.find((o) => o.id === orderId || o.orderNumber === orderId);
+    if (!token) return null;
 
-    if (!token) {
-      return foundLocal || null;
+    const res = await fetch(`${ORDER_API}/api/v1/orders/${encodeURIComponent(orderId)}`, {
+      headers: getAuthHeaders(),
+    });
+
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      throw new Error(`Failed to load order: HTTP ${res.status}`);
     }
 
-    try {
-      const res = await fetch(`${ORDER_API}/api/v1/orders/${encodeURIComponent(orderId)}`, {
-        headers: getAuthHeaders(),
-      });
-
-      if (!res.ok) {
-        return foundLocal || null;
-      }
-
-      const o = await res.json();
-      return {
-        id: o.id,
-        orderNumber: o.orderNumber || o.id,
-        buyerId: o.buyerId,
-        sellerId: o.sellerId,
-        status: o.status || 'CREATED',
-        subtotal: Number(o.subtotal || 0),
-        shippingFee: Number(o.shippingFee || 0),
-        discount: Number(o.discount || 0),
-        total: Number(o.total || 0),
-        shippingAddress: o.shippingAddress || {},
-        paymentMethod: o.payment?.method || o.paymentMethod || 'COD',
-        note: o.note,
-        createdAt: o.createdAt || new Date().toISOString(),
-        items: (o.items || []).map((i: any) => ({
-          id: i.id,
-          productId: i.productId,
-          productName: i.productName || i.name || 'Thiết bị y tế',
-          name: i.productName || i.name || 'Thiết bị y tế',
-          unitPrice: Number(i.unitPrice || 0),
-          quantity: Number(i.quantity || 1),
-          lineTotal: Number(i.lineTotal || (i.unitPrice * i.quantity) || 0),
-          imageUrl: i.imageUrl,
-        })),
-      };
-    } catch {
-      return foundLocal || null;
-    }
+    const o = await res.json();
+    return {
+      id: o.id,
+      orderNumber: o.orderNumber || o.id,
+      buyerId: o.buyerId,
+      sellerId: o.sellerId,
+      status: o.status || 'CREATED',
+      subtotal: Number(o.subtotal || 0),
+      shippingFee: Number(o.shippingFee || 0),
+      discount: Number(o.discount || 0),
+      total: Number(o.total || 0),
+      shippingAddress: o.shippingAddress || {},
+      paymentMethod: o.payment?.method || o.paymentMethod || 'COD',
+      note: o.note,
+      createdAt: o.createdAt || new Date().toISOString(),
+      items: (o.items || []).map((i: any) => ({
+        id: i.id,
+        productId: i.productId,
+        productName: i.productName || i.name || 'Thiết bị y tế',
+        name: i.productName || i.name || 'Thiết bị y tế',
+        unitPrice: Number(i.unitPrice || 0),
+        quantity: Number(i.quantity || 1),
+        lineTotal: Number(i.lineTotal || (i.unitPrice * i.quantity) || 0),
+        imageUrl: i.imageUrl,
+      })),
+    };
   },
 
   /**
-   * Người mua xác nhận đã nhận hàng (hoặc mô phỏng giao hàng thành công)
+   * Người mua xác nhận đã nhận hàng
    */
   async confirmDelivery(orderId: string): Promise<Order | null> {
-    // 1. Cập nhật local storage trước để trải nghiệm tức thì
-    updateLocalOrderStatus(orderId, 'DELIVERED');
-
     const token = getToken();
-    if (token) {
-      try {
-        await fetch(`${ORDER_API}/api/v1/orders/${encodeURIComponent(orderId)}/deliver`, {
-          method: 'POST',
-          headers: getAuthHeaders(),
-        });
-      } catch {
-        // Fallback silently if offline/backend unreachable
-      }
+    if (!token) throw new Error('Vui lòng đăng nhập để xác nhận giao hàng');
+
+    const res = await fetch(`${ORDER_API}/api/v1/orders/${encodeURIComponent(orderId)}/deliver`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      throw new Error('Không thể xác nhận giao hàng trên máy chủ');
     }
 
     return this.getOrder(orderId);
@@ -273,4 +195,3 @@ export const ordersService = {
     }
   },
 };
-

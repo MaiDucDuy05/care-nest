@@ -1,8 +1,6 @@
 import { CATALOG_API, apiFetch, getToken } from '../api-client';
 import type { KYCApplication, KYCStatus } from '../types';
 
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK_AUTH === 'true';
-
 export interface KYCSubmitInput {
   businessName: string;
   taxId: string;
@@ -17,10 +15,6 @@ export interface KYCSubmitInput {
 
 export const kycService = {
   async getStatus(): Promise<KYCStatus | null> {
-    if (USE_MOCK) {
-      // Return null for "not started" so the UI knows to start the wizard.
-      return null;
-    }
     const token = getToken();
     if (!token) return null;
     try {
@@ -36,27 +30,6 @@ export const kycService = {
   },
 
   async submit(input: KYCSubmitInput, documentFiles: File[] = []): Promise<KYCApplication> {
-    if (USE_MOCK) {
-      const now = new Date().toISOString();
-      return {
-        id: 'kyc-mock-' + Date.now(),
-        sellerId: 'seller-mock-1',
-        status: 'IN_REVIEW' as KYCStatus,
-        ...input,
-        documents: documentFiles.map((f, i) => ({
-          id: `doc-${i}`,
-          type: 'BUSINESS_LICENSE' as const,
-          url: URL.createObjectURL(f),
-          fileName: f.name,
-          uploadedAt: now,
-        })),
-        submittedAt: now,
-        reviewedAt: null,
-        reviewNote: null,
-        createdAt: now,
-        updatedAt: now,
-      };
-    }
     const token = getToken();
     if (!token) throw new Error('not authenticated');
     const form = new FormData();
@@ -70,7 +43,6 @@ export const kycService = {
     });
 
     if (res.status === 404) {
-      // Fallback in case backend routing or active process uses /api/v1/kyc/submit
       res = await fetch(`${CATALOG_API}/api/v1/kyc/submit`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -79,7 +51,6 @@ export const kycService = {
     }
 
     if (res.status === 404) {
-      // Fallback to /api/v1/kyc
       res = await fetch(`${CATALOG_API}/api/v1/kyc`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -103,9 +74,6 @@ export const kycService = {
   },
 
   async updateStoreProfile(data: { storeName?: string; storeSlug?: string; description?: string }) {
-    if (USE_MOCK) {
-      return { success: true, ...data };
-    }
     const token = getToken();
     if (!token) throw new Error('not authenticated');
     return apiFetch(`${CATALOG_API}/api/v1/seller/kyc/profile`, {
@@ -115,4 +83,3 @@ export const kycService = {
     });
   },
 };
-

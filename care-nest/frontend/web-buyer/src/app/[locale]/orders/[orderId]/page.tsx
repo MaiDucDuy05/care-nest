@@ -20,7 +20,7 @@ import {
   Phone,
   User,
 } from 'lucide-react';
-import { ordersService, type Order, updateLocalOrderStatus } from '@/services/orders.service';
+import { ordersService, type Order } from '@/services/orders.service';
 import { cartService, emitCartUpdated } from '@/services/cart.service';
 import { PaymentSimulatorModal, PaymentGatewayType } from '@/components/payment/payment-simulator-modal';
 
@@ -523,8 +523,7 @@ export default function OrderDetailPage() {
           amount={order.total || order.subtotal}
           initialMethod={(order.paymentMethod as PaymentGatewayType) || 'VNPAY'}
           onClose={() => setShowSimulator(false)}
-          onSuccess={(details) => {
-            updateLocalOrderStatus(order.id, 'CONFIRMED', 'PAID', details.paidAt);
+          onSuccess={() => {
             setOrder((prev) => (prev ? { ...prev, status: 'CONFIRMED' } : prev));
           }}
         />

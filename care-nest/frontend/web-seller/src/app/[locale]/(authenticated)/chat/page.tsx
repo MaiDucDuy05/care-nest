@@ -69,118 +69,19 @@ interface SellerChatMessage {
 const formatVnd = (n: number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
 
 export default function SellerChatPage() {
-  const [conversations, setConversations] = useState<SellerConversation[]>([
-    {
-      id: 'conv-01',
-      customerName: 'Bác Nguyễn Hoàng Nam',
-      customerPhone: '0912 345 678',
-      customerLocation: 'Quận Ba Đình, Hà Nội',
-      customerTier: 'VIP',
-      totalSpent: 4250000,
-      totalOrders: 3,
-      avatarBg: '#0d9488',
-      lastMessage: 'Máy đo huyết áp này có tự động gửi cảnh báo khi phát hiện huyết áp cao bất thường không?',
-      lastMessageTime: '10:42',
-      unreadCount: 1,
-      isOnline: true,
-      relatedProduct: {
-        id: 'omron-hem-7156t',
-        name: 'Máy Đo Huyết Áp Bắp Tay Omron HEM-7156T (Bluetooth CareNest)',
-        price: 1450000,
-        image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=300&auto=format&fit=crop&q=80',
-        stock: 38,
-      },
-      recentOrder: {
-        id: 'ORD-2026-9921',
-        status: 'Đang vận chuyển (Hỏa tốc 2H)',
-        total: 1450000,
-        createdAt: 'Hôm nay, 09:30',
-      },
-    },
-    {
-      id: 'conv-02',
-      customerName: 'Chị Trần Thu Hà',
-      customerPhone: '0988 765 432',
-      customerLocation: 'Quận Cầu Giấy, Hà Nội',
-      customerTier: 'REGULAR',
-      totalSpent: 2190000,
-      totalOrders: 1,
-      avatarBg: '#0284c7',
-      lastMessage: 'Đồng hồ Wonlex KT17 cài đặt vùng an toàn cho mẹ tôi bán kính bao nhiêu mét thì chuẩn?',
-      lastMessageTime: '09:15',
-      unreadCount: 0,
-      isOnline: false,
-      relatedProduct: {
-        id: 'wonlex-kt17',
-        name: 'Đồng Hồ Định Vị SOS Người Cao Tuổi Wonlex KT17 4G',
-        price: 2190000,
-        image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&auto=format&fit=crop&q=80',
-        stock: 15,
-      },
-      recentOrder: {
-        id: 'ORD-2026-8810',
-        status: 'Giao hàng thành công',
-        total: 2190000,
-        createdAt: '18/10/2026',
-      },
-    },
-    {
-      id: 'conv-03',
-      customerName: 'Anh Lê Quốc Bảo',
-      customerPhone: '0903 112 233',
-      customerLocation: 'Quận 1, TP. Hồ Chí Minh',
-      customerTier: 'NEW',
-      totalSpent: 0,
-      totalOrders: 0,
-      avatarBg: '#7c3aed',
-      lastMessage: 'Shop có xuất hóa đơn đỏ VAT cho công ty mua tặng hội người cao tuổi không ạ?',
-      lastMessageTime: 'Hôm qua',
-      unreadCount: 0,
-      isOnline: true,
-    },
-  ]);
-
-  const [activeConvId, setActiveConvId] = useState<string>('conv-01');
+  const [conversations, setConversations] = useState<SellerConversation[]>([]);
+  const [activeConvId, setActiveConvId] = useState<string>('');
   const [filterTab, setFilterTab] = useState<'ALL' | 'UNREAD' | 'VIP'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [inputText, setInputText] = useState('');
   const [isCustomerTyping, setIsCustomerTyping] = useState(false);
-  const [sellerNotes, setSellerNotes] = useState(
-    'Bác Nam 72 tuổi, tiền sử cao huyết áp. Con trai mua tặng, yêu cầu kỹ thuật viên gọi điện trước khi giao hàng hỏa tốc.'
-  );
+  const [sellerNotes, setSellerNotes] = useState('');
   const [isNotesSaved, setIsNotesSaved] = useState(false);
-
-  // Chat stream messages
-  const [messages, setMessages] = useState<SellerChatMessage[]>([
-    {
-      id: 'm1',
-      sender: 'system',
-      content: 'Khách hàng Bác Nguyễn Hoàng Nam đang xem sản phẩm "Máy Đo Huyết Áp Omron HEM-7156T" trên CareNest Mall.',
-      time: '10:38',
-      status: 'READ',
-      type: 'SYSTEM_EVENT',
-    },
-    {
-      id: 'm2',
-      sender: 'customer',
-      content: 'Dạ xin chào shop! Tôi muốn hỏi về chiếc máy đo huyết áp Omron HEM-7156T này.',
-      time: '10:39',
-      status: 'READ',
-      type: 'TEXT',
-    },
-    {
-      id: 'm3',
-      sender: 'customer',
-      content: 'Máy này có tự động gửi cảnh báo khi phát hiện huyết áp cao bất thường không shop?',
-      time: '10:42',
-      status: 'DELIVERED',
-      type: 'TEXT',
-    },
-  ]);
+  const [messages, setMessages] = useState<SellerChatMessage[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const activeConv = conversations.find((c) => c.id === activeConvId) || conversations[0];
+  const activeConv = conversations.find((c) => c.id === activeConvId);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -211,7 +112,7 @@ export default function SellerChatPage() {
     (async () => {
       try {
         const serverConvs = await chatService.getConversations();
-        if (mounted && serverConvs && serverConvs.length > 0) {
+        if (mounted && serverConvs) {
           const mapped: SellerConversation[] = serverConvs.map((sc) => ({
             id: sc.id,
             customerName: sc.otherParticipant?.fullName || sc.title || 'Khách hàng CareNest',
@@ -227,10 +128,12 @@ export default function SellerChatPage() {
             isOnline: true,
           }));
           setConversations(mapped);
-          setActiveConvId(mapped[0].id);
+          if (mapped.length > 0) {
+            setActiveConvId(mapped[0].id);
+          }
         }
       } catch {
-        // keep initial fallback
+        // Failed to load conversations
       }
     })();
 
@@ -243,12 +146,16 @@ export default function SellerChatPage() {
 
   // Fetch real messages when active conversation changes
   useEffect(() => {
+    if (!activeConvId) {
+      setMessages([]);
+      return;
+    }
     let mounted = true;
     (async () => {
       try {
         const msgs = await chatService.getMessages(activeConvId);
-        if (mounted && msgs && msgs.length > 0) {
-          const mapped: SellerChatMessage[] = msgs.map((m) => ({
+        if (mounted) {
+          const mapped: SellerChatMessage[] = (msgs || []).map((m) => ({
             id: m.id,
             sender: m.sender?.role === 'SELLER' ? 'seller' : 'customer',
             content: m.content,
@@ -438,7 +345,12 @@ export default function SellerChatPage() {
 
           {/* Conversations Scroll Area */}
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            {filteredConversations.map((conv) => {
+            {filteredConversations.length === 0 ? (
+              <div style={{ padding: '40px 16px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                Chưa có cuộc hội thoại nào
+              </div>
+            ) : (
+              filteredConversations.map((conv) => {
               const isSelected = conv.id === activeConvId;
               return (
                 <div
@@ -544,11 +456,34 @@ export default function SellerChatPage() {
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
 
-        {/* COLUMN 2: MAIN CHAT CANVAS */}
+        {!activeConv ? (
+          <div
+            style={{
+              gridColumn: '2 / -1',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '40px',
+              background: '#f8fafc',
+              color: '#64748b',
+            }}
+          >
+            <MessageSquare size={48} style={{ opacity: 0.25, marginBottom: '16px' }} />
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
+              Chưa chọn cuộc hội thoại
+            </h3>
+            <p style={{ fontSize: '13px', maxWidth: '380px', textAlign: 'center', lineHeight: 1.6, color: '#64748b', margin: 0 }}>
+              Chọn một khách hàng từ danh sách bên trái hoặc đợi khách hàng gửi tin nhắn tư vấn từ CareNest Mall.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* COLUMN 2: MAIN CHAT CANVAS */}
         <div style={{ display: 'flex', flexDirection: 'column', background: '#f8fafc', overflow: 'hidden' }}>
           {/* Chat Canvas Header */}
           <div
@@ -1066,6 +1001,8 @@ export default function SellerChatPage() {
             </button>
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

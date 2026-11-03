@@ -1,6 +1,6 @@
 /**
  * Cart service — interacts with order-service Cart API (/api/v1/cart).
- * Supports local storage fallback when the user is not yet logged in.
+ * Supports guest local storage when the user is not yet logged in.
  */
 import { ORDER_API, getToken } from '../lib/api-client';
 
@@ -73,19 +73,15 @@ export const cartService = {
     if (!token) {
       return getLocalCart();
     }
-    try {
-      const res = await fetch(`${ORDER_API}/api/v1/cart`, {
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) {
-        return getLocalCart();
-      }
-      const data = await res.json();
-      saveLocalCart(data);
-      return data;
-    } catch {
-      return getLocalCart();
+    const res = await fetch(`${ORDER_API}/api/v1/cart`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) {
+      throw new Error(`Failed to load cart: HTTP ${res.status}`);
     }
+    const data = await res.json();
+    saveLocalCart(data);
+    return data;
   },
 
   async addItem(item: CartItem): Promise<Cart> {
@@ -101,27 +97,15 @@ export const cartService = {
       return saveLocalCart(cart);
     }
 
-    try {
-      const res = await fetch(`${ORDER_API}/api/v1/cart/items`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify(item),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      saveLocalCart(data);
-      return data;
-    } catch {
-      // Fallback to local
-      const cart = getLocalCart();
-      const existing = cart.items.find((i) => i.productId === item.productId);
-      if (existing) {
-        existing.quantity += item.quantity;
-      } else {
-        cart.items.push(item);
-      }
-      return saveLocalCart(cart);
-    }
+    const res = await fetch(`${ORDER_API}/api/v1/cart/items`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(item),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    saveLocalCart(data);
+    return data;
   },
 
   async updateQuantity(productId: string, quantity: number): Promise<Cart> {
@@ -137,26 +121,15 @@ export const cartService = {
       return saveLocalCart(cart);
     }
 
-    try {
-      const res = await fetch(`${ORDER_API}/api/v1/cart/items/${encodeURIComponent(productId)}`, {
-        method: 'PUT',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ quantity }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      saveLocalCart(data);
-      return data;
-    } catch {
-      const cart = getLocalCart();
-      if (quantity <= 0) {
-        cart.items = cart.items.filter((i) => i.productId !== productId);
-      } else {
-        const item = cart.items.find((i) => i.productId === productId);
-        if (item) item.quantity = quantity;
-      }
-      return saveLocalCart(cart);
-    }
+    const res = await fetch(`${ORDER_API}/api/v1/cart/items/${encodeURIComponent(productId)}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ quantity }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    saveLocalCart(data);
+    return data;
   },
 
   async removeItem(productId: string): Promise<Cart> {
@@ -167,34 +140,24 @@ export const cartService = {
       return saveLocalCart(cart);
     }
 
-    try {
-      const res = await fetch(`${ORDER_API}/api/v1/cart/items/${encodeURIComponent(productId)}`, {
-        method: 'DELETE',
-        headers: getAuthHeaders(),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      saveLocalCart(data);
-      return data;
-    } catch {
-      const cart = getLocalCart();
-      cart.items = cart.items.filter((i) => i.productId !== productId);
-      return saveLocalCart(cart);
-    }
+    const res = await fetch(`${ORDER_API}/api/v1/cart/items/${encodeURIComponent(productId)}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    saveLocalCart(data);
+    return data;
   },
 
   async clearCart(): Promise<void> {
     const token = getToken();
     saveLocalCart({ items: [] });
     if (token) {
-      try {
-        await fetch(`${ORDER_API}/api/v1/cart`, {
-          method: 'DELETE',
-          headers: getAuthHeaders(),
-        });
-      } catch {
-        // ignore
-      }
+      await fetch(`${ORDER_API}/api/v1/cart`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
     }
   },
 

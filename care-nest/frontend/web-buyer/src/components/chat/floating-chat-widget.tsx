@@ -212,50 +212,6 @@ export function FloatingChatWidget() {
       // Fallback to REST
       await chatService.sendMessage(activeConversation.id, text, 'TEXT');
     }
-
-    // Simulate smart bot response if conversation is with pharmacist / bot
-    if (activeConversation.sellerId === 'seller-medtech-01' || activeConversation.id.includes('medtech')) {
-      setTimeout(() => {
-        setOtherUserTyping(true);
-      }, 800);
-
-      setTimeout(() => {
-        setOtherUserTyping(false);
-        const botReply: ChatMessageItem = {
-          id: 'bot-reply-' + Date.now(),
-          conversationId: activeConversation.id,
-          senderId: 'seller-medtech-01',
-          type: 'TEXT',
-          content: generatePharmacistReply(text),
-          status: 'SENT',
-          createdAt: new Date().toISOString(),
-          sender: {
-            id: 'seller-medtech-01',
-            fullName: 'Dược Sĩ Lê Thu Trang (MedTech)',
-            role: 'SELLER',
-          },
-        };
-        setMessages((prev) => [...prev, botReply]);
-        setTimeout(scrollToBottom, 50);
-      }, 2200);
-    }
-  };
-
-  const generatePharmacistReply = (query: string): string => {
-    const lower = query.toLowerCase();
-    if (lower.includes('huyết áp') || lower.includes('omron') || lower.includes('đo')) {
-      return 'Dạ đối với người cao tuổi, tiêu chuẩn vàng là đo huyết áp vào buổi sáng sau khi thức dậy 30-60 phút và nghỉ ngơi 5 phút trước khi bấm đo. Dòng Omron HEM-7156T có vòng bít thông minh 360 độ IntelliWrap giúp tránh sai lệch kết quả do quấn lệch vòng tay ạ!';
-    }
-    if (lower.includes('bảo hành') || lower.includes('đổi')) {
-      return 'Dạ toàn bộ sản phẩm MedTech trên CareNest Mall được bảo hành 1 đổi 1 trong 24 tháng nếu có lỗi từ nhà sản xuất, đồng thời bảo dưỡng máy định kỳ miễn phí tại showroom Cầu Giấy, Hà Nội ạ.';
-    }
-    if (lower.includes('ship') || lower.includes('giao') || lower.includes('vận chuyển')) {
-      return 'Dạ nội thành Hà Nội & TP.HCM shop giao hỏa tốc trong 2 giờ kèm kỹ thuật viên hướng dẫn đo tại chỗ. Các tỉnh thành khác CareNest vận chuyển đảm bảo trong 24-48 giờ ạ.';
-    }
-    if (lower.includes('giá') || lower.includes('voucher') || lower.includes('mã')) {
-      return 'Dạ shop đang có sẵn voucher MEDTECH50K giảm 50.000đ và FREESHIPMAX miễn phí ship trên CareNest. Anh/chị có thể lưu mã trực tiếp trên banner gian hàng để áp dụng khi thanh toán ạ!';
-    }
-    return 'Dạ em đã ghi nhận câu hỏi của anh/chị. Dược sĩ đang kiểm tra thông số kỹ thuật y tế và sẽ hướng dẫn chi tiết ngay cho mình nhé!';
   };
 
   const handleQuickAddCart = (metadata: any) => {

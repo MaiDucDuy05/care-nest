@@ -18,7 +18,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { cartService, type CartItem } from '@/services/cart.service';
-import { ordersService, saveLocalOrder, updateLocalOrderStatus } from '@/services/orders.service';
+import { ordersService } from '@/services/orders.service';
 import { PaymentSimulatorModal, PaymentGatewayType } from '@/components/payment/payment-simulator-modal';
 import { authService } from '@/services/auth.service';
 import { getToken } from '@/lib/api-client';
@@ -192,37 +192,6 @@ export default function CartPage() {
       const createdOrderId = result?.id || result?.orders?.[0]?.id || result?.orderId || 'ORD-' + Date.now().toString().slice(-6);
       const createdOrderNumber = result?.orderNumber || result?.orders?.[0]?.orderNumber || createdOrderId;
 
-      saveLocalOrder({
-        id: createdOrderId,
-        orderNumber: createdOrderNumber,
-        status: 'CONFIRMED',
-        subtotal,
-        shippingFee,
-        discount: 0,
-        total,
-        shippingAddress: {
-          name: fullName.trim(),
-          phone: phone.trim(),
-          line1: addressLine.trim(),
-          ward: ward.trim() || undefined,
-          district: district.trim(),
-          province: city.trim(),
-          country: 'VN',
-        },
-        paymentMethod,
-        note: note.trim() || undefined,
-        createdAt: new Date().toISOString(),
-        items: items.map((i) => ({
-          productId: i.productId,
-          productName: i.name,
-          name: i.name,
-          quantity: i.quantity,
-          unitPrice: i.unitPrice,
-          lineTotal: i.quantity * i.unitPrice,
-          imageUrl: i.imageUrl,
-        })),
-      });
-
       setItems([]);
       setShowCheckoutModal(false);
 
@@ -285,13 +254,12 @@ export default function CartPage() {
     }
   };
 
-  const handlePaymentSimulatorSuccess = (details: {
+  const handlePaymentSimulatorSuccess = (_details: {
     transactionId: string;
     method: PaymentGatewayType;
     paidAt: string;
   }) => {
     if (pendingPayment) {
-      updateLocalOrderStatus(pendingPayment.orderId, 'CONFIRMED', 'PAID', details.paidAt);
       setOrderSuccess({ orderId: pendingPayment.orderId });
       setPendingPayment(null);
     }
