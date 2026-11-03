@@ -20,10 +20,10 @@ import { PaymentGateway } from './payment-gateway.js';
 @Injectable()
 export class VnpayGateway extends PaymentGateway {
   readonly name = 'VNPAY' as const;
-  private readonly sandboxUrl = 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html';
+  private readonly vnpayUrl = process.env.VNPAY_URL || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html';
   private readonly tmnCode = process.env.VNPAY_TMN_CODE || 'SANDBOX_TMN';
   private readonly hashSecret = process.env.VNPAY_HASH_SECRET || 'SANDBOX_HASH_SECRET';
-  private readonly returnUrl = process.env.VNPAY_RETURN_URL || 'http://localhost:3005/api/v1/webhooks/vnpay/return';
+  private readonly returnUrl = process.env.VNPAY_RETURN_URL || 'http://localhost:3000/vi/shop/payment/vnpay-return';
 
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
     const date = new Date();
@@ -62,7 +62,7 @@ export class VnpayGateway extends PaymentGateway {
     const queryString = sortedKeys
       .map((k) => `${k}=${this.encodeVNPay(params[k]!)}`)
       .join('&');
-    const paymentUrl = `${this.sandboxUrl}?${queryString}&vnp_SecureHash=${secureHash}`;
+    const paymentUrl = `${this.vnpayUrl}?${queryString}&vnp_SecureHash=${secureHash}`;
 
     return {
       paymentUrl,

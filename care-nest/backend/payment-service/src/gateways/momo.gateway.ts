@@ -27,8 +27,9 @@ export class MomoGateway extends PaymentGateway {
     const orderInfo = input.orderInfo;
     const extraData = Buffer.from(JSON.stringify({ idempotencyKey: input.idempotencyKey })).toString('base64');
 
+    const targetReturnUrl = input.returnUrl || this.returnUrl;
     // Canonical signing string (per MoMo docs)
-    const rawSignature = `accessKey=${this.accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${this.notifyUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${this.partnerCode}&redirectUrl=${this.returnUrl}&requestId=${requestId}&requestType=payWithMethod`;
+    const rawSignature = `accessKey=${this.accessKey}&amount=${amount}&extraData=${extraData}&ipnUrl=${this.notifyUrl}&orderId=${orderId}&orderInfo=${orderInfo}&partnerCode=${this.partnerCode}&redirectUrl=${targetReturnUrl}&requestId=${requestId}&requestType=payWithMethod`;
     const signature = hmacSha256(this.secretKey, rawSignature);
 
     const body = {
@@ -38,7 +39,7 @@ export class MomoGateway extends PaymentGateway {
       amount,
       orderId,
       orderInfo,
-      redirectUrl: this.returnUrl,
+      redirectUrl: targetReturnUrl,
       ipnUrl: this.notifyUrl,
       extraData,
       requestType: 'payWithMethod',
@@ -46,9 +47,29 @@ export class MomoGateway extends PaymentGateway {
       lang: 'vi',
     };
 
-    // In a real implementation we'd POST to MoMo here. For dev we return a
-    // URL that hits our own /return endpoint so the dev can simulate the flow.
-    const paymentUrl = `${this.returnUrl}?orderId=${orderId}&requestId=${requestId}&amount=${amount}&signature=${signature}`;
+    // Call MoMo API to obtain payment link (payUrl)
+    try {
+      const res = await fetch(this.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        const data = (await res.json()) as { payUrl?: string; deeplink?: string; qrCodeUrl?: string };
+        if (data.payUrl) {
+          return {
+            paymentUrl: data.payUrl,
+            transactionRef: requestId,
+            expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+          };
+        }
+      }
+    } catch {
+      // Fallback to simulated redirect if MoMo API is offline
+    }
+
+    const paymentUrl = `${targetReturnUrl}?orderId=${orderId}&requestId=${requestId}&amount=${amount}&signature=${signature}`;
 
     return {
       paymentUrl,

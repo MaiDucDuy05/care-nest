@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { cartService, type CartItem } from '@/services/cart.service';
 import { ordersService } from '@/services/orders.service';
+import { paymentService } from '@/services/payment.service';
 import { PaymentSimulatorModal, PaymentGatewayType } from '@/components/payment/payment-simulator-modal';
 import { authService } from '@/services/auth.service';
 import { getToken } from '@/lib/api-client';
@@ -197,6 +198,41 @@ export default function CartPage() {
 
       if (paymentMethod === 'COD') {
         setOrderSuccess({ orderId: createdOrderId });
+      } else if (paymentMethod === 'VNPAY' || paymentMethod === 'MOMO') {
+        // Khởi tạo thanh toán thật qua Cổng thanh toán (VNPay / MoMo) và chuyển hướng
+        try {
+          const returnPath = paymentMethod === 'VNPAY' ? '/vi/shop/payment/vnpay-return' : '/vi/shop/payment/momo-return';
+          const returnUrl = typeof window !== 'undefined' ? `${window.location.origin}${returnPath}` : '';
+
+          const paymentIntent = await paymentService.createPayment({
+            orderId: createdOrderId,
+            method: paymentMethod,
+            amount: total,
+            idempotencyKey: `${createdOrderId}-pay-${Date.now()}`,
+            returnUrl,
+          });
+
+          const redirectUrl = paymentIntent?.gatewayResponse?.paymentUrl;
+          if (redirectUrl) {
+            window.location.href = redirectUrl;
+            return;
+          }
+
+          setPendingPayment({
+            orderId: createdOrderId,
+            orderNumber: createdOrderNumber,
+            amount: total,
+            method: paymentMethod as PaymentGatewayType,
+          });
+        } catch (payErr) {
+          console.warn('Cổng thanh toán online gặp lỗi hoặc chưa kích hoạt key thật, chuyển sang giao diện quét mã hỗ trợ:', payErr);
+          setPendingPayment({
+            orderId: createdOrderId,
+            orderNumber: createdOrderNumber,
+            amount: total,
+            method: paymentMethod as PaymentGatewayType,
+          });
+        }
       } else {
         setPendingPayment({
           orderId: createdOrderId,
