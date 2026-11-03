@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  k6:
+    image: grafana/k6:latest
+    container_name: carenest-k6-runner
+    volumes:
+      - ./:/load-test
+    working_dir: /load-test
+    environment:
+      - BASE_URL=${BASE_URL:-http://host.docker.internal:8080}
+      - WS_URL=${WS_URL:-http://host.docker.internal:3010}
+      - K6_OUT=${K6_OUT:-influxdb=http://influxdb:8086/k6}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - influxdb
+    entrypoint: ["k6"]
+    command: ["run", "scripts/api-baseline.js"]
+
+  influxdb:
+    image: influxdb:1.8
+    container_name: carenest-loadtest-influxdb
+    ports:
+      - "8086:8086"
+    environment:
+      - INFLUXDB_DB=k6
+    volumes:
+      - influxdb-data:/var/lib/influxdb
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: carenest-loadtest-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_BASIC_ENABLED=false
+    depends_on:
+      - influxdb
+    volumes:
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  influxdb-data:
+  grafana-data:
