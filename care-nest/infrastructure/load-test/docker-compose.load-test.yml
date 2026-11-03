@@ -10,13 +10,13 @@ services:
     environment:
       - BASE_URL=${BASE_URL:-http://host.docker.internal:8080}
       - WS_URL=${WS_URL:-http://host.docker.internal:3010}
-      - K6_OUT=${K6_OUT:-influxdb=http://influxdb:8086/k6}
+      - K6_OUT=influxdb=http://influxdb:8086/k6
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       - influxdb
     entrypoint: ["k6"]
-    command: ["run", "scripts/api-baseline.js"]
+    command: ["run", "--out", "influxdb=http://influxdb:8086/k6", "scripts/api-baseline.js"]
 
   influxdb:
     image: influxdb:1.8
@@ -32,7 +32,7 @@ services:
     image: grafana/grafana:latest
     container_name: carenest-loadtest-grafana
     ports:
-      - "3000:3000"
+      - "${GRAFANA_PORT:-3000}:3000"
     environment:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_AUTH_ANONYMOUS_ENABLED=true
@@ -40,6 +40,8 @@ services:
     depends_on:
       - influxdb
     volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/etc/grafana/dashboards:ro
       - grafana-data:/var/lib/grafana
 
 volumes:

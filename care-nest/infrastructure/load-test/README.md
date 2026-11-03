@@ -107,19 +107,42 @@ npm run test:iot
 
 ---
 
-### Cách 3: Trực quan hóa kết quả theo thời gian thực (InfluxDB + Grafana)
+### Cách 3: Trực Quan Hóa Kết Quả Theo Thời Gian Thực Trên Grafana
 
-Để xem biểu đồ độ trễ và số lượng request theo thời gian thực trên giao diện đồ họa Grafana:
+Hệ thống hỗ trợ 2 góc nhìn giám sát trực tiếp qua Grafana:
 
-1. Khởi động InfluxDB và Grafana:
-```bash
-docker-compose -f docker-compose.load-test.yml up -d influxdb grafana
-```
-2. Truy cập Grafana tại: `http://localhost:3000` (đã bật sẵn chế độ Anonymous Admin).
-3. Chạy bài test bắn metrics trực tiếp về InfluxDB:
-```bash
-docker-compose -f docker-compose.load-test.yml run --rm k6 run scripts/api-stress.js
-```
+#### 🔹 Góc nhìn 1: Dashboard k6 Load Testing (Client-Side - Độ trễ, VUs, RPS thực tế)
+Tự động cấu hình sẵn DataSource InfluxDB và Dashboard k6 (không cần setup tay):
+1. **Khởi động InfluxDB và Grafana tải**:
+   ```bash
+   npm run dashboard:up
+   # hoặc: docker-compose -f docker-compose.load-test.yml up -d influxdb grafana
+   ```
+2. **Truy cập Dashboard**: Mở trình duyệt tại **`http://localhost:3000`** -> Vào mục Dashboards -> Chọn **`CareNest - k6 Load Testing Dashboard`** (Đã mở sẵn quyền Admin ẩn danh).
+3. **Bắn tải có đẩy dữ liệu về Grafana**:
+   ```bash
+   # Chạy kịch bản Stress test bắn metrics về InfluxDB
+   docker-compose -f docker-compose.load-test.yml run --rm k6 run scripts/api-stress.js
+
+   # Hoặc chạy Baseline test
+   docker-compose -f docker-compose.load-test.yml run --rm k6 run scripts/api-baseline.js
+   ```
+4. **Dừng dashboard sau khi test xong**:
+   ```bash
+   npm run dashboard:down
+   ```
+
+#### 🔹 Góc nhìn 2: Dashboard Giám Sát Toàn Hệ Thống (Server-Side - CPU, RAM, DB Pool, Microservices)
+Nếu bạn đang chạy cụm microservices của CareNest qua Docker:
+1. **Khởi động cụm Observability có sẵn trong dự án**:
+   ```bash
+   docker compose -f docker-compose.dev.yml --profile monitoring up -d
+   ```
+2. **Truy cập Grafana hệ thống**: Mở **`http://localhost:3100`** (Tài khoản: `admin` / `admin`).
+3. **Các Dashboard có sẵn**:
+   - `CareNest - System Overview`: Tổng quan RPS, P95/P99 latency toàn bộ 10 microservices.
+   - `CareNest - API Gateway`: Phân bổ tải các route qua Gateway.
+   - `CareNest - Order / Payment / Catalog Service`: Mức độ tiêu thụ CPU, RAM, Postgres connection pool, Redis cache hit rate.
 
 ---
 

@@ -18,7 +18,10 @@
     "docker:soak": "docker run --rm -i -v \"%cd%:/load-test\" -w /load-test grafana/k6 run scripts/soak-test.js",
     "docker:payment": "docker run --rm -i -v \"%cd%:/load-test\" -w /load-test grafana/k6 run scripts/payment-load.js",
     "docker:ws": "docker run --rm -i -v \"%cd%:/load-test\" -w /load-test grafana/k6 run scripts/websocket-load.js",
-    "docker:iot": "docker run --rm -i -v \"%cd%:/load-test\" -w /load-test grafana/k6 run scripts/iot-telemetry-load.js"
+    "docker:iot": "docker run --rm -i -v \"%cd%:/load-test\" -w /load-test grafana/k6 run scripts/iot-telemetry-load.js",
+    "dashboard:up": "docker-compose -f docker-compose.load-test.yml up -d influxdb grafana",
+    "dashboard:down": "docker-compose -f docker-compose.load-test.yml down",
+    "run:dashboard": "docker-compose -f docker-compose.load-test.yml run --rm k6"
   },
   "keywords": [
     "k6",
