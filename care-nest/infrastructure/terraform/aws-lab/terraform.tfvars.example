@@ -1,0 +1,90 @@
+aws_region   = "ap-southeast-1"
+admin_cidr   = "203.0.113.10/32"
+delete_after = "2026-12-01"
+key_name     = null
+
+# Public IPs are deliberate for this no-NAT learning lab. Security groups,
+# not public addressing, determine which inbound traffic is permitted.
+instances = {
+  edge = {
+    private_ip = "10.42.0.10", instance_type = "t3.micro",
+    security_groups = ["edge", "ops"], root_gb = 20, public_ip = true
+  }
+  web_buyer = {
+    private_ip = "10.42.0.11", instance_type = "t3.micro",
+    security_groups = ["web", "ops"], root_gb = 20, public_ip = true
+  }
+  web_seller = {
+    private_ip = "10.42.0.12", instance_type = "t3.micro",
+    security_groups = ["web", "ops"], root_gb = 20, public_ip = true
+  }
+  web_admin = {
+    private_ip = "10.42.0.13", instance_type = "t3.micro",
+    security_groups = ["web", "ops"], root_gb = 20, public_ip = true
+  }
+  api_gateway = {
+    private_ip = "10.42.0.20", instance_type = "t3.micro",
+    security_groups = ["gateway", "ops"], root_gb = 20, public_ip = true
+  }
+  auth = {
+    private_ip = "10.42.0.21", instance_type = "t3.micro",
+    security_groups = ["backend", "ops"], root_gb = 20, public_ip = true
+  }
+  catalog = {
+    private_ip = "10.42.0.22", instance_type = "t3.micro",
+    security_groups = ["backend", "ops"], root_gb = 20, public_ip = true
+  }
+  device = {
+    private_ip = "10.42.0.23", instance_type = "t3.micro",
+    security_groups = ["backend", "ops"], root_gb = 20, public_ip = true
+  }
+  order = {
+    private_ip = "10.42.0.24", instance_type = "t3.micro",
+    security_groups = ["backend", "ops"], root_gb = 20, public_ip = true
+  }
+  payment = {
+    private_ip = "10.42.0.25", instance_type = "t3.micro",
+    security_groups = ["backend", "ops"], root_gb = 20, public_ip = true
+  }
+  notification = {
+    private_ip = "10.42.0.26", instance_type = "t3.micro",
+    security_groups = ["backend", "ops"], root_gb = 20, public_ip = true
+  }
+  alert = {
+    private_ip = "10.42.0.27", instance_type = "t3.micro",
+    security_groups = ["backend", "ops"], root_gb = 20, public_ip = true
+  }
+  subscription = {
+    private_ip = "10.42.0.28", instance_type = "t3.micro",
+    security_groups = ["backend", "ops"], root_gb = 20, public_ip = true
+  }
+  shipping = {
+    private_ip = "10.42.0.29", instance_type = "t3.micro",
+    security_groups = ["backend", "ops"], root_gb = 20, public_ip = true
+  }
+  chat = {
+    private_ip = "10.42.0.30", instance_type = "t3.micro",
+    security_groups = ["backend", "ops"], root_gb = 20, public_ip = true
+  }
+  iot_gateway = {
+    private_ip = "10.42.0.31", instance_type = "t3.micro",
+    security_groups = ["iot", "ops"], root_gb = 20, public_ip = true
+  }
+  postgres = {
+    private_ip = "10.42.0.40", instance_type = "t3.small",
+    security_groups = ["postgres", "ops"], root_gb = 30, public_ip = true
+  }
+  redis = {
+    private_ip = "10.42.0.41", instance_type = "t3.micro",
+    security_groups = ["redis", "ops"], root_gb = 20, public_ip = true
+  }
+  kafka = {
+    private_ip = "10.42.0.42", instance_type = "t3.small",
+    security_groups = ["kafka", "ops"], root_gb = 30, public_ip = true
+  }
+  meili = {
+    private_ip = "10.42.0.43", instance_type = "t3.micro",
+    security_groups = ["meili", "ops"], root_gb = 20, public_ip = true
+  }
+}
+

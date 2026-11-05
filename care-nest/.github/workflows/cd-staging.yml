@@ -1,8 +1,7 @@
 name: cd-staging
 
-# Deploy the staging environment when changes land on `main`.
-# Phase 0 only ships the placeholder workflow — real service deployments
-# will be wired in Phase 1 once the first NestJS services are added.
+# Deploy lên AWS khi có push vào main hoặc trigger thủ công.
+# Flow: build & test → đóng gói Docker images → đẩy lên S3 → SSM deploy từng cụm.
 
 on:
   push:
@@ -14,31 +13,300 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  REGISTRY: ghcr.io
-  IMAGE_NAMESPACE: ${{ github.repository_owner }}
+  NODE_VERSION: "22"
+  PNPM_VERSION: "12.11.2"
+  AWS_REGION: ap-southeast-1
 
 jobs:
-  smoke:
-    name: Build + smoke (no deploy yet)
+  # ─────────────────────────────────────────────
+  # Job 1: Build & Smoke Test (không deploy)
+  # ─────────────────────────────────────────────
+  build:
+    name: Build & Test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
       - uses: pnpm/action-setup@v4
         with:
-          version: 12.11.2
+          version: ${{ env.PNPM_VERSION }}
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Build all packages
         run: pnpm turbo run build
+
       - name: Run all tests
         run: pnpm turbo run test
-      - name: Verify Prisma client
+
+      - name: Verify Prisma client generates
         run: pnpm --filter @carenest/database prisma generate
-      - name: Mark staging deployable
-        run: echo "staging deploy stub: $GITHUB_SHA"
-        env:
-          GITHUB_SHA: ${{ github.sha }}
+
+  # ─────────────────────────────────────────────
+  # Job 2: Build Docker images và đóng gói tar
+  # ─────────────────────────────────────────────
+  package:
+    name: Package Docker Images
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        service:
+          - name: auth-service
+            context: .
+            dockerfile: backend/auth-service/Dockerfile
+          - name: catalog-service
+            context: .
+            dockerfile: backend/catalog-service/Dockerfile
+          - name: order-service
+            context: .
+            dockerfile: backend/order-service/Dockerfile
+          - name: payment-service
+            context: .
+            dockerfile: backend/payment-service/Dockerfile
+          - name: device-service
+            context: .
+            dockerfile: backend/device-service/Dockerfile
+          - name: notification-service
+            context: .
+            dockerfile: backend/notification-service/Dockerfile
+          - name: alert-service
+            context: .
+            dockerfile: backend/alert-service/Dockerfile
+          - name: subscription-service
+            context: .
+            dockerfile: backend/subscription-service/Dockerfile
+          - name: shipping-service
+            context: .
+            dockerfile: backend/shipping-service/Dockerfile
+          - name: chat-service
+            context: .
+            dockerfile: backend/chat-service/Dockerfile
+          - name: api-gateway
+            context: .
+            dockerfile: backend/api-gateway/Dockerfile
+          - name: iot-gateway
+            context: .
+            dockerfile: backend/iot-gateway/Dockerfile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t carenest/${{ matrix.service.name }}:${{ github.sha }} \
+            -f ${{ matrix.service.dockerfile }} \
+            ${{ matrix.service.context }}
+
+      - name: Save image as tar
+        run: |
+          docker save carenest/${{ matrix.service.name }}:${{ github.sha }} \
+            | gzip > ${{ matrix.service.name }}.tar.gz
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-${{ matrix.service.name }}
+          path: ${{ matrix.service.name }}.tar.gz
+          retention-days: 1
+
+  # ─────────────────────────────────────────────
+  # Job 3: Upload release artifacts lên S3
+  # ─────────────────────────────────────────────
+  upload:
+    name: Upload to S3
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: aws-lab
+    permissions:
+      id-token: write  # Bắt buộc để OIDC hoạt động
+      contents: read
+
+    steps:
+      - name: Configure AWS credentials (OIDC - không cần Access Key)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download all image artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: image-*
+          merge-multiple: true
+
+      - name: Upload tất cả Docker images lên S3
+        run: |
+          for file in *.tar.gz; do
+            aws s3 cp "$file" \
+              "s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/releases/${{ github.sha }}/$file" \
+              --no-progress
+          done
+          echo "✅ Upload xong: s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/releases/${{ github.sha }}/"
+
+  # ─────────────────────────────────────────────
+  # Job 4: Deploy lên AWS qua SSM
+  # ─────────────────────────────────────────────
+  deploy:
+    name: Deploy to AWS (${{ matrix.cluster.name }})
+    needs: upload
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: aws-lab
+    permissions:
+      id-token: write
+      contents: read
+
+    strategy:
+      # Deploy lần lượt từng cụm (data → backend → frontend) để đảm bảo thứ tự phụ thuộc
+      max-parallel: 1
+      matrix:
+        cluster:
+          # Cụm 5 trước: DB phải chạy trước backend
+          - name: database
+            tag: database
+            services: "postgres redis meili"
+
+          # Cụm 6: Kafka trước các service dùng Kafka
+          - name: kafka
+            tag: kafka
+            services: "kafka"
+
+          # Cụm 3: Core backend services
+          - name: core-backend
+            tag: core_backend
+            services: "auth-service catalog-service order-service payment-service device-service"
+
+          # Cụm 4: Async & Realtime services
+          - name: async-backend
+            tag: async_backend
+            services: "notification-service alert-service subscription-service shipping-service chat-service"
+
+          # Cụm 2: Gateway & IoT
+          - name: gateway
+            tag: iot_gateway
+            services: "api-gateway iot-gateway"
+
+          # Cụm 1: Edge & Frontend (deploy cuối cùng)
+          - name: edge
+            tag: edge
+            services: "edge"
+
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Lấy Instance ID của cụm ${{ matrix.cluster.name }}
+        id: get-instance
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters \
+              "Name=tag:Service,Values=${{ matrix.cluster.tag }}" \
+              "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" \
+            --output text)
+
+          if [ "$INSTANCE_ID" = "None" ] || [ -z "$INSTANCE_ID" ]; then
+            echo "❌ Không tìm thấy EC2 đang chạy với tag Service=${{ matrix.cluster.tag }}"
+            exit 1
+          fi
+
+          echo "instance_id=$INSTANCE_ID" >> $GITHUB_OUTPUT
+          echo "✅ Instance ID: $INSTANCE_ID"
+
+      - name: Deploy lên ${{ matrix.cluster.name }} qua SSM Run Command
+        id: ssm-deploy
+        run: |
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ steps.get-instance.outputs.instance_id }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters "commands=[
+              'set -euo pipefail',
+              'echo \"=== Deploy SHA: ${{ github.sha }} ===\"',
+              'S3_PATH=s3://${{ secrets.AWS_ARTIFACT_BUCKET }}/releases/${{ github.sha }}',
+              'DEPLOY_DIR=/opt/carenest/app',
+              'mkdir -p \$DEPLOY_DIR',
+              'cd \$DEPLOY_DIR',
+
+              'echo \"--- Pull images từ S3 ---\"',
+              'for svc in ${{ matrix.cluster.services }}; do',
+              '  TAR_FILE=\"\${svc}.tar.gz\"',
+              '  if aws s3 ls \"\$S3_PATH/\$TAR_FILE\" > /dev/null 2>&1; then',
+              '    aws s3 cp \"\$S3_PATH/\$TAR_FILE\" \"/tmp/\$TAR_FILE\" --no-progress',
+              '    docker load < \"/tmp/\$TAR_FILE\"',
+              '    rm \"/tmp/\$TAR_FILE\"',
+              '    echo \"✅ Loaded: \$svc\"',
+              '  else',
+              '    echo \"⚠️  Bỏ qua: \$svc (không có image - đây là data/infra service)\"',
+              '  fi',
+              'done',
+
+              'echo \"--- Restart docker compose ---\"',
+              'if [ -f \"/opt/carenest/app/compose.yml\" ]; then',
+              '  docker compose -f /opt/carenest/app/compose.yml pull || true',
+              '  docker compose -f /opt/carenest/app/compose.yml up -d --remove-orphans',
+              '  echo \"✅ Compose updated\"',
+              'else',
+              '  echo \"⚠️  Chưa có compose.yml, bỏ qua restart\"',
+              'fi',
+
+              'echo \"=== Deploy hoàn tất ===\"'
+            ]" \
+            --comment "CD deploy ${{ github.sha }} → ${{ matrix.cluster.name }}" \
+            --timeout-seconds 300 \
+            --query "Command.CommandId" \
+            --output text)
+
+          echo "command_id=$COMMAND_ID" >> $GITHUB_OUTPUT
+          echo "SSM Command ID: $COMMAND_ID"
+
+      - name: Chờ SSM command hoàn thành
+        run: |
+          INSTANCE_ID="${{ steps.get-instance.outputs.instance_id }}"
+          COMMAND_ID="${{ steps.ssm-deploy.outputs.command_id }}"
+
+          for i in $(seq 1 30); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query "Status" \
+              --output text 2>/dev/null || echo "Pending")
+
+            echo "[$i/30] Status: $STATUS"
+
+            if [ "$STATUS" = "Success" ]; then
+              echo "✅ Deploy thành công!"
+              aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "StandardOutputContent" \
+                --output text
+              exit 0
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "TimedOut" ] || [ "$STATUS" = "Cancelled" ]; then
+              echo "❌ Deploy thất bại: $STATUS"
+              aws ssm get-command-invocation \
+                --command-id "$COMMAND_ID" \
+                --instance-id "$INSTANCE_ID" \
+                --query "StandardErrorContent" \
+                --output text
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          echo "❌ Timeout chờ SSM command"
+          exit 1

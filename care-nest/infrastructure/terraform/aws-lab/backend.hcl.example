@@ -1,0 +1,6 @@
+bucket       = "REPLACE-WITH-YOUR-UNIQUE-TERRAFORM-STATE-BUCKET"
+key          = "carenest/aws-lab/terraform.tfstate"
+region       = "ap-southeast-1"
+encrypt      = true
+use_lockfile = true
+
