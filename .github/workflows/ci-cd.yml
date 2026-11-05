@@ -1,0 +1,252 @@
+name: CareNest CI/CD
+
+on:
+  pull_request:
+    paths:
+      - "care-nest/**"
+      - ".github/workflows/ci-cd.yml"
+  push:
+    branches: [main]
+    paths:
+      - "care-nest/**"
+      - ".github/workflows/ci-cd.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: carenest-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  application:
+    name: Application quality checks
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: care-nest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.11.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: care-nest/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check workflow formatting
+        run: pnpm exec prettier --check ../.github/workflows/ci-cd.yml
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm type-check
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Production build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: pnpm build
+
+  terraform:
+    name: Terraform format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.11.4
+          terraform_wrapper: false
+
+      - name: Check Terraform formatting
+        run: terraform fmt -check -recursive care-nest/infrastructure/terraform/aws-lab
+
+  deploy:
+    name: Deploy to AWS lab
+    needs: [application, terraform]
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: aws-lab
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: carenest-aws-lab-deploy
+      cancel-in-progress: false
+    defaults:
+      run:
+        working-directory: care-nest
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION || 'ap-southeast-1' }}
+      AWS_ARTIFACT_BUCKET: ${{ vars.AWS_ARTIFACT_BUCKET }}
+      RELEASE_KEY: releases/${{ github.sha }}/carenest.tgz
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate AWS deployment configuration
+        env:
+          AWS_DEPLOY_ROLE_ARN: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+        run: |
+          test -n "$AWS_DEPLOY_ROLE_ARN"
+          test -n "$AWS_ARTIFACT_BUCKET"
+
+      - name: Assume AWS deployment role through GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          role-session-name: carenest-${{ github.run_id }}
+          allowed-account-ids: ${{ vars.AWS_ACCOUNT_ID }}
+
+      - name: Package and upload source artifact
+        run: |
+          tar \
+            --exclude-vcs \
+            --exclude=node_modules \
+            --exclude=.next \
+            --exclude=.turbo \
+            --exclude=coverage \
+            -czf "$RUNNER_TEMP/carenest.tgz" .
+          aws s3 cp "$RUNNER_TEMP/carenest.tgz" "s3://$AWS_ARTIFACT_BUCKET/$RELEASE_KEY" \
+            --only-show-errors
+
+      - name: Roll out backend services through SSM
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          cat > "$RUNNER_TEMP/backend-command.sh" <<'SCRIPT'
+          set -euo pipefail
+          release_dir="/opt/carenest/releases/__RELEASE_SHA__"
+          mkdir -p "$release_dir"
+          aws s3 cp "s3://__ARTIFACT_BUCKET__/__RELEASE_KEY__" /tmp/carenest.tgz --only-show-errors
+          rm -rf "$release_dir"
+          mkdir -p "$release_dir"
+          tar -xzf /tmp/carenest.tgz -C "$release_dir"
+          rm -rf /opt/carenest/app
+          ln -s "$release_dir" /opt/carenest/app
+          cd /opt/carenest
+          docker compose build --pull
+          docker compose up -d --remove-orphans
+          SCRIPT
+
+          deploy_service() {
+            local service="$1"
+            local command_file="$RUNNER_TEMP/backend-${service}.sh"
+            local parameters_file="$RUNNER_TEMP/backend-${service}.json"
+            local ids
+            ids="$(aws ec2 describe-instances \
+              --filters "Name=tag:Project,Values=CareNest" "Name=tag:Environment,Values=aws-lab" \
+                        "Name=tag:Service,Values=${service}" "Name=instance-state-name,Values=running" \
+              --query "Reservations[].Instances[].InstanceId" --output text)"
+            test -n "$ids" && test "$ids" != "None"
+
+            sed \
+              -e "s|__RELEASE_SHA__|${RELEASE_SHA}|g" \
+              -e "s|__ARTIFACT_BUCKET__|${AWS_ARTIFACT_BUCKET}|g" \
+              -e "s|__RELEASE_KEY__|${RELEASE_KEY}|g" \
+              "$RUNNER_TEMP/backend-command.sh" > "$command_file"
+            python3 - "$command_file" "$parameters_file" <<'PY'
+          import json
+          import pathlib
+          import sys
+          pathlib.Path(sys.argv[2]).write_text(json.dumps({"commands": [pathlib.Path(sys.argv[1]).read_text()]}))
+          PY
+
+            local command_id
+            command_id="$(aws ssm send-command \
+              --document-name AWS-RunShellScript \
+              --instance-ids $ids \
+              --parameters "file://$parameters_file" \
+              --comment "CareNest ${RELEASE_SHA} ${service}" \
+              --query "Command.CommandId" --output text)"
+
+            for instance_id in $ids; do
+              aws ssm wait command-executed --command-id "$command_id" --instance-id "$instance_id"
+              aws ssm get-command-invocation --command-id "$command_id" --instance-id "$instance_id" \
+                --query "{status:Status,stdout:StandardOutputContent,stderr:StandardErrorContent}" --output json
+            done
+          }
+
+          for service in auth catalog device order payment notification alert subscription shipping chat iot_gateway api_gateway; do
+            deploy_service "$service"
+          done
+
+      - name: Roll out frontend services through SSM
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          cat > "$RUNNER_TEMP/frontend-command.sh" <<'SCRIPT'
+          set -euo pipefail
+          release_dir="/opt/carenest/releases/__RELEASE_SHA__"
+          mkdir -p "$release_dir"
+          aws s3 cp "s3://__ARTIFACT_BUCKET__/__RELEASE_KEY__" /tmp/carenest.tgz --only-show-errors
+          rm -rf "$release_dir"
+          mkdir -p "$release_dir"
+          tar -xzf /tmp/carenest.tgz -C "$release_dir"
+          rm -rf /opt/carenest/app
+          ln -s "$release_dir" /opt/carenest/app
+          cd /opt/carenest/app
+          corepack enable
+          corepack prepare pnpm@12.11.2 --activate
+          pnpm install --frozen-lockfile
+          pnpm --filter "@carenest/__FRONTEND_PACKAGE__" build
+          systemctl restart "carenest-__FRONTEND_SYSTEMD_SERVICE__"
+          SCRIPT
+
+          deploy_frontend() {
+            local service="$1"
+            local package="$2"
+            local systemd_service="$3"
+            local parameters_file="$RUNNER_TEMP/frontend-${service}.json"
+            local ids
+            ids="$(aws ec2 describe-instances \
+              --filters "Name=tag:Project,Values=CareNest" "Name=tag:Environment,Values=aws-lab" \
+                        "Name=tag:Service,Values=${service}" "Name=instance-state-name,Values=running" \
+              --query "Reservations[].Instances[].InstanceId" --output text)"
+            test -n "$ids" && test "$ids" != "None"
+
+            local command_file="$RUNNER_TEMP/frontend-${service}.sh"
+            sed \
+              -e "s|__RELEASE_SHA__|${RELEASE_SHA}|g" \
+              -e "s|__ARTIFACT_BUCKET__|${AWS_ARTIFACT_BUCKET}|g" \
+              -e "s|__RELEASE_KEY__|${RELEASE_KEY}|g" \
+              -e "s|__FRONTEND_PACKAGE__|${package}|g" \
+              -e "s|__FRONTEND_SYSTEMD_SERVICE__|${systemd_service}|g" \
+              "$RUNNER_TEMP/frontend-command.sh" > "$command_file"
+            python3 - "$command_file" "$parameters_file" <<'PY'
+          import json
+          import pathlib
+          import sys
+          pathlib.Path(sys.argv[2]).write_text(json.dumps({"commands": [pathlib.Path(sys.argv[1]).read_text()]}))
+          PY
+
+            local command_id
+            command_id="$(aws ssm send-command \
+              --document-name AWS-RunShellScript \
+              --instance-ids $ids \
+              --parameters "file://$parameters_file" \
+              --comment "CareNest ${RELEASE_SHA} ${service}" \
+              --query "Command.CommandId" --output text)"
+
+            for instance_id in $ids; do
+              aws ssm wait command-executed --command-id "$command_id" --instance-id "$instance_id"
+              aws ssm get-command-invocation --command-id "$command_id" --instance-id "$instance_id" \
+                --query "{status:Status,stdout:StandardOutputContent,stderr:StandardErrorContent}" --output json
+            done
+          }
+
+          deploy_frontend web_buyer web-buyer web-buyer
+          deploy_frontend web_seller web-seller web-seller
+          deploy_frontend web_admin web-admin web-admin
