@@ -55,8 +55,11 @@ docker compose -f docker-compose.dev.yml --profile full up -d
 ### Bước 2: Khởi tạo các Kafka Topics
 
 Kafka broker KRaft cần được khởi tạo trước 25 topics nghiệp vụ để tránh lỗi `This server does not host this topic-partition`:
-```bash
-# Trên Windows PowerShell / Command Prompt:
+```powershell
+# Trên Windows PowerShell:
+Get-Content infrastructure/init-topics.sh | docker exec -i carenest-kafka bash
+
+# Hoặc trên Command Prompt (cmd.exe):
 docker exec -i carenest-kafka bash < infrastructure/init-topics.sh
 
 # Hoặc trên Linux / macOS / Git Bash:
@@ -211,8 +214,13 @@ Mỗi service HTTP tuân thủ mô hình phân tầng **Clean / Hexagonal Archit
 ### 2. Lỗi Kafka `This server does not host this topic-partition`
 - **Nguyên nhân:** Broker Kafka KRaft chưa có sẵn topic mà consumer đăng ký subscribe.
 - **Khắc phục:** Chạy lại script khởi tạo topic:
-  ```bash
+  ```powershell
+  # PowerShell:
+  Get-Content infrastructure/init-topics.sh | docker exec -i carenest-kafka bash
+  # CMD:
   docker exec -i carenest-kafka bash < infrastructure/init-topics.sh
+  # Linux/macOS/Git Bash:
+  bash infrastructure/init-topics.sh
   ```
 
 ### 3. Lỗi `Cannot find module '@carenest/nestjs-common'` hoặc thiếu types
