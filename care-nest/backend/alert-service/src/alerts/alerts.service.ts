@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { AlertStatus, AlertSeverity, AlertType } from '@carenest/database';
 import { AlertsRepository } from './alerts.repository.js';
+import { CareAccessService } from './care-access.service.js';
 import { RealtimeGateway } from '../realtime/realtime.gateway.js';
 import { OrderEventPublisher } from '../kafka/order-event.publisher.js';
 import { evaluateVitals, isOutsideGeofence, type VitalsReading } from '../rules/vitals-rules.js';
@@ -14,6 +15,7 @@ export class AlertsService {
     private readonly alertsRepository: AlertsRepository,
     private readonly realtime: RealtimeGateway,
     private readonly eventPublisher: OrderEventPublisher,
+    private readonly careAccess: CareAccessService,
   ) {}
 
   /**
@@ -164,9 +166,42 @@ export class AlertsService {
     return this.alertsRepository.listForSubject(subjectId, page, pageSize);
   }
 
-  async updateStatus(id: string, dto: UpdateAlertStatusDto): Promise<any> {
+  /** Access-checked variant used by the controller's list endpoint. */
+  async listForSubjectChecked(callerId: string, subjectId: string, page = 1, pageSize = 20): Promise<any> {
+    await this.careAccess.assertSubjectAccess(callerId, subjectId, 'receiveAlerts');
+    return this.listForSubject(subjectId, page, pageSize);
+  }
+
+  /** Fetch a single alert by its own id, access-checked against its subject. */
+  async getByIdChecked(callerId: string, id: string): Promise<any> {
     const alert = await this.alertsRepository.findById(id);
     if (!alert) throw new NotFoundException(`Không tìm thấy alert ${id}`);
+    await this.careAccess.assertSubjectAccess(callerId, alert.subjectId, 'receiveAlerts');
+    return alert;
+  }
+
+  /**
+   * Best-effort batch open-alert counts for an overview page (e.g. a
+   * caregiver's "my patients" list). Silently drops subject ids the caller
+   * cannot access instead of 403-ing the whole batch.
+   */
+  async getOpenCountsForSubjects(callerId: string, subjectIds: string[]): Promise<Record<string, number>> {
+    const allowed: string[] = [];
+    for (const subjectId of subjectIds) {
+      try {
+        await this.careAccess.assertSubjectAccess(callerId, subjectId, 'receiveAlerts');
+        allowed.push(subjectId);
+      } catch {
+        // caller lacks receiveAlerts for this subject — omit it from the result
+      }
+    }
+    return this.alertsRepository.countOpenBySubjects(allowed);
+  }
+
+  async updateStatus(callerId: string, id: string, dto: UpdateAlertStatusDto): Promise<any> {
+    const alert = await this.alertsRepository.findById(id);
+    if (!alert) throw new NotFoundException(`Không tìm thấy alert ${id}`);
+    await this.careAccess.assertSubjectAccess(callerId, alert.subjectId, 'receiveAlerts');
     return this.alertsRepository.updateStatus(id, dto.status as AlertStatus, dto.notes);
   }
 }

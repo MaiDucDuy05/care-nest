@@ -8,9 +8,11 @@ import {
   UseGuards,
   BadRequestException,
 } from '@nestjs/common';
+import { Roles, RolesGuard } from '@carenest/nestjs-common';
 import { DevicesService } from './devices.service.js';
 import { RegisterDeviceSchema } from './dto/register-device.dto.js';
 import { AssignmentsService } from '../assignments/assignments.service.js';
+import { CareAccessService } from '../caregivers/care-access.service.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 
@@ -19,6 +21,7 @@ export class DevicesController {
   constructor(
     private readonly devicesService: DevicesService,
     private readonly assignmentsService: AssignmentsService,
+    private readonly careAccess: CareAccessService,
   ) {}
 
   @Get('me')
@@ -29,6 +32,8 @@ export class DevicesController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   async list(
     @Query('page') page = '1',
     @Query('pageSize') pageSize = '20',
@@ -37,22 +42,29 @@ export class DevicesController {
   }
 
   @Get(':id/telemetry/latest')
-  async getLatestVitals(@Param('id') id: string) {
+  @UseGuards(JwtAuthGuard)
+  async getLatestVitals(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    await this.careAccess.assertDeviceAccess(user.id, id, 'viewHealth');
     return this.devicesService.getLatestVitals(id);
   }
 
   @Get(':id/telemetry')
+  @UseGuards(JwtAuthGuard)
   async getTelemetryHistory(
+    @CurrentUser() user: { id: string },
     @Param('id') id: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
     @Query('limit') limit = '50',
   ) {
+    await this.careAccess.assertDeviceAccess(user.id, id, 'viewHealth');
     return this.devicesService.getTelemetryHistory(id, from, to, parseInt(limit, 10));
   }
 
   @Get(':id')
-  async getOne(@Param('id') id: string) {
+  @UseGuards(JwtAuthGuard)
+  async getOne(@CurrentUser() user: { id: string }, @Param('id') id: string) {
+    await this.careAccess.assertDeviceAccess(user.id, id, 'viewHealth');
     return this.devicesService.getDeviceById(id);
   }
 

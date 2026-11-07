@@ -293,7 +293,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="font-bold text-slate-900 text-sm sm:text-base">
                   {currentDevice?.isOwner ? (
-                    'Theo dõi sinh hiệu cá nhân'
+                    `Theo dõi sinh hiệu: ${currentDevice?.name || 'Thiết bị cá nhân'}`
                   ) : (
                     <>Đang theo dõi: <span className="text-indigo-600">{currentDevice?.patientName}</span> ({currentDevice?.relationship === 'DOCTOR' ? 'Bác sĩ' : currentDevice?.relationship === 'NURSE' ? 'Điều dưỡng' : 'Gia đình'})</>
                   )}
@@ -305,19 +305,19 @@ export default function DashboardPage() {
             {availableDevices.length > 1 && (
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <label htmlFor="device-selector" className="text-xs font-semibold text-slate-500 whitespace-nowrap">
-                  Chuyển người theo dõi:
+                  {availableDevices.some((d) => !d.isOwner) ? 'Chọn thiết bị / Người thân:' : 'Chọn thiết bị theo dõi:'}
                 </label>
-                <div className="relative flex-1 sm:w-64">
+                <div className="relative flex-1 sm:w-72">
                   <select
                     id="device-selector"
                     value={effectiveDeviceId}
                     onChange={(e) => handleDeviceChange(e.target.value)}
-                    className="w-full appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 pr-8 text-xs sm:text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer transition-all"
+                    className="w-full appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl px-3.5 py-2 pr-9 text-xs sm:text-sm font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer transition-all shadow-xs"
                   >
                     {availableDevices.map((d) => (
                       <option key={d.id} value={d.id}>
                         {d.isOwner
-                          ? `[Của tôi] ${d.name}`
+                          ? `[Thiết bị của tôi] ${d.name}`
                           : `[${d.patientName}] ${d.name} (${d.relationship || 'Người thân'})`}
                       </option>
                     ))}

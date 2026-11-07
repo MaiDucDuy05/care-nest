@@ -38,3 +38,5 @@ export async function disconnectPrisma(): Promise<void> {
     prisma = undefined;
   }
 }
+
+export * from './care-access.js';

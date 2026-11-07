@@ -62,6 +62,17 @@ export class AlertsRepository {
     return { items, total, page, pageSize, hasMore: skip + items.length < total };
   }
 
+  /** Count OPEN/ACKNOWLEDGED alerts per subject, for the given subject ids. */
+  async countOpenBySubjects(subjectIds: string[]): Promise<Record<string, number>> {
+    if (subjectIds.length === 0) return {};
+    const groups = await this.prisma.alert.groupBy({
+      by: ['subjectId'],
+      where: { subjectId: { in: subjectIds }, status: { in: ['OPEN', 'ACKNOWLEDGED'] } },
+      _count: { _all: true },
+    });
+    return Object.fromEntries(groups.map((g) => [g.subjectId, g._count._all]));
+  }
+
   async updateStatus(id: string, status: AlertStatus, notes?: string): Promise<any> {
     const data: any = { status };
     if (status === 'ACKNOWLEDGED') data.acknowledgedAt = new Date();
