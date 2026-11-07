@@ -5,12 +5,35 @@ import { ProductQueryDto } from './dto/product-query.dto.js';
 import { CreateProductDto } from './dto/create-product.dto.js';
 import { UpdateProductDto } from './dto/update-product.dto.js';
 import { cacheDel, cacheGet, cacheSet } from '@carenest/shared-redis';
+import { SearchService } from '../search/search.service.js';
 
 @Injectable()
 export class ProductsService {
-  constructor(private readonly productsRepository: ProductsRepository) {}
+  constructor(
+    private readonly productsRepository: ProductsRepository,
+    private readonly searchService: SearchService,
+  ) {}
 
   async listProducts(query: ProductQueryDto): Promise<PaginatedProducts> {
+    if (query.search && query.search.trim()) {
+      const meiliResult = await this.searchService.searchProducts(query.search.trim(), {
+        page: query.page,
+        pageSize: query.pageSize,
+        categoryId: query.categoryId,
+        isIotDevice: query.isIotDevice,
+      });
+
+      if (meiliResult) {
+        const skip = (query.page - 1) * query.pageSize;
+        return {
+          items: meiliResult.items as any[],
+          total: meiliResult.total,
+          page: query.page,
+          pageSize: query.pageSize,
+          hasMore: skip + meiliResult.items.length < meiliResult.total,
+        };
+      }
+    }
     return this.productsRepository.findMany(query);
   }
 
@@ -38,7 +61,9 @@ export class ProductsService {
   }
 
   async createProduct(dto: CreateProductDto): Promise<Product> {
-    return this.productsRepository.create(dto);
+    const created = await this.productsRepository.create(dto);
+    this.searchService.indexProduct(created).catch(() => {});
+    return created;
   }
 
   async updateProduct(id: string, dto: UpdateProductDto): Promise<Product> {
@@ -49,12 +74,15 @@ export class ProductsService {
     } catch {
       // The database remains authoritative if cache invalidation fails.
     }
+    this.searchService.indexProduct(updated).catch(() => {});
     return updated;
   }
 
   async deleteProduct(id: string): Promise<Product> {
     await this.getProductById(id);
-    return this.productsRepository.softDelete(id);
+    const deleted = await this.productsRepository.softDelete(id);
+    this.searchService.deleteProduct(id).catch(() => {});
+    return deleted;
   }
 
   async listForSeller(userId: string, query: any): Promise<PaginatedProducts> {
@@ -80,10 +108,12 @@ export class ProductsService {
     if (!sellerId) {
       throw new NotFoundException('Không tìm thấy thông tin người bán. Vui lòng hoàn tất đăng ký hoặc KYC.');
     }
-    return this.productsRepository.create({
+    const created = await this.productsRepository.create({
       ...dto,
       sellerId,
     });
+    this.searchService.indexProduct(created).catch(() => {});
+    return created;
   }
 
   async updateForSeller(userId: string, productId: string, dto: UpdateProductDto): Promise<Product> {

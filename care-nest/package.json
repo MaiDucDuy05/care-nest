@@ -10,13 +10,14 @@
   },
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev --parallel",
+    "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
     "type-check": "turbo run type-check",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
+    "kafka:init": "powershell -File infrastructure/init-topics.ps1",
     "db:seed": "pnpm --filter @carenest/database build && pnpm --filter @carenest/database db:seed",
     "clean": "turbo run clean && rm -rf node_modules .turbo"
   },

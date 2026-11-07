@@ -4,8 +4,10 @@ import { SellerProductsController } from './seller-products.controller.js';
 import { ProductsService } from './products.service.js';
 import { ProductsRepository } from './products.repository.js';
 import { RolesGuard } from '@carenest/nestjs-common';
+import { SearchModule } from '../search/search.module.js';
 
 @Module({
+  imports: [SearchModule],
   controllers: [ProductsController, SellerProductsController],
   providers: [ProductsService, ProductsRepository, RolesGuard],
   exports: [ProductsService, ProductsRepository],

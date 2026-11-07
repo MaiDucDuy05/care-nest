@@ -5,9 +5,10 @@ import { CategoriesModule } from './categories/categories.module.js';
 import { KycModule } from './kyc/kyc.module.js';
 import { ImeiModule } from './imei/imei.module.js';
 import { PublicModule } from './public/public.module.js';
+import { SearchModule } from './search/search.module.js';
 
 @Module({
-  imports: [MetricsModule, HealthModule, ProductsModule, CategoriesModule, KycModule, ImeiModule, PublicModule],
+  imports: [MetricsModule, HealthModule, ProductsModule, CategoriesModule, KycModule, ImeiModule, PublicModule, SearchModule],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
