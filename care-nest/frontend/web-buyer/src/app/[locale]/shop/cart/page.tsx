@@ -20,10 +20,9 @@ import {
 import { cartService, type CartItem } from '@/services/cart.service';
 import { ordersService } from '@/services/orders.service';
 import { paymentService } from '@/services/payment.service';
-import { PaymentSimulatorModal, PaymentGatewayType } from '@/components/payment/payment-simulator-modal';
+import { VietQrPaymentModal } from '@/components/payment/vietqr-payment-modal';
 import { authService } from '@/services/auth.service';
 import { getToken } from '@/lib/api-client';
-import { DEMO_ACCOUNTS } from '@/lib/demo-accounts';
 
 const formatVnd = (price: number) => {
   return new Intl.NumberFormat('vi-VN').format(price) + ' đ';
@@ -38,11 +37,10 @@ export default function CartPage() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [orderSuccess, setOrderSuccess] = useState<{ orderId: string } | null>(null);
-  const [pendingPayment, setPendingPayment] = useState<{
+  const [vietQrOrder, setVietQrOrder] = useState<{
     orderId: string;
     orderNumber: string;
     amount: number;
-    method: PaymentGatewayType;
   } | null>(null);
 
   // Checkout form fields
@@ -53,7 +51,7 @@ export default function CartPage() {
   const [district, setDistrict] = useState('Quận 1');
   const [city, setCity] = useState('Hồ Chí Minh');
   const [note, setNote] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'VNPAY' | 'MOMO' | 'COD' | 'BANK_TRANSFER'>('COD');
+  const [paymentMethod, setPaymentMethod] = useState<'VNPAY' | 'COD' | 'BANK_TRANSFER'>('COD');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -198,15 +196,15 @@ export default function CartPage() {
 
       if (paymentMethod === 'COD') {
         setOrderSuccess({ orderId: createdOrderId });
-      } else if (paymentMethod === 'VNPAY' || paymentMethod === 'MOMO') {
-        // Khởi tạo thanh toán thật qua Cổng thanh toán (VNPay / MoMo) và chuyển hướng
+      } else if (paymentMethod === 'VNPAY') {
+        // Khởi tạo thanh toán thật qua Cổng VNPay và chuyển hướng trực tiếp
         try {
-          const returnPath = paymentMethod === 'VNPAY' ? '/vi/shop/payment/vnpay-return' : '/vi/shop/payment/momo-return';
+          const returnPath = '/vi/shop/payment/vnpay-return';
           const returnUrl = typeof window !== 'undefined' ? `${window.location.origin}${returnPath}` : '';
 
           const paymentIntent = await paymentService.createPayment({
             orderId: createdOrderId,
-            method: paymentMethod,
+            method: 'VNPAY',
             amount: total,
             idempotencyKey: `${createdOrderId}-pay-${Date.now()}`,
             returnUrl,
@@ -218,28 +216,27 @@ export default function CartPage() {
             return;
           }
 
-          setPendingPayment({
-            orderId: createdOrderId,
-            orderNumber: createdOrderNumber,
-            amount: total,
-            method: paymentMethod as PaymentGatewayType,
-          });
-        } catch (payErr) {
-          console.warn('Cổng thanh toán online gặp lỗi hoặc chưa kích hoạt key thật, chuyển sang giao diện quét mã hỗ trợ:', payErr);
-          setPendingPayment({
-            orderId: createdOrderId,
-            orderNumber: createdOrderNumber,
-            amount: total,
-            method: paymentMethod as PaymentGatewayType,
-          });
+          throw new Error('Cổng thanh toán không trả về đường dẫn thanh toán hợp lệ.');
+        } catch (payErr: unknown) {
+          console.error('Lỗi cổng thanh toán trực tuyến:', payErr);
+          const rawErr = (payErr as Error)?.message || 'Không thể kết nối đến cổng thanh toán';
+          setCheckoutError(
+            `Đơn hàng #${createdOrderNumber} đã được tạo thành công, nhưng không thể chuyển hướng tới cổng thanh toán VNPAY: "${rawErr}". Bạn có thể vào "Chi tiết đơn hàng" để thực hiện thanh toán lại hoặc liên hệ hỗ trợ.`
+          );
+          setTimeout(() => {
+            router.push(`/orders/${createdOrderId}`);
+          }, 3500);
+          return;
         }
-      } else {
-        setPendingPayment({
+      } else if (paymentMethod === 'BANK_TRANSFER') {
+        // Mở Modal Quét Mã VietQR Động Thật
+        setVietQrOrder({
           orderId: createdOrderId,
           orderNumber: createdOrderNumber,
           amount: total,
-          method: paymentMethod as PaymentGatewayType,
         });
+      } else {
+        setOrderSuccess({ orderId: createdOrderId });
       }
     } catch (err: unknown) {
       const rawError = (err as Error)?.message || '';
@@ -287,17 +284,6 @@ export default function CartPage() {
       setCheckoutError(String(errMsg));
     } finally {
       setIsCheckingOut(false);
-    }
-  };
-
-  const handlePaymentSimulatorSuccess = (_details: {
-    transactionId: string;
-    method: PaymentGatewayType;
-    paidAt: string;
-  }) => {
-    if (pendingPayment) {
-      setOrderSuccess({ orderId: pendingPayment.orderId });
-      setPendingPayment(null);
     }
   };
 
@@ -723,47 +709,6 @@ export default function CartPage() {
               </div>
             )}
 
-            {/* Thanh chọn nhanh hồ sơ người nhận mẫu */}
-            <div style={{
-              background: '#f8fafc',
-              border: '1px dashed #cbd5e1',
-              borderRadius: '12px',
-              padding: '10px 12px',
-              marginBottom: '14px',
-            }}>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#475569', marginBottom: '6px' }}>
-                ⚡ Điền nhanh thông tin người nhận mẫu:
-              </div>
-              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                {DEMO_ACCOUNTS.slice(0, 3).map((acc) => (
-                  <button
-                    key={acc.id}
-                    type="button"
-                    onClick={() => {
-                      setFullName(acc.fullName);
-                      setPhone(acc.phone);
-                      setAddressLine(acc.address.addressLine);
-                      setDistrict(acc.address.district);
-                      setCity(acc.address.city);
-                      setWard(acc.address.ward);
-                    }}
-                    style={{
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      background: '#ffffff',
-                      border: '1px solid #e2e8f0',
-                      cursor: 'pointer',
-                      color: '#0f172a',
-                    }}
-                  >
-                    {acc.avatar} {acc.fullName}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <form onSubmit={handleConfirmCheckout} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '4px' }}>Họ và tên người nhận</label>
@@ -853,9 +798,8 @@ export default function CartPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {[
                     { key: 'COD', label: 'Thanh toán khi nhận hàng (COD)' },
-                    { key: 'VNPAY', label: 'Cổng VNPay (QR & Thẻ ATM Sandbox)' },
-                    { key: 'MOMO', label: 'Ví điện tử MoMo (Sandbox Test)' },
-                    { key: 'BANK_TRANSFER', label: 'Chuyển khoản VietQR 24/7 (Quét mã tự động)' },
+                    { key: 'VNPAY', label: 'Cổng thanh toán VNPAY (QR, Thẻ ATM/Visa)' },
+                    { key: 'BANK_TRANSFER', label: 'Chuyển khoản VietQR 24/7 (Quét mã App ngân hàng)' },
                   ].map((m) => (
                     <label key={m.key} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
                       <input
@@ -905,21 +849,23 @@ export default function CartPage() {
         </div>
       )}
 
-      {/* Payment Simulator Modal */}
-      {pendingPayment && (
-        <PaymentSimulatorModal
-          isOpen={!!pendingPayment}
-          orderId={pendingPayment.orderId}
-          orderNumber={pendingPayment.orderNumber}
-          amount={pendingPayment.amount}
-          initialMethod={pendingPayment.method}
+      {/* VietQR Payment Modal */}
+      {vietQrOrder && (
+        <VietQrPaymentModal
+          isOpen={!!vietQrOrder}
+          orderId={vietQrOrder.orderId}
+          orderNumber={vietQrOrder.orderNumber}
+          amount={vietQrOrder.amount}
           onClose={() => {
-            // Close simulator and still allow buyer to view order
-            const oid = pendingPayment.orderId;
-            setPendingPayment(null);
+            const oid = vietQrOrder.orderId;
+            setVietQrOrder(null);
             setOrderSuccess({ orderId: oid });
           }}
-          onSuccess={handlePaymentSimulatorSuccess}
+          onPaidSuccess={() => {
+            const oid = vietQrOrder.orderId;
+            setVietQrOrder(null);
+            router.push(`/orders/${oid}`);
+          }}
         />
       )}
     </div>

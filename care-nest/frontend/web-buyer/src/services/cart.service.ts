@@ -27,7 +27,6 @@ export function emitCartUpdated(cart?: Cart) {
     const resolvedCart = cart ?? getLocalCart();
     window.dispatchEvent(new CustomEvent(CART_UPDATED_EVENT, { detail: resolvedCart }));
     window.dispatchEvent(new CustomEvent('cart-updated', { detail: resolvedCart }));
-    window.dispatchEvent(new Event('storage'));
   } catch {
     // Ignore errors
   }
@@ -35,7 +34,7 @@ export function emitCartUpdated(cart?: Cart) {
 
 const LOCAL_CART_KEY = 'buyer_cart';
 
-function getLocalCart(): Cart {
+export function getLocalCart(): Cart {
   if (typeof window === 'undefined') return { items: [] };
   try {
     const raw = window.localStorage.getItem(LOCAL_CART_KEY);
@@ -80,8 +79,13 @@ export const cartService = {
       throw new Error(`Failed to load cart: HTTP ${res.status}`);
     }
     const data = await res.json();
-    saveLocalCart(data);
+    // Lưu local cache nhưng KHÔNG kích hoạt notify event để tránh loop
+    saveLocalCart(data, false);
     return data;
+  },
+
+  getLocalCart(): Cart {
+    return getLocalCart();
   },
 
   async addItem(item: CartItem): Promise<Cart> {

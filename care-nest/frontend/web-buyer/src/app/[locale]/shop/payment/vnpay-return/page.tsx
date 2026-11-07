@@ -1,9 +1,10 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Link } from '@/i18n/routing';
 import { CheckCircle2, XCircle, ArrowRight, ShoppingBag, ShieldCheck, CreditCard } from 'lucide-react';
+import { PAYMENT_API } from '@/lib/api-client';
 
 const VNPAY_RESPONSE_MESSAGES: Record<string, string> = {
   '00': 'Giao dịch thành công.',
@@ -26,6 +27,7 @@ function formatVnd(amount: number) {
 
 function VnpayReturnContent() {
   const searchParams = useSearchParams();
+  const [hasVerified, setHasVerified] = useState(false);
 
   const responseCode = searchParams?.get('vnp_ResponseCode') || '99';
   const txnRef = searchParams?.get('vnp_TxnRef') || '';
@@ -37,6 +39,16 @@ function VnpayReturnContent() {
 
   const isSuccess = responseCode === '00';
   const statusMessage = VNPAY_RESPONSE_MESSAGES[responseCode] || `Mã phản hồi VNPAY: ${responseCode}`;
+
+  useEffect(() => {
+    if (!searchParams || hasVerified) return;
+    const queryString = searchParams.toString();
+    if (!queryString) return;
+    setHasVerified(true);
+    fetch(`${PAYMENT_API}/api/v1/webhooks/vnpay?${queryString}`, { method: 'GET' })
+      .then((res) => res.json())
+      .catch((err) => console.warn('Lỗi đồng bộ trạng thái VNPay với backend:', err));
+  }, [searchParams, hasVerified]);
 
   return (
     <div className="container" style={{ paddingTop: '60px', paddingBottom: '80px', maxWidth: '640px' }}>
@@ -148,7 +160,7 @@ function VnpayReturnContent() {
           ) : (
             <>
               <Link
-                href="/shop/cart"
+                href="/orders"
                 className="btn btn-primary"
                 style={{
                   padding: '12px 24px',
@@ -159,7 +171,7 @@ function VnpayReturnContent() {
                 }}
               >
                 <CreditCard size={16} />
-                <span>Thử thanh toán lại</span>
+                <span>Xem đơn hàng để thanh toán lại</span>
               </Link>
               <Link
                 href="/shop/products"

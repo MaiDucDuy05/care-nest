@@ -63,7 +63,7 @@ export class PaymentsRepository {
   }
 
   async markPaid(transactionRef: string, gatewayResponse?: object): Promise<any> {
-    return this.prisma.payment.update({
+    const payment = await this.prisma.payment.update({
       where: { transactionRef },
       data: {
         status: PaymentStatus.PAID,
@@ -71,12 +71,28 @@ export class PaymentsRepository {
         gatewayResponse: gatewayResponse as any,
       },
     });
+
+    if (payment?.orderId) {
+      try {
+        await this.prisma.order.update({
+          where: { id: payment.orderId },
+          data: { status: 'CONFIRMED' as any },
+        });
+      } catch (err: any) {
+        console.warn(`[markPaid] Không thể cập nhật trạng thái đơn hàng ${payment.orderId} sang CONFIRMED:`, err.message);
+      }
+    }
+
+    return payment;
   }
 
   async markFailed(transactionRef: string, reason?: string): Promise<any> {
     return this.prisma.payment.update({
       where: { transactionRef },
-      data: { status: PaymentStatus.FAILED },
+      data: {
+        status: PaymentStatus.FAILED,
+        gatewayResponse: reason ? ({ reason } as any) : undefined,
+      },
     });
   }
 
@@ -84,6 +100,24 @@ export class PaymentsRepository {
     return this.prisma.payment.update({
       where: { transactionRef },
       data: { status: PaymentStatus.REFUNDED },
+    });
+  }
+
+  async update(
+    id: string,
+    data: Partial<{
+      method: PaymentMethod;
+      amount: number;
+      transactionRef: string;
+      status: PaymentStatus;
+      expiredAt?: Date;
+      gatewayResponse?: any;
+      paidAt?: Date;
+    }>,
+  ): Promise<any> {
+    return this.prisma.payment.update({
+      where: { id },
+      data,
     });
   }
 }

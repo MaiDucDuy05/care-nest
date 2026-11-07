@@ -1,7 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { VnpayGateway } from '../src/gateways/vnpay.gateway.js';
 
 describe('VnpayGateway', () => {
+  beforeAll(() => {
+    process.env.VNPAY_TMN_CODE = 'MOCK_TMN';
+    process.env.VNPAY_HASH_SECRET = 'MOCK_SECRET_12345678901234567890';
+  });
+
   it('builds a payment URL with vnp_SecureHash', async () => {
     const gw = new VnpayGateway();
     const r = await gw.createPayment({

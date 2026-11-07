@@ -42,14 +42,37 @@ export class PaymentsService {
     // Check the order doesn't already have a payment
     const byOrder = await this.paymentsRepository.findByOrderId(dto.orderId);
     if (byOrder) {
-      throw new BadRequestException(`Đơn hàng ${dto.orderId} đã có payment`);
+      if (byOrder.status === PaymentStatus.PAID) {
+        throw new BadRequestException('Đơn hàng này đã được thanh toán thành công');
+      }
+
+      // Đơn hàng đã có payment intent nhưng chưa thanh toán hoặc thất bại -> Cập nhật URL thanh toán mới
+      const gateway = this.pickGateway(dto.method);
+      const result = await gateway.createPayment({
+        orderId: dto.orderId,
+        amount: dto.amount,
+        orderInfo: `Thanh toan don hang ${dto.orderId}`,
+        returnUrl: dto.returnUrl || '',
+        idempotencyKey: dto.idempotencyKey || `${dto.orderId}-retry-${Date.now()}`,
+      });
+
+      const updated = await this.paymentsRepository.update(byOrder.id, {
+        method: dto.method as PaymentMethod,
+        amount: dto.amount,
+        transactionRef: result.transactionRef,
+        status: PaymentStatus.PENDING,
+        expiredAt: result.expiresAt,
+        gatewayResponse: { paymentUrl: result.paymentUrl } as any,
+      });
+
+      return updated;
     }
 
     const gateway = this.pickGateway(dto.method);
     const result = await gateway.createPayment({
       orderId: dto.orderId,
       amount: dto.amount,
-      orderInfo: `Thanh toán đơn hàng ${dto.orderId}`,
+      orderInfo: `Thanh toan don hang ${dto.orderId}`,
       returnUrl: dto.returnUrl || '',
       idempotencyKey: dto.idempotencyKey,
     });
@@ -105,6 +128,24 @@ export class PaymentsService {
       this.logger.warn({ err: err.message }, 'Failed to publish ORDER_PAID');
     }
 
+    return updated;
+  }
+
+  /**
+   * Mark a payment as failed (called by the webhook controller when gateway returns an error code).
+   */
+  async markFailedFromWebhook(transactionRef: string, reason?: string) {
+    const existing = await this.paymentsRepository.findByTransactionRef(transactionRef);
+    if (!existing) {
+      this.logger.warn({ transactionRef }, 'markFailed: payment not found');
+      return null;
+    }
+    if (existing.status === PaymentStatus.PAID) {
+      return existing;
+    }
+
+    const updated = await this.paymentsRepository.markFailed(transactionRef, reason);
+    this.metrics.inc('payments_total', { method: existing.method, status: 'failed' });
     return updated;
   }
 

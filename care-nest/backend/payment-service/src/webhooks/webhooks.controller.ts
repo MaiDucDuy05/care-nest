@@ -65,6 +65,11 @@ export class WebhooksController {
 
     if (verification.responseCode === '00' && verification.transactionRef) {
       await this.paymentsService.markPaidFromWebhook(verification.transactionRef, raw);
+    } else if (verification.transactionRef) {
+      await this.paymentsService.markFailedFromWebhook(
+        verification.transactionRef,
+        `VNPay response code: ${verification.responseCode}`,
+      );
     }
     return { RspCode: '00', Message: 'Confirm Success' };
   }

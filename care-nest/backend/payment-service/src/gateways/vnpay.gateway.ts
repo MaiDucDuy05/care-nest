@@ -21,17 +21,24 @@ import { PaymentGateway } from './payment-gateway.js';
 export class VnpayGateway extends PaymentGateway {
   readonly name = 'VNPAY' as const;
   private readonly vnpayUrl = process.env.VNPAY_URL || 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html';
-  private readonly tmnCode = process.env.VNPAY_TMN_CODE || 'SANDBOX_TMN';
-  private readonly hashSecret = process.env.VNPAY_HASH_SECRET || 'SANDBOX_HASH_SECRET';
+  private readonly tmnCode = (process.env.VNPAY_TMN_CODE || '').trim();
+  private readonly hashSecret = (process.env.VNPAY_HASH_SECRET || '').trim();
   private readonly returnUrl = process.env.VNPAY_RETURN_URL || 'http://localhost:3000/vi/shop/payment/vnpay-return';
 
   async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
+    if (!this.tmnCode || !this.hashSecret) {
+      throw new Error('Chưa cấu hình VNPAY_TMN_CODE hoặc VNPAY_HASH_SECRET trong biến môi trường (.env).');
+    }
+
     const date = new Date();
     const createDate = this.formatVnpDate(date);
     const expireDate = this.formatVnpDate(new Date(date.getTime() + 15 * 60 * 1000));
 
     // Generate a gateway-side transaction reference
     const transactionRef = `${input.orderId.replace(/-/g, '').slice(0, 12)}${Date.now()}`;
+
+    // VNPay bắt buộc vnp_OrderInfo là Tiếng Việt KHÔNG DẤU, không ký tự đặc biệt
+    const cleanOrderInfo = this.removeVietnameseDiacritics(input.orderInfo || 'Thanh toan don hang') || 'Thanh toan don hang';
 
     // Build params in alphabetical order (per VNPay spec)
     const params: Record<string, string> = {
@@ -42,7 +49,7 @@ export class VnpayGateway extends PaymentGateway {
       vnp_ExpireDate: expireDate,
       vnp_IpAddr: input.ipAddr || '127.0.0.1',
       vnp_Locale: 'vn',
-      vnp_OrderInfo: input.orderInfo,
+      vnp_OrderInfo: cleanOrderInfo,
       vnp_OrderType: 'other',
       vnp_ReturnUrl: input.returnUrl || this.returnUrl,
       vnp_TmnCode: this.tmnCode,
@@ -56,7 +63,10 @@ export class VnpayGateway extends PaymentGateway {
       .map((k) => `${k}=${this.encodeVNPay(params[k]!)}`)
       .join('&');
     const crypto = await import('crypto');
-    const secureHash = crypto.createHmac('sha512', this.hashSecret).update(signData).digest('hex');
+    const secureHash = crypto
+      .createHmac('sha512', this.hashSecret)
+      .update(Buffer.from(signData, 'utf-8'))
+      .digest('hex');
 
     // Build final URL
     const queryString = sortedKeys
@@ -83,7 +93,7 @@ export class VnpayGateway extends PaymentGateway {
     const signData = sortedKeys.map((k) => `${k}=${this.encodeVNPay(paramsForSign[k]!)}`).join('&');
 
     const crypto = { createHmac, randomBytes } as typeof import('crypto');
-    const expected = crypto.createHmac('sha512', this.hashSecret).update(signData).digest('hex');
+    const expected = crypto.createHmac('sha512', this.hashSecret).update(Buffer.from(signData, 'utf-8')).digest('hex');
 
     const isValid = expected.toLowerCase() === receivedHash.toLowerCase();
     if (!isValid) {
@@ -99,8 +109,18 @@ export class VnpayGateway extends PaymentGateway {
     };
   }
 
+  private removeVietnameseDiacritics(str: string): string {
+    return str
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/Đ/g, 'D')
+      .replace(/[^a-zA-Z0-9 ]/g, '')
+      .trim();
+  }
+
   private encodeVNPay(value: string): string {
-    return encodeURIComponent(value).replace(/%20/g, '+').replace(/%2F/g, '/');
+    return encodeURIComponent(value).replace(/%20/g, '+');
   }
 
   private formatVnpDate(d: Date): string {
