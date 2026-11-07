@@ -16,6 +16,7 @@ export interface ChatMessageItem {
   metadata?: Record<string, any>;
   status: 'SENT' | 'DELIVERED' | 'READ';
   createdAt: string;
+  clientTempId?: string;
   sender?: {
     id: string;
     fullName: string;
@@ -49,6 +50,8 @@ export interface ConversationItem {
     email: string;
     role: string;
   } | null;
+  totalOrders?: number;
+  totalSpent?: number;
 }
 
 let socket: Socket | null = null;
@@ -121,7 +124,13 @@ export const chatService = {
     }
   },
 
-  async sendMessage(conversationId: string, content: string, type: string = 'TEXT', metadata?: any): Promise<ChatMessageItem> {
+  async sendMessage(
+    conversationId: string,
+    content: string,
+    type: string = 'TEXT',
+    metadata?: any,
+    clientTempId?: string,
+  ): Promise<ChatMessageItem> {
     const token = getToken();
     const res = await fetch(`${CHAT_API}/api/v1/chat/conversations/${conversationId}/messages`, {
       method: 'POST',
@@ -129,7 +138,7 @@ export const chatService = {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: JSON.stringify({ content, type, metadata }),
+      body: JSON.stringify({ content, type, metadata, clientTempId }),
     });
     if (!res.ok) throw new Error('Failed to send message');
     return await res.json();

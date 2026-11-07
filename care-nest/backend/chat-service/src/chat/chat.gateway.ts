@@ -37,39 +37,41 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
     this.io.use(async (socket: Socket, next) => {
       const token = socket.handshake.auth?.token;
       if (!token) {
-        // Fallback for dev / unauthenticated preview
-        (socket as any).userId = (socket.handshake.query?.userId as string) || 'guest-user';
-        (socket as any).userRole = 'BUYER';
-        return next();
+        return next(new Error('Unauthorized'));
       }
 
       try {
         const payload: any = await this.jwtService.verifyAsync(token, {
           secret: process.env.JWT_SECRET || 'care-nest-jwt-secret-dev-2026',
         });
-        (socket as any).userId = payload.sub || payload.id;
-        (socket as any).userRole = payload.role || 'BUYER';
+        socket.data.userId = payload.sub || payload.id;
+        socket.data.userRole = payload.role || 'BUYER';
         next();
       } catch {
-        // Dev fallback if token signature expired in dev environment
-        (socket as any).userId = (socket.handshake.query?.userId as string) || 'guest-user';
-        (socket as any).userRole = 'BUYER';
-        next();
+        next(new Error('Unauthorized'));
       }
     });
 
     this.io.on('connection', (socket: Socket) => {
-      const userId = (socket as any).userId;
+      const userId = socket.data.userId as string;
       if (userId) {
         socket.join(`user:${userId}`);
         this.logger.log(`[WS] Client connected: user:${userId} (socketId: ${socket.id})`);
         this.broadcastUserPresence(userId, true);
       }
 
-      socket.on('join_conversation', ({ conversationId }: { conversationId: string }) => {
+      socket.on('join_conversation', async ({ conversationId }: { conversationId: string }) => {
         if (!conversationId) return;
-        socket.join(`conversation:${conversationId}`);
-        this.logger.log(`[WS] user:${userId} joined conversation:${conversationId}`);
+        try {
+          await this.chatService.assertParticipant(userId, conversationId);
+          await socket.join(`conversation:${conversationId}`);
+          this.logger.log(`[WS] user:${userId} joined conversation:${conversationId}`);
+        } catch {
+          socket.emit('conversation_error', {
+            conversationId,
+            error: 'Bạn không có quyền truy cập hội thoại này',
+          });
+        }
       });
 
       socket.on('leave_conversation', ({ conversationId }: { conversationId: string }) => {
@@ -79,7 +81,7 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
       });
 
       socket.on('typing_start', ({ conversationId }: { conversationId: string }) => {
-        if (!conversationId) return;
+        if (!conversationId || !socket.rooms.has(`conversation:${conversationId}`)) return;
         socket.to(`conversation:${conversationId}`).emit('user_typing', {
           conversationId,
           userId,
@@ -88,7 +90,7 @@ export class ChatGateway implements OnModuleInit, OnModuleDestroy {
       });
 
       socket.on('typing_stop', ({ conversationId }: { conversationId: string }) => {
-        if (!conversationId) return;
+        if (!conversationId || !socket.rooms.has(`conversation:${conversationId}`)) return;
         socket.to(`conversation:${conversationId}`).emit('user_typing', {
           conversationId,
           userId,

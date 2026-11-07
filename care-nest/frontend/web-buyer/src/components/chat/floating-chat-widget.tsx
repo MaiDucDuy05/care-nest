@@ -30,6 +30,7 @@ import {
   type OpenChatPayload,
 } from '@/lib/services/chat.service';
 import { cartService, emitCartUpdated } from '@/services/cart.service';
+import { getToken, getUserIdFromToken } from '@/lib/api-client';
 import { Link } from '@/i18n/routing';
 
 const formatVnd = (n: number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
@@ -43,10 +44,11 @@ export function FloatingChatWidget() {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserTyping, setOtherUserTyping] = useState(false);
-  const [isOnline, setIsOnline] = useState(true);
-  const [unreadTotal, setUnreadTotal] = useState(1);
+  const [isOnline, setIsOnline] = useState(false);
+  const [unreadTotal, setUnreadTotal] = useState(0);
   const [view, setView] = useState<'CHAT' | 'CONVERSATIONS'>('CHAT');
   const [cartSuccessNotice, setCartSuccessNotice] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -58,15 +60,21 @@ export function FloatingChatWidget() {
   // Load conversations on mount
   useEffect(() => {
     let isMounted = true;
-    chatService.getConversations().then((list) => {
-      if (!isMounted) return;
-      setConversations(list);
-      if (list.length > 0) {
-        setActiveConversation(list[0]);
-        const total = list.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
-        setUnreadTotal(total || 1);
-      }
-    });
+    const token = getToken();
+    setCurrentUserId(getUserIdFromToken(token));
+    if (token) {
+      chatService.getConversations().then((list) => {
+        if (!isMounted) return;
+        setConversations(list);
+        if (list.length > 0) {
+          setActiveConversation(list[0]);
+          const total = list.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+          setUnreadTotal(total);
+        }
+      }).catch(() => {
+        if (isMounted) setIsOnline(false);
+      });
+    }
 
     // Listen for custom trigger from other components (Storefront, Product page)
     const handleOpenChat = (event: Event) => {
@@ -92,6 +100,9 @@ export function FloatingChatWidget() {
           .then((conv) => {
             setActiveConversation(conv);
             chatService.getMessages(conv.id).then(setMessages);
+          })
+          .catch(() => {
+            setIsOnline(false);
           });
       }
     };
@@ -99,36 +110,60 @@ export function FloatingChatWidget() {
     window.addEventListener('carenest:open-chat', handleOpenChat);
 
     // Setup Socket connection
-    const socket = connectChatSocket();
+    const socket = token ? connectChatSocket(token) : null;
 
-    socket.on('connect', () => {
+    socket?.on('connect', () => {
       setIsOnline(true);
     });
 
-    socket.on('disconnect', () => {
+    socket?.on('disconnect', () => {
       setIsOnline(false);
     });
 
-    socket.on('message_received', (msg: ChatMessageItem) => {
+    socket?.on('message_received', (msg: ChatMessageItem) => {
       setMessages((prev) => {
-        // Prevent duplicate if already received
+        if (msg.clientTempId) {
+          const tempIndex = prev.findIndex((m) => m.id === msg.clientTempId);
+          if (tempIndex >= 0) {
+            const next = [...prev];
+            next[tempIndex] = msg;
+            return next;
+          }
+        }
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
       setTimeout(scrollToBottom, 100);
     });
 
-    socket.on('user_typing', (data: { isTyping: boolean }) => {
+    socket?.on('message_ack', (data: { clientTempId?: string; message: ChatMessageItem }) => {
+      setMessages((prev) => {
+        const withoutTemp = data.clientTempId
+          ? prev.filter((message) => message.id !== data.clientTempId)
+          : prev;
+        if (withoutTemp.some((message) => message.id === data.message.id)) return withoutTemp;
+        return [...withoutTemp, data.message];
+      });
+    });
+
+    socket?.on('message_error', (data: { clientTempId?: string }) => {
+      if (!data.clientTempId) return;
+      setMessages((prev) => prev.filter((message) => message.id !== data.clientTempId));
+    });
+
+    socket?.on('user_typing', (data: { isTyping: boolean }) => {
       setOtherUserTyping(data.isTyping);
     });
 
     return () => {
       isMounted = false;
       window.removeEventListener('carenest:open-chat', handleOpenChat);
-      socket.off('connect');
-      socket.off('disconnect');
-      socket.off('message_received');
-      socket.off('user_typing');
+      socket?.off('connect');
+      socket?.off('disconnect');
+      socket?.off('message_received');
+      socket?.off('message_ack');
+      socket?.off('message_error');
+      socket?.off('user_typing');
     };
   }, []);
 
@@ -139,16 +174,21 @@ export function FloatingChatWidget() {
     chatService.getMessages(activeConversation.id).then((msgs) => {
       setMessages(msgs);
       setTimeout(scrollToBottom, 100);
-    });
+    }).catch(() => setIsOnline(false));
 
     // Join room
-    const socket = getChatSocket();
-    if (socket.connected) {
+    const token = getToken();
+    const socket = token ? getChatSocket() : null;
+    if (socket) {
       socket.emit('join_conversation', { conversationId: activeConversation.id });
     }
 
     // Mark as read
-    chatService.markAsRead(activeConversation.id);
+    chatService.markAsRead(activeConversation.id).catch(() => undefined);
+
+    return () => {
+      socket?.emit('leave_conversation', { conversationId: activeConversation.id });
+    };
   }, [activeConversation]);
 
   useEffect(() => {
@@ -159,8 +199,8 @@ export function FloatingChatWidget() {
     setInputText(e.target.value);
 
     // Emit typing event to socket
-    const socket = getChatSocket();
-    if (socket.connected && activeConversation) {
+    const socket = getToken() ? getChatSocket() : null;
+    if (socket?.connected && activeConversation) {
       if (!isTyping) {
         setIsTyping(true);
         socket.emit('typing_start', { conversationId: activeConversation.id });
@@ -185,13 +225,13 @@ export function FloatingChatWidget() {
     const optimisticMessage: ChatMessageItem = {
       id: tempId,
       conversationId: activeConversation.id,
-      senderId: 'current-user',
+      senderId: currentUserId || tempId,
       type: 'TEXT',
       content: text,
       status: 'SENT',
       createdAt: new Date().toISOString(),
       sender: {
-        id: 'current-user',
+        id: currentUserId || tempId,
         fullName: 'Tôi',
         role: 'BUYER',
       },
@@ -200,8 +240,8 @@ export function FloatingChatWidget() {
     setMessages((prev) => [...prev, optimisticMessage]);
     setTimeout(scrollToBottom, 50);
 
-    const socket = getChatSocket();
-    if (socket.connected) {
+    const socket = getToken() ? getChatSocket() : null;
+    if (socket?.connected) {
       socket.emit('send_message', {
         conversationId: activeConversation.id,
         content: text,
@@ -209,8 +249,24 @@ export function FloatingChatWidget() {
         clientTempId: tempId,
       });
     } else {
-      // Fallback to REST
-      await chatService.sendMessage(activeConversation.id, text, 'TEXT');
+      try {
+        const saved = await chatService.sendMessage(
+          activeConversation.id,
+          text,
+          'TEXT',
+          undefined,
+          tempId,
+        );
+        setMessages((prev) => {
+          const withoutTemp = prev.filter((message) => message.id !== tempId);
+          if (withoutTemp.some((message) => message.id === saved.id)) return withoutTemp;
+          return [...withoutTemp, saved];
+        });
+      } catch {
+        setMessages((prev) => prev.filter((message) => message.id !== tempId));
+        setInputText(text);
+        setIsOnline(false);
+      }
     }
   };
 
@@ -380,7 +436,9 @@ export function FloatingChatWidget() {
                   {/* Messages Scroll Area */}
                   <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
                     {messages.map((msg) => {
-                      const isMe = msg.senderId === 'current-user' || msg.sender?.role === 'BUYER';
+                      const isMe = currentUserId
+                        ? msg.senderId === currentUserId
+                        : msg.sender?.role === 'BUYER';
 
                       return (
                         <div

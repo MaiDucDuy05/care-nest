@@ -3,6 +3,7 @@
  * Connects to Chat Service via Socket.IO & REST API with resilient fallback.
  */
 import { io, Socket } from 'socket.io-client';
+import { getToken } from '@/lib/api-client';
 
 const CHAT_WS_URL = process.env.NEXT_PUBLIC_CHAT_WS_URL || 'http://localhost:3010';
 const CHAT_API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
@@ -16,6 +17,7 @@ export interface ChatMessageItem {
   metadata?: Record<string, any>;
   status: 'SENT' | 'DELIVERED' | 'READ';
   createdAt: string;
+  clientTempId?: string;
   sender?: {
     id: string;
     fullName: string;
@@ -46,6 +48,15 @@ export interface ConversationItem {
 }
 
 let socket: Socket | null = null;
+
+function getAuthHeaders(): Record<string, string> {
+  const token = getToken();
+  if (!token) throw new Error('Bạn cần đăng nhập để sử dụng chat');
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  };
+}
 
 export function getChatSocket(token?: string, userId?: string): Socket {
   if (!socket) {
@@ -99,16 +110,12 @@ export function emitOpenChat(payload: OpenChatPayload) {
 // REST Client methods
 export const chatService = {
   async getConversations(): Promise<ConversationItem[]> {
-    try {
-      const res = await fetch(`${CHAT_API_URL}/api/v1/chat/conversations`, {
-        cache: 'no-store',
-        headers: { 'Content-Type': 'application/json' },
-      });
-      if (!res.ok) throw new Error('Failed to load conversations');
-      return await res.json();
-    } catch {
-      return [];
-    }
+    const res = await fetch(`${CHAT_API_URL}/api/v1/chat/conversations`, {
+      cache: 'no-store',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to load conversations');
+    return await res.json();
   },
 
   async getOrCreateConversation(dto: {
@@ -119,7 +126,7 @@ export const chatService = {
   }): Promise<ConversationItem> {
     const res = await fetch(`${CHAT_API_URL}/api/v1/chat/conversations`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(dto),
     });
     if (!res.ok) throw new Error('Failed to create conversation');
@@ -127,39 +134,39 @@ export const chatService = {
   },
 
   async getMessages(conversationId: string, cursor?: string): Promise<ChatMessageItem[]> {
-    try {
-      const query = new URLSearchParams();
-      if (cursor) query.set('cursor', cursor);
-      const res = await fetch(`${CHAT_API_URL}/api/v1/chat/conversations/${conversationId}/messages?${query.toString()}`, {
-        cache: 'no-store',
-      });
-      if (!res.ok) throw new Error('Failed to fetch messages');
-      return await res.json();
-    } catch {
-      return [];
-    }
+    const query = new URLSearchParams();
+    if (cursor) query.set('cursor', cursor);
+    const res = await fetch(`${CHAT_API_URL}/api/v1/chat/conversations/${conversationId}/messages?${query.toString()}`, {
+      cache: 'no-store',
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to fetch messages');
+    return await res.json();
   },
 
-  async sendMessage(conversationId: string, content: string, type: string = 'TEXT', metadata?: any): Promise<ChatMessageItem> {
+  async sendMessage(
+    conversationId: string,
+    content: string,
+    type: string = 'TEXT',
+    metadata?: any,
+    clientTempId?: string,
+  ): Promise<ChatMessageItem> {
     const res = await fetch(`${CHAT_API_URL}/api/v1/chat/conversations/${conversationId}/messages`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content, type, metadata }),
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ content, type, metadata, clientTempId }),
     });
     if (!res.ok) throw new Error('Failed to send message');
     return await res.json();
   },
 
   async markAsRead(conversationId: string): Promise<void> {
-    try {
-      await fetch(`${CHAT_API_URL}/api/v1/chat/conversations/${conversationId}/read`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-    } catch {
-      /* swallow */
-    }
+    const res = await fetch(`${CHAT_API_URL}/api/v1/chat/conversations/${conversationId}/read`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) throw new Error('Failed to mark conversation as read');
   },
 };
 

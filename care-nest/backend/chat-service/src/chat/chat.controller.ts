@@ -1,5 +1,6 @@
 
-import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, Headers } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { CurrentUser, JwtAuthGuard, type JwtUser } from '@carenest/nestjs-common';
 import { ChatService } from './chat.service.js';
 import {
   CreateConversationSchema,
@@ -18,50 +19,52 @@ export class ChatController {
   }
 
   @Get('conversations')
-  async listConversations(@Headers('x-user-id') headerUserId?: string): Promise<any> {
-    const userId = headerUserId || 'guest-user';
-    return this.chatService.listConversations(userId);
+  @UseGuards(JwtAuthGuard)
+  async listConversations(@CurrentUser() user: JwtUser): Promise<any> {
+    return this.chatService.listConversations(user.id);
   }
 
   @Post('conversations')
+  @UseGuards(JwtAuthGuard)
   async getOrCreateConversation(
     @Body() body: CreateConversationDto,
-    @Headers('x-user-id') headerUserId?: string,
+    @CurrentUser() user: JwtUser,
   ): Promise<any> {
-    const userId = headerUserId || 'guest-user';
     const parsed = CreateConversationSchema.parse(body);
-    return this.chatService.getOrCreateConversation(userId, parsed);
+    return this.chatService.getOrCreateConversation(user.id, parsed);
   }
 
   @Get('conversations/:id/messages')
+  @UseGuards(JwtAuthGuard)
   async getMessages(
     @Param('id') conversationId: string,
+    @CurrentUser() user: JwtUser,
     @Query('cursor') cursor?: string,
     @Query('limit') limit?: string,
-  ) {
+  ): Promise<any[]> {
     const parsedLimit = limit ? parseInt(limit, 10) : 30;
-    return this.chatService.getMessages(conversationId, cursor, parsedLimit);
+    return this.chatService.getMessages(user.id, conversationId, cursor, parsedLimit);
   }
 
   @Post('conversations/:id/messages')
+  @UseGuards(JwtAuthGuard)
   async sendMessage(
     @Param('id') conversationId: string,
+    @CurrentUser() user: JwtUser,
     @Body() body: Omit<SendMessageDto, 'conversationId'>,
-    @Headers('x-user-id') headerUserId?: string,
-  ) {
-    const userId = headerUserId || 'guest-user';
+  ): Promise<any> {
     const parsed = SendMessageSchema.parse({ ...body, conversationId });
-    return this.chatService.saveAndBroadcastMessage(userId, parsed);
+    return this.chatService.saveAndBroadcastMessage(user.id, parsed);
   }
 
   @Post('conversations/:id/read')
+  @UseGuards(JwtAuthGuard)
   async markRead(
     @Param('id') conversationId: string,
+    @CurrentUser() user: JwtUser,
     @Body() body: { messageId?: string },
-    @Headers('x-user-id') headerUserId?: string,
   ) {
-    const userId = headerUserId || 'guest-user';
-    await this.chatService.markConversationRead(userId, conversationId, body.messageId);
+    await this.chatService.markConversationRead(user.id, conversationId, body.messageId);
     return { success: true };
   }
 }

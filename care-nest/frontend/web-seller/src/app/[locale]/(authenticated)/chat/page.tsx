@@ -25,7 +25,12 @@ import {
   ChevronRight,
   Filter,
 } from 'lucide-react';
-import { chatService, connectChatSocket, disconnectChatSocket } from '@/lib/services/chat.service';
+import {
+  chatService,
+  connectChatSocket,
+  disconnectChatSocket,
+  getChatSocket,
+} from '@/lib/services/chat.service';
 import { getToken } from '@/lib/api-client';
 
 interface SellerConversation {
@@ -66,6 +71,13 @@ interface SellerChatMessage {
   metadata?: any;
 }
 
+function toSellerMessageType(type?: string): SellerChatMessage['type'] {
+  if (type === 'PRODUCT_SNIPPET') return 'PRODUCT_CARD';
+  if (type === 'ORDER_SNIPPET') return 'ORDER_CARD';
+  if (type === 'SYSTEM_ALERT') return 'SYSTEM_EVENT';
+  return 'TEXT';
+}
+
 const formatVnd = (n: number) => new Intl.NumberFormat('vi-VN').format(n) + ' đ';
 
 export default function SellerChatPage() {
@@ -101,13 +113,19 @@ export default function SellerChatPage() {
         content: msg.content,
         time: new Date(msg.createdAt || Date.now()).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
         status: msg.status || 'DELIVERED',
-        type: msg.type || 'TEXT',
+        type: toSellerMessageType(msg.type),
         metadata: msg.metadata,
       };
-      setMessages((prev) => [...prev, formatted]);
+      setMessages((prev) => {
+        const withoutTemp = msg.clientTempId
+          ? prev.filter((message) => message.id !== msg.clientTempId)
+          : prev;
+        if (withoutTemp.some((message) => message.id === formatted.id)) return withoutTemp;
+        return [...withoutTemp, formatted];
+      });
     };
 
-    socket.on('chat:message', onMessage);
+    socket.on('message_received', onMessage);
 
     (async () => {
       try {
@@ -118,9 +136,9 @@ export default function SellerChatPage() {
             customerName: sc.otherParticipant?.fullName || sc.title || 'Khách hàng CareNest',
             customerPhone: sc.otherParticipant?.email || 'CareNest User',
             customerLocation: 'Việt Nam',
-            customerTier: 'REGULAR',
-            totalSpent: 0,
-            totalOrders: 0,
+            customerTier: (sc.totalOrders || 0) >= 5 ? 'VIP' : (sc.totalOrders || 0) > 0 ? 'REGULAR' : 'NEW',
+            totalSpent: sc.totalSpent || 0,
+            totalOrders: sc.totalOrders || 0,
             avatarBg: '#0d9488',
             lastMessage: sc.lastMessage?.content || 'Chưa có tin nhắn',
             lastMessageTime: sc.lastMessageAt ? new Date(sc.lastMessageAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) : '',
@@ -139,7 +157,7 @@ export default function SellerChatPage() {
 
     return () => {
       mounted = false;
-      socket.off('chat:message', onMessage);
+      socket.off('message_received', onMessage);
       disconnectChatSocket();
     };
   }, []);
@@ -151,6 +169,8 @@ export default function SellerChatPage() {
       return;
     }
     let mounted = true;
+    const socket = getChatSocket();
+    socket.emit('join_conversation', { conversationId: activeConvId });
     (async () => {
       try {
         const msgs = await chatService.getMessages(activeConvId);
@@ -161,7 +181,7 @@ export default function SellerChatPage() {
             content: m.content,
             time: new Date(m.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
             status: m.status || 'READ',
-            type: m.type as any,
+            type: toSellerMessageType(m.type),
             metadata: m.metadata,
           }));
           setMessages(mapped);
@@ -172,6 +192,7 @@ export default function SellerChatPage() {
     })();
     return () => {
       mounted = false;
+      socket.emit('leave_conversation', { conversationId: activeConvId });
     };
   }, [activeConvId]);
 
@@ -212,9 +233,25 @@ export default function SellerChatPage() {
 
     // Call real chat service API
     try {
-      await chatService.sendMessage(activeConvId, text, 'TEXT');
+      const saved = await chatService.sendMessage(activeConvId, text, 'TEXT', undefined, newMsg.id);
+      const persisted: SellerChatMessage = {
+        id: saved.id,
+        sender: saved.sender?.role === 'SELLER' ? 'seller' : 'customer',
+        content: saved.content,
+        time: new Date(saved.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+        status: saved.status,
+        type: toSellerMessageType(saved.type),
+        metadata: saved.metadata,
+      };
+      setMessages((prev) => {
+        const withoutTemp = prev.filter((message) => message.id !== newMsg.id);
+        if (withoutTemp.some((message) => message.id === persisted.id)) return withoutTemp;
+        return [...withoutTemp, persisted];
+      });
     } catch (err) {
       console.warn('Real chat send failed:', err);
+      setMessages((prev) => prev.filter((message) => message.id !== newMsg.id));
+      setInputText(text);
     }
   };
 
@@ -236,9 +273,32 @@ export default function SellerChatPage() {
     };
     setMessages((prev) => [...prev, productMsg]);
     try {
-      await chatService.sendMessage(activeConvId, content, 'PRODUCT_CARD', activeConv.relatedProduct);
+      const saved = await chatService.sendMessage(
+        activeConvId,
+        content,
+        'PRODUCT_SNIPPET',
+        activeConv.relatedProduct,
+        productMsg.id,
+      );
+      setMessages((prev) => {
+        const withoutTemp = prev.filter((message) => message.id !== productMsg.id);
+        if (withoutTemp.some((message) => message.id === saved.id)) return withoutTemp;
+        return [
+          ...withoutTemp,
+          {
+            id: saved.id,
+            sender: saved.sender?.role === 'SELLER' ? 'seller' : 'customer',
+            content: saved.content,
+            time: new Date(saved.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
+            status: saved.status,
+            type: toSellerMessageType(saved.type),
+            metadata: saved.metadata,
+          },
+        ];
+      });
     } catch (err) {
       console.warn('Real product card send failed:', err);
+      setMessages((prev) => prev.filter((message) => message.id !== productMsg.id));
     }
   };
 
