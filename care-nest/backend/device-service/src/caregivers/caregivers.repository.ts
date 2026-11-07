@@ -2,6 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { getPrismaClient, PrismaClient } from '@carenest/database';
 import type { Caregiver } from '@carenest/database';
 
+const CARETAKER_SELECT = {
+  id: true,
+  email: true,
+  fullName: true,
+  phone: true,
+} as const;
+
 @Injectable()
 export class CaregiversRepository {
   private prisma: PrismaClient;
@@ -10,47 +17,55 @@ export class CaregiversRepository {
     this.prisma = getPrismaClient();
   }
 
+  async findById(id: string): Promise<Caregiver | null> {
+    return (await this.prisma.caregiver.findUnique({ where: { id } })) as Caregiver | null;
+  }
+
+  async findByUserAndCaretaker(userId: string, caretakerId: string): Promise<Caregiver | null> {
+    return (await this.prisma.caregiver.findUnique({
+      where: { userId_caretakerId: { userId, caretakerId } },
+    })) as Caregiver | null;
+  }
+
   /**
-   * Create or update a caregiver link where the subject (userId) invites a caretaker.
-   * Auto-sets acceptedAt so in sandbox/demo environments the link is immediately active.
+   * Create a new pending caregiver link (acceptedAt stays null — the
+   * caretaker must explicitly accept before gaining any access).
    */
-  async create(data: {
+  async createPending(data: {
     userId: string;
     caretakerId: string;
     relationship: string;
     permissions: Record<string, boolean>;
   }): Promise<Caregiver> {
-    return (await this.prisma.caregiver.upsert({
-      where: {
-        userId_caretakerId: {
-          userId: data.userId,
-          caretakerId: data.caretakerId,
-        },
-      },
-      update: {
-        relationship: data.relationship,
-        permissions: data.permissions,
-        revokedAt: null,
-        acceptedAt: new Date(),
-        invitedAt: new Date(),
-      },
-      create: {
+    return (await this.prisma.caregiver.create({
+      data: {
         userId: data.userId,
         caretakerId: data.caretakerId,
         relationship: data.relationship,
         permissions: data.permissions,
-        acceptedAt: new Date(),
       },
-      include: {
-        caretaker: {
-          select: {
-            id: true,
-            email: true,
-            fullName: true,
-            phone: true,
-          },
-        },
+      include: { caretaker: { select: CARETAKER_SELECT } },
+    })) as Caregiver;
+  }
+
+  /**
+   * Reset a previously revoked link back to pending (re-invite). Only valid
+   * when the existing row is revoked — callers must check that first.
+   */
+  async reinvitePending(
+    id: string,
+    data: { relationship: string; permissions: Record<string, boolean> },
+  ): Promise<Caregiver> {
+    return (await this.prisma.caregiver.update({
+      where: { id },
+      data: {
+        relationship: data.relationship,
+        permissions: data.permissions,
+        revokedAt: null,
+        acceptedAt: null,
+        invitedAt: new Date(),
       },
+      include: { caretaker: { select: CARETAKER_SELECT } },
     })) as Caregiver;
   }
 
@@ -62,26 +77,31 @@ export class CaregiversRepository {
     return await this.prisma.caregiver.findMany({
       where: { userId, revokedAt: null },
       orderBy: { invitedAt: 'desc' },
+      include: { caretaker: { select: CARETAKER_SELECT } },
+    });
+  }
+
+  /**
+   * List pending (not yet accepted, not revoked) invitations addressed to
+   * this caretaker, including the inviting patient's details.
+   */
+  async findPendingForCaretaker(caretakerId: string): Promise<any[]> {
+    return await this.prisma.caregiver.findMany({
+      where: { caretakerId, acceptedAt: null, revokedAt: null },
+      orderBy: { invitedAt: 'desc' },
       include: {
-        caretaker: {
-          select: {
-            id: true,
-            email: true,
-            fullName: true,
-            phone: true,
-          },
-        },
+        user: { select: { id: true, fullName: true, email: true, phone: true } },
       },
     });
   }
 
   /**
-   * List all caregiver links where the user is the caretaker.
+   * List accepted, not-revoked links where the user is the caretaker.
    * Includes patient (user) details and their active devices.
    */
   async listForCaretaker(caretakerId: string): Promise<any[]> {
     return await this.prisma.caregiver.findMany({
-      where: { caretakerId, revokedAt: null },
+      where: { caretakerId, acceptedAt: { not: null }, revokedAt: null },
       orderBy: { invitedAt: 'desc' },
       include: {
         user: {
@@ -92,9 +112,7 @@ export class CaregiversRepository {
             phone: true,
             deviceAssignments: {
               where: { unassignedAt: null },
-              include: {
-                device: true,
-              },
+              include: { device: true },
             },
           },
         },
@@ -102,24 +120,33 @@ export class CaregiversRepository {
     });
   }
 
-  /**
-   * Accept an invitation as a caretaker.
-   */
-  async accept(id: string, caretakerId: string): Promise<Caregiver> {
+  /** Accept an invitation as a caretaker. */
+  async accept(id: string): Promise<Caregiver> {
     return (await this.prisma.caregiver.update({
       where: { id },
       data: { acceptedAt: new Date() },
     })) as Caregiver;
   }
 
-  /**
-   * Revoke (soft-delete) a caregiver link. Only the owner (userId) can revoke.
-   */
-  async revoke(id: string, userId: string): Promise<Caregiver> {
+  /** Revoke (or decline) a caregiver link — reused for both actions. */
+  async revoke(id: string): Promise<Caregiver> {
     return (await this.prisma.caregiver.update({
       where: { id },
       data: { revokedAt: new Date() },
     })) as Caregiver;
   }
-}
 
+  async touchInvitedAt(id: string): Promise<Caregiver> {
+    return (await this.prisma.caregiver.update({
+      where: { id },
+      data: { invitedAt: new Date() },
+    })) as Caregiver;
+  }
+
+  async updatePermissions(id: string, permissions: Record<string, boolean>): Promise<Caregiver> {
+    return (await this.prisma.caregiver.update({
+      where: { id },
+      data: { permissions },
+    })) as Caregiver;
+  }
+}

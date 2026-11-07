@@ -29,7 +29,8 @@ export type TemplateKey =
   | 'alert.vitals'
   | 'alert.low_battery'
   | 'subscription.renewed'
-  | 'subscription.expiring';
+  | 'subscription.expiring'
+  | 'caregiver.invite';
 
 export interface RenderedTemplate {
   subject: string;
@@ -106,6 +107,10 @@ const TEMPLATES: Record<TemplateKey, TemplateDef> = {
   'subscription.expiring': {
     subject: 'Gói CareNest sắp hết hạn',
     body: 'Gói {{planName}} của bạn sẽ hết hạn vào {{currentPeriodEnd}}. Vui lòng gia hạn để không gián đoạn dịch vụ.',
+  },
+  'caregiver.invite': {
+    subject: 'Lời mời làm người chăm sóc',
+    body: '{{inviterName}} mời bạn làm người chăm sóc ({{relationship}}). Mở ứng dụng CareNest, vào mục "Bệnh nhân của tôi" để chấp nhận.',
   },
 };
 

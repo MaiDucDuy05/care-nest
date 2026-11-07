@@ -14,3 +14,13 @@ export const CaregiverInviteSchema = z.object({
 });
 
 export type CaregiverInviteDto = z.infer<typeof CaregiverInviteSchema>;
+
+export const CaregiverPermissionsSchema = z
+  .object({
+    viewHealth: z.boolean(),
+    receiveAlerts: z.boolean(),
+    manageDevices: z.boolean(),
+  })
+  .strict();
+
+export type CaregiverPermissionsDto = z.infer<typeof CaregiverPermissionsSchema>;
