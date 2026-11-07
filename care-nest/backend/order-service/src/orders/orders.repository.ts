@@ -23,9 +23,17 @@ export class OrdersRepository {
       include: {
         buyer: { select: { id: true, fullName: true, email: true, phone: true } },
         seller: { select: { id: true, userId: true, storeName: true } },
-        items: { include: { product: { select: { id: true, name: true, requiresImei: true } } } },
+        items: {
+          include: {
+            product: { select: { id: true, name: true, requiresImei: true } },
+            imeis: { select: { imei: true } },
+          },
+        },
         payment: true,
         shipment: true,
+        review: {
+          select: { id: true, rating: true, comment: true, createdAt: true },
+        },
       },
     });
   }
@@ -38,7 +46,13 @@ export class OrdersRepository {
         orderBy: { createdAt: 'desc' },
         skip,
         take: pageSize,
-        include: { items: true },
+        include: {
+          items: { include: { imeis: { select: { imei: true } } } },
+          payment: true,
+          review: {
+            select: { id: true, rating: true, comment: true, createdAt: true },
+          },
+        },
       }),
       this.prisma.order.count({ where: { buyerId, deletedAt: null } }),
     ]);
@@ -54,9 +68,10 @@ export class OrdersRepository {
         skip,
         take: pageSize,
         include: {
-          items: true,
+          items: { include: { imeis: { select: { imei: true } } } },
           buyer: { select: { id: true, fullName: true, email: true, phone: true } },
           seller: { select: { id: true, userId: true, storeName: true } },
+          payment: true,
         },
       }),
       this.prisma.order.count({ where: { sellerId, deletedAt: null } }),

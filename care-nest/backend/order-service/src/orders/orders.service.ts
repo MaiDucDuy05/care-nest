@@ -115,6 +115,15 @@ export class OrdersService {
       const lineTotalNum = item.lineTotal !== undefined && item.lineTotal !== null
         ? Number(item.lineTotal)
         : unitPriceNum * quantityNum;
+      const imeis = Array.isArray(item.imeis)
+        ? item.imeis
+            .map((record: unknown) =>
+              typeof record === 'string'
+                ? record
+                : (record as { imei?: string } | null)?.imei,
+            )
+            .filter((imei: unknown): imei is string => typeof imei === 'string')
+        : [];
       const itemName = item.name || item.productName || item.product?.name || 'Sản phẩm y tế';
 
       return {
@@ -123,9 +132,11 @@ export class OrdersService {
         productName: itemName,
         unitPrice: unitPriceNum,
         unitPriceVnd: unitPriceNum,
+        priceVnd: unitPriceNum,
         quantity: quantityNum,
         lineTotal: lineTotalNum,
         totalVnd: lineTotalNum,
+        imeis,
       };
     });
 
@@ -158,11 +169,26 @@ export class OrdersService {
       shippingFee: shippingFeeNum,
       shippingFeeVnd: shippingFeeNum,
       discount: discountNum,
-      paymentMethod: order.payment?.method || 'COD',
+      paymentId: order.payment?.id || undefined,
+      paymentMethod: order.payment?.method || (order.paymentMethod ? order.paymentMethod : 'COD'),
+      paymentStatus: order.payment?.status || (order.payment?.method === 'COD' || (!order.payment && order.status !== 'CREATED') ? 'PAID' : 'PENDING'),
+      paidAt: order.payment?.paidAt ? order.payment.paidAt.toISOString() : undefined,
       shippingAddress,
       items,
       timeline,
       shipmentId: order.shipment?.id || undefined,
+      isReviewed: !!order.review,
+      review: order.review
+        ? {
+            id: order.review.id,
+            rating: order.review.rating,
+            comment: order.review.comment,
+            createdAt:
+              order.review.createdAt instanceof Date
+                ? order.review.createdAt.toISOString()
+                : order.review.createdAt,
+          }
+        : null,
       createdAt: createdAtStr,
       updatedAt: updatedAtStr,
     };
@@ -180,7 +206,8 @@ export class OrdersService {
   }
 
   async listForBuyer(buyerId: string, page = 1, pageSize = 20): Promise<any> {
-    return this.ordersRepository.findByBuyer(buyerId, page, pageSize);
+    const result = await this.ordersRepository.findByBuyer(buyerId, page, pageSize);
+    return { ...result, items: result.items.map((order: any) => this.formatOrder(order)) };
   }
 
   async listForSeller(sellerId: string, page = 1, pageSize = 20): Promise<any> {

@@ -2,10 +2,13 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { Star, Shield, MessageCircle, ChevronLeft } from 'lucide-react';
 import { publicCatalogService, type PublicProduct } from '@/lib/services/public-catalog.service';
+import { reviewsService, type SellerReviews } from '@/lib/services/reviews.service';
 import { productMetadata, productJsonLd, type Locale } from '@/lib/seo';
 import { Link } from '@/i18n/routing';
 import { AddToCartButton } from '@/components/shop/add-to-cart-button';
 import { BuyNowButton } from '@/components/shop/buy-now-button';
+import { ProductReviewsSection } from '@/components/shop/product-reviews-section';
+import { ProductRecommendations } from '@/components/shop/product-recommendations';
 
 interface PageProps {
   params: { locale: string; id: string };
@@ -33,6 +36,24 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const locale = params.locale as Locale;
   const jsonLd = productJsonLd(product, locale);
   const mainImage = product.images[0]?.url;
+
+  let reviews: SellerReviews | null = null;
+  try {
+    reviews = await reviewsService.listForProduct(product.id, 10, 0);
+  } catch {
+    reviews = null;
+  }
+
+  let relatedProducts: PublicProduct[] = [];
+  try {
+    const relatedRes = await publicCatalogService.listProducts({
+      categoryId: product.category?.id,
+      pageSize: 8,
+    });
+    relatedProducts = (relatedRes?.items || []).filter((p) => p.id !== product.id);
+  } catch {
+    relatedProducts = [];
+  }
 
   return (
     <>
@@ -101,6 +122,17 @@ export default async function ProductDetailPage({ params }: PageProps) {
               {product.name}
             </h1>
 
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 3, color: reviews && reviews.total > 0 ? '#d97706' : '#94a3b8', fontWeight: 700 }}>
+                <Star size={15} fill={reviews && reviews.total > 0 ? '#d97706' : 'transparent'} color={reviews && reviews.total > 0 ? '#d97706' : '#cbd5e1'} />
+                <span>{reviews && reviews.total > 0 ? reviews.averageRating.toFixed(1) : '—'}</span>
+              </div>
+              <span style={{ color: '#cbd5e1' }}>•</span>
+              <span style={{ color: '#64748b' }}>
+                {reviews && reviews.total > 0 ? `${reviews.total} ${locale === 'vi' ? 'đánh giá' : 'reviews'}` : (locale === 'vi' ? 'Chưa có đánh giá' : 'No reviews yet')}
+              </span>
+            </div>
+
             {product.seller && (
               <Link
                 href={`/shop/sellers/${product.seller.storeSlug}`}
@@ -122,8 +154,8 @@ export default async function ProductDetailPage({ params }: PageProps) {
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 14, fontWeight: 600 }}>
-                  <Star size={14} fill="currentColor" />
-                  {Number(product.seller.ratingAvg).toFixed(1)}
+                  <Star size={14} fill={Number(product.seller.ratingAvg) > 0 ? "currentColor" : "transparent"} />
+                  {Number(product.seller.ratingAvg) > 0 ? Number(product.seller.ratingAvg).toFixed(1) : 'Chưa có'}
                 </div>
               </Link>
             )}
@@ -184,6 +216,24 @@ export default async function ProductDetailPage({ params }: PageProps) {
             </div>
           </section>
         )}
+
+        {/* Customer Reviews Section */}
+        <section style={{ marginTop: 48 }}>
+          <ProductReviewsSection
+            product={product}
+            reviews={reviews}
+            locale={locale}
+          />
+        </section>
+
+        {/* Related & Recommended Products */}
+        <section style={{ marginTop: 48 }}>
+          <ProductRecommendations
+            currentProduct={product}
+            initialRelatedProducts={relatedProducts}
+            locale={locale}
+          />
+        </section>
       </div>
     </>
   );

@@ -139,12 +139,18 @@ export function SellerStorefrontView({
     ? reviewItems.filter((r) => r.rating === reviewFilterStar)
     : reviewItems;
 
+  const totalReviewsCount = reviews?.total ?? seller.ratingCount ?? reviewItems.length;
+  const effectiveRating =
+    reviews && reviews.total > 0 && reviews.averageRating > 0
+      ? reviews.averageRating
+      : totalReviewsCount > 0 && Number(seller.ratingAvg) > 0
+      ? Number(seller.ratingAvg)
+      : 0;
+
   const starCounts = [5, 4, 3, 2, 1].map((s) => ({
     star: s,
     count: reviewItems.filter((r) => r.rating === s).length,
   }));
-
-  const totalReviewsCount = reviews?.total ?? reviews?.ratingCount ?? seller.ratingCount ?? 0;
 
   return (
     <div className="container" style={{ paddingTop: '20px', paddingBottom: '80px', maxWidth: '1200px' }}>
@@ -412,11 +418,17 @@ export function SellerStorefrontView({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 800, fontSize: '14px' }}>
-              <Star size={16} fill={seller.ratingAvg > 0 ? '#d97706' : 'transparent'} /> {seller.ratingAvg > 0 ? seller.ratingAvg.toFixed(1) : 'Chưa có'}
-            </div>
+            {totalReviewsCount > 0 && effectiveRating > 0 ? (
+              <div style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 800, fontSize: '14px' }}>
+                <Star size={16} fill="#d97706" color="#d97706" /> {effectiveRating.toFixed(1)}
+              </div>
+            ) : (
+              <div style={{ color: '#64748b', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: 600, fontSize: '13px' }}>
+                <Star size={16} fill="transparent" color="#cbd5e1" /> Chưa có đánh giá
+              </div>
+            )}
             <div style={{ color: '#64748b' }}>
-              Đánh giá cửa hàng <strong style={{ color: '#0f172a' }}>({seller.ratingCount})</strong>
+              <strong style={{ color: '#0f172a' }}>({totalReviewsCount})</strong>
             </div>
           </div>
 
@@ -847,16 +859,16 @@ export function SellerStorefrontView({
             }}
           >
             <div style={{ textAlign: 'center', minWidth: '140px' }}>
-              <div style={{ fontSize: '42px', fontWeight: 900, color: '#d97706', lineHeight: 1 }}>
-                {seller.ratingAvg > 0 ? seller.ratingAvg.toFixed(1) : '—'}
+              <div style={{ fontSize: '42px', fontWeight: 900, color: totalReviewsCount > 0 && effectiveRating > 0 ? '#d97706' : '#94a3b8', lineHeight: 1 }}>
+                {totalReviewsCount > 0 && effectiveRating > 0 ? effectiveRating.toFixed(1) : '—'}
               </div>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '3px', margin: '8px 0 4px' }}>
                 {[1, 2, 3, 4, 5].map((i) => (
                   <Star
                     key={i}
                     size={18}
-                    fill={i <= Math.round(seller.ratingAvg) && seller.ratingAvg > 0 ? '#d97706' : 'transparent'}
-                    color="#d97706"
+                    fill={totalReviewsCount > 0 && effectiveRating > 0 && i <= Math.round(effectiveRating) ? '#d97706' : 'transparent'}
+                    color={totalReviewsCount > 0 && effectiveRating > 0 ? '#d97706' : '#cbd5e1'}
                   />
                 ))}
               </div>
@@ -1037,8 +1049,8 @@ export function SellerStorefrontView({
 
               <div style={{ padding: '14px', borderRadius: '12px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
                 <span style={{ color: '#64748b', display: 'block', fontSize: '11px', marginBottom: '2px' }}>Đánh giá trung bình:</span>
-                <strong style={{ color: '#d97706' }}>
-                  {seller.ratingAvg > 0 ? `${seller.ratingAvg.toFixed(1)} / 5.0 ⭐ (${seller.ratingCount} đánh giá)` : 'Chưa có đánh giá'}
+                <strong style={{ color: totalReviewsCount > 0 && effectiveRating > 0 ? '#d97706' : '#64748b' }}>
+                  {totalReviewsCount > 0 && effectiveRating > 0 ? `${effectiveRating.toFixed(1)} / 5.0 ⭐ (${totalReviewsCount} đánh giá)` : 'Chưa có đánh giá'}
                 </strong>
               </div>
             </div>

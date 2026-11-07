@@ -131,7 +131,11 @@ function ProductCard({ product, locale }: { product: Awaited<ReturnType<typeof p
           href={`/shop/sellers/${product.seller.storeSlug}`}
           style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 4 }}
         >
-          <Star size={12} /> {product.seller.storeName} · {Number(product.seller.ratingAvg).toFixed(1)}
+          <Star size={12} fill={(product.seller as any).ratingCount > 0 ? '#d97706' : 'transparent'} color={(product.seller as any).ratingCount > 0 ? '#d97706' : '#94a3b8'} />
+          <span>{product.seller.storeName}</span>
+          {(product.seller as any).ratingCount > 0 && Number(product.seller.ratingAvg) > 0 && (
+            <span>· {Number(product.seller.ratingAvg).toFixed(1)}</span>
+          )}
         </Link>
       )}
 

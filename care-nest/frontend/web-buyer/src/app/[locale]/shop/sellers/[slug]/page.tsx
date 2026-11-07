@@ -5,6 +5,9 @@ import { reviewsService } from '@/lib/services/reviews.service';
 import { sellerMetadata, type Locale } from '@/lib/seo';
 import { SellerStorefrontView } from '@/components/shop/seller-storefront-view';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface PageProps {
   params: { locale: string; slug: string };
   searchParams: { page?: string };
@@ -32,8 +35,7 @@ export default async function SellerPage({ params, searchParams }: PageProps) {
 
   const { seller, products } = storefront;
 
-  // Recent reviews — pulled in parallel; if the reviews service
-  // is unreachable, reviewsService returns rich fallback reviews.
+  // Recent reviews — pulled in parallel from database
   let reviews: Awaited<ReturnType<typeof reviewsService.listForSeller>> | null = null;
   try {
     reviews = await reviewsService.listForSeller(seller.id, 10, 0);

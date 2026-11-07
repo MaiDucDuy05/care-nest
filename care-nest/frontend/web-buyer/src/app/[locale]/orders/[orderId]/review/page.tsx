@@ -61,6 +61,10 @@ export default function ReviewPage() {
         const data = await ordersService.getOrder(orderId);
         if (isMounted) {
           setOrder(data);
+          if (data?.review) {
+            setRating(data.review.rating || 5);
+            if (data.review.comment) setComment(data.review.comment);
+          }
         }
       } catch (err) {
         console.error('Error fetching order for review:', err);
@@ -116,18 +120,23 @@ export default function ReviewPage() {
       // Clean up raw JSON error messages if any
       try {
         const parsed = JSON.parse(rawMsg);
-        if (parsed.message?.includes('Only delivered orders can be reviewed')) {
+        const msg = parsed.message || rawMsg;
+        if (msg.includes('Only delivered orders can be reviewed')) {
           setError(
             'Chỉ đơn hàng đã giao thành công mới có thể đánh giá. Vui lòng bấm "Xác Nhận Đã Nhận Hàng" phía trên trước.'
           );
+        } else if (msg.includes('already been reviewed')) {
+          setDone(true);
         } else {
-          setError(parsed.message || rawMsg);
+          setError(msg);
         }
       } catch {
         if (rawMsg.includes('Only delivered orders can be reviewed')) {
           setError(
             'Chỉ đơn hàng đã giao thành công mới có thể đánh giá. Vui lòng bấm "Xác Nhận Đã Nhận Hàng" phía trên trước.'
           );
+        } else if (rawMsg.includes('already been reviewed')) {
+          setDone(true);
         } else {
           setError(rawMsg);
         }
@@ -289,6 +298,30 @@ export default function ReviewPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Đã đánh giá trước đó */}
+      {(order?.isReviewed || order?.review) && (
+        <div
+          style={{
+            padding: '12px 16px',
+            borderRadius: '12px',
+            background: '#ecfdf5',
+            color: '#065f46',
+            border: '1px solid #a7f3d0',
+            fontSize: '13px',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '20px',
+          }}
+        >
+          <CheckCircle2 size={16} />
+          <span>
+            Đơn hàng này đã có đánh giá ({order.review?.rating || rating}★). Bạn có thể chỉnh sửa nội dung hoặc mức đánh giá bên dưới và bấm &quot;Cập nhật đánh giá&quot;.
+          </span>
         </div>
       )}
 
@@ -454,10 +487,10 @@ export default function ReviewPage() {
         >
           {submitting ? (
             <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <Loader2 size={16} className="animate-spin" /> Đang gửi đánh giá...
+              <Loader2 size={16} className="animate-spin" /> {order?.isReviewed || order?.review ? 'Đang cập nhật đánh giá...' : 'Đang gửi đánh giá...'}
             </span>
           ) : (
-            t('submit') || 'Gửi đánh giá'
+            order?.isReviewed || order?.review ? 'Cập nhật đánh giá' : (t('submit') || 'Gửi đánh giá')
           )}
         </button>
       </form>

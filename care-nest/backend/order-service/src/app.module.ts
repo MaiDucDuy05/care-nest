@@ -11,10 +11,10 @@ import { ReviewsModule } from './reviews/reviews.module.js';
     MetricsModule,
     HealthModule,
     CartModule,
+    ReviewsModule,
     OrdersModule,
     InventoryModule,
     AnalyticsModule,
-    ReviewsModule,
   ],
 })
 export class AppModule implements NestModule {

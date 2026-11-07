@@ -80,10 +80,33 @@ export class ReviewsService {
       select: { id: true },
     });
     if (existing) {
-      throw new ConflictException('This order has already been reviewed');
+      // Buyer is updating their previous review for this order
+      const updated = await this.prisma.review.update({
+        where: { id: existing.id },
+        data: {
+          rating,
+          comment: comment || null,
+        },
+      });
+
+      // Keep seller aggregates accurately in sync
+      const agg = await this.prisma.review.aggregate({
+        where: { sellerId: order.sellerId },
+        _avg: { rating: true },
+        _count: { id: true },
+      });
+      await this.prisma.seller.update({
+        where: { id: order.sellerId },
+        data: {
+          ratingAvg: agg._avg.rating ? Number(agg._avg.rating) : 0,
+          ratingCount: agg._count.id,
+        },
+      });
+
+      return updated;
     }
 
-    return this.prisma.review.create({
+    const created = await this.prisma.review.create({
       data: {
         orderId: input.orderId,
         sellerId: order.sellerId,
@@ -92,6 +115,21 @@ export class ReviewsService {
         comment: comment || null,
       },
     });
+
+    const agg = await this.prisma.review.aggregate({
+      where: { sellerId: order.sellerId },
+      _avg: { rating: true },
+      _count: { id: true },
+    });
+    await this.prisma.seller.update({
+      where: { id: order.sellerId },
+      data: {
+        ratingAvg: agg._avg.rating ? Number(agg._avg.rating) : 0,
+        ratingCount: agg._count.id,
+      },
+    });
+
+    return created;
   }
 
   /**
@@ -136,6 +174,54 @@ export class ReviewsService {
       total,
       averageRating: Number(seller.ratingAvg),
       ratingCount: seller.ratingCount,
+    };
+  }
+
+  /**
+   * Public read: list reviews for a product across delivered orders.
+   */
+  async listForProduct(productId: string, limit = 10, offset = 0): Promise<SellerReviewsResult> {
+    const take = Math.min(Math.max(limit, 1), 50);
+    const skip = Math.max(offset, 0);
+
+    const where = {
+      order: {
+        items: {
+          some: { productId },
+        },
+      },
+    };
+
+    const [rows, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        take,
+        skip,
+        include: {
+          buyer: { select: { fullName: true } },
+        },
+      }),
+      this.prisma.review.count({ where }),
+    ]);
+
+    const ratingSum = rows.reduce((acc, r) => acc + r.rating, 0);
+    const avg = total > 0 && rows.length > 0 ? ratingSum / rows.length : 0;
+
+    const items: SellerReviewListItem[] = rows.map((r) => ({
+      id: r.id,
+      rating: r.rating,
+      comment: r.comment,
+      createdAt: r.createdAt.toISOString(),
+      buyerName: r.buyer?.fullName || 'Khách hàng',
+      orderId: r.orderId,
+    }));
+
+    return {
+      items,
+      total,
+      averageRating: avg,
+      ratingCount: total,
     };
   }
 }

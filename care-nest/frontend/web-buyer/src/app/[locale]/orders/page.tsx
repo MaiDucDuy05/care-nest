@@ -16,6 +16,7 @@ import {
   Loader2,
   Lock,
   Search,
+  CreditCard,
 } from 'lucide-react';
 import { ordersService, type Order, type OrderStatus } from '@/services/orders.service';
 import { cartService, emitCartUpdated } from '@/services/cart.service';
@@ -50,6 +51,25 @@ export default function OrdersListPage() {
   const [activeTab, setActiveTab] = useState<TabFilter>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [reorderingId, setReorderingId] = useState<string | null>(null);
+  const [confirmingDeliveryId, setConfirmingDeliveryId] = useState<string | null>(null);
+
+  const handleConfirmDelivery = async (orderId: string) => {
+    setConfirmingDeliveryId(orderId);
+    try {
+      const updated = await ordersService.confirmDelivery(orderId);
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderId
+            ? { ...o, status: 'DELIVERED', ...(updated || {}) }
+            : o
+        )
+      );
+    } catch (err) {
+      console.error('Lỗi xác nhận nhận hàng:', err);
+    } finally {
+      setConfirmingDeliveryId(null);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -319,7 +339,67 @@ export default function OrdersListPage() {
                     </span>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                    {/* Badge Trạng thái thanh toán */}
+                    {order.paymentStatus === 'PAID' ? (
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '3px 8px',
+                          borderRadius: '12px',
+                          color: '#059669',
+                          background: '#ecfdf5',
+                          border: '1px solid #a7f3d0',
+                        }}
+                      >
+                        Đã thanh toán
+                      </span>
+                    ) : order.paymentStatus === 'FAILED' ? (
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '3px 8px',
+                          borderRadius: '12px',
+                          color: '#dc2626',
+                          background: '#fef2f2',
+                          border: '1px solid #fecaca',
+                        }}
+                      >
+                        Thanh toán thất bại
+                      </span>
+                    ) : order.paymentMethod === 'COD' ? (
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          padding: '3px 8px',
+                          borderRadius: '12px',
+                          color: '#0284c7',
+                          background: '#f0f9ff',
+                          border: '1px solid #bae6fd',
+                        }}
+                      >
+                        Thu tiền COD
+                      </span>
+                    ) : (
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          padding: '3px 8px',
+                          borderRadius: '12px',
+                          color: '#d97706',
+                          background: '#fffbeb',
+                          border: '1px solid #fde68a',
+                        }}
+                      >
+                        Chờ thanh toán
+                      </span>
+                    )}
+
+                    {/* Badge Trạng thái đơn hàng */}
                     <span
                       style={{
                         fontSize: '12px',
@@ -404,15 +484,76 @@ export default function OrdersListPage() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    {/* Nút Người mua xác nhận đã nhận hàng khi SHIPPED */}
+                    {order.status === 'SHIPPED' && (
+                      <button
+                        type="button"
+                        onClick={() => handleConfirmDelivery(order.id)}
+                        disabled={confirmingDeliveryId === order.id}
+                        className="btn btn-primary"
+                        style={{
+                          padding: '8px 14px',
+                          fontSize: '13px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          background: 'linear-gradient(135deg, #0d9488 0%, #059669 100%)',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {confirmingDeliveryId === order.id ? (
+                          <>
+                            <Loader2 size={14} className="animate-spin" /> Đang cập nhật...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 size={14} /> Đã nhận hàng
+                          </>
+                        )}
+                      </button>
+                    )}
+
                     {/* Nút đánh giá nếu đã nhận hàng */}
                     {order.status === 'DELIVERED' && (
-                      <Link
-                        href={`/orders/${order.id}/review`}
-                        className="btn btn-secondary"
-                        style={{ padding: '8px 14px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
-                      >
-                        <Star size={15} style={{ color: '#d97706' }} /> Đánh giá
-                      </Link>
+                      order.isReviewed || order.review ? (
+                        <Link
+                          href={`/orders/${order.id}/review`}
+                          className="btn"
+                          style={{
+                            padding: '8px 14px',
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            background: '#f0fdf4',
+                            color: '#16a34a',
+                            border: '1px solid #bbf7d0',
+                            fontWeight: 700,
+                          }}
+                          title="Bấm để xem hoặc chỉnh sửa đánh giá của bạn"
+                        >
+                          <Star size={14} fill="#d97706" color="#d97706" />
+                          <span>{order.review?.rating ? `${order.review.rating}★ ` : ''}Đã đánh giá</span>
+                        </Link>
+                      ) : (
+                        <Link
+                          href={`/orders/${order.id}/review`}
+                          className="btn btn-secondary"
+                          style={{
+                            padding: '8px 14px',
+                            fontSize: '13px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            border: '1px solid #f59e0b',
+                            color: '#d97706',
+                            background: '#fffbeb',
+                            fontWeight: 700,
+                          }}
+                        >
+                          <Star size={15} style={{ color: '#d97706' }} /> Đánh giá
+                        </Link>
+                      )
                     )}
 
                     {/* Nút mua lại */}
@@ -432,6 +573,27 @@ export default function OrdersListPage() {
                         </>
                       )}
                     </button>
+
+                    {/* Nút thanh toán ngay cho đơn online chưa thanh toán */}
+                    {order.paymentStatus !== 'PAID' && order.paymentMethod !== 'COD' && order.status === 'CREATED' && (
+                      <Link
+                        href={`/orders/${order.id}`}
+                        className="btn"
+                        style={{
+                          padding: '8px 14px',
+                          fontSize: '13px',
+                          fontWeight: 700,
+                          color: '#ffffff',
+                          background: '#059669',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        <CreditCard size={14} /> Thanh toán ngay
+                      </Link>
+                    )}
 
                     {/* Nút xem chi tiết */}
                     <Link

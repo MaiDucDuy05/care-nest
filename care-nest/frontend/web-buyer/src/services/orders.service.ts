@@ -33,6 +33,13 @@ export interface ShippingAddress {
   country?: string;
 }
 
+export interface OrderReview {
+  id: string;
+  rating: number;
+  comment?: string | null;
+  createdAt: string;
+}
+
 export interface Order {
   id: string;
   orderNumber: string;
@@ -45,9 +52,13 @@ export interface Order {
   total: number;
   shippingAddress: ShippingAddress;
   paymentMethod?: string;
+  paymentStatus?: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED' | 'EXPIRED' | string;
+  paidAt?: string;
   note?: string;
   createdAt: string;
   items: OrderItem[];
+  isReviewed?: boolean;
+  review?: OrderReview | null;
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -70,6 +81,7 @@ export const ordersService = {
 
     const res = await fetch(`${ORDER_API}/api/v1/orders?page=${page}&pageSize=${pageSize}`, {
       headers: getAuthHeaders(),
+      cache: 'no-store',
     });
 
     if (!res.ok) {
@@ -89,8 +101,12 @@ export const ordersService = {
       total: Number(o.total || 0),
       shippingAddress: o.shippingAddress || {},
       paymentMethod: o.payment?.method || o.paymentMethod || 'COD',
+      paymentStatus: o.paymentStatus || o.payment?.status,
+      paidAt: o.paidAt || o.payment?.paidAt,
       note: o.note,
       createdAt: o.createdAt || new Date().toISOString(),
+      isReviewed: o.isReviewed ?? !!o.review,
+      review: o.review ?? null,
       items: (o.items || []).map((i: any) => ({
         id: i.id,
         productId: i.productId,
@@ -118,6 +134,7 @@ export const ordersService = {
 
     const res = await fetch(`${ORDER_API}/api/v1/orders/${encodeURIComponent(orderId)}`, {
       headers: getAuthHeaders(),
+      cache: 'no-store',
     });
 
     if (res.status === 404) return null;
@@ -138,8 +155,12 @@ export const ordersService = {
       total: Number(o.total || 0),
       shippingAddress: o.shippingAddress || {},
       paymentMethod: o.payment?.method || o.paymentMethod || 'COD',
+      paymentStatus: o.paymentStatus || o.payment?.status,
+      paidAt: o.paidAt || o.payment?.paidAt,
       note: o.note,
       createdAt: o.createdAt || new Date().toISOString(),
+      isReviewed: o.isReviewed ?? !!o.review,
+      review: o.review ?? null,
       items: (o.items || []).map((i: any) => ({
         id: i.id,
         productId: i.productId,

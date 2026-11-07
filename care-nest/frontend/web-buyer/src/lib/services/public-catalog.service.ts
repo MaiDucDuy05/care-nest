@@ -50,8 +50,7 @@ async function get<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${CATALOG_API}${path}`, {
     ...init,
     headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
-    // Always revalidate server-rendered pages so SEO content stays fresh
-    next: { revalidate: 300 },
+    cache: 'no-store',
   });
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);

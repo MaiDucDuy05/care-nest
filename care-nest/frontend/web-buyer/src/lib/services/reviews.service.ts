@@ -28,7 +28,7 @@ async function jsonFetch<T>(url: string, init?: RequestInit & { token?: string }
     ...(init?.headers as Record<string, string> | undefined),
   };
   if (init?.token) headers.Authorization = `Bearer ${init.token}`;
-  const res = await fetch(url, { ...init, headers });
+  const res = await fetch(url, { ...init, headers, cache: 'no-store' });
   if (!res.ok) {
     const text = await res.text().catch(() => res.statusText);
     const err = new Error(text || res.statusText) as Error & { status?: number };
@@ -44,6 +44,21 @@ export const reviewsService = {
     try {
       return await jsonFetch<SellerReviews>(
         `${ORDER_API}/api/v1/orders/reviews?sellerId=${encodeURIComponent(sellerId)}&limit=${limit}&offset=${offset}`
+      );
+    } catch {
+      return {
+        items: [],
+        total: 0,
+        averageRating: 0,
+        ratingCount: 0,
+      };
+    }
+  },
+
+  async listForProduct(productId: string, limit = 10, offset = 0): Promise<SellerReviews> {
+    try {
+      return await jsonFetch<SellerReviews>(
+        `${ORDER_API}/api/v1/orders/reviews?productId=${encodeURIComponent(productId)}&limit=${limit}&offset=${offset}`
       );
     } catch {
       return {

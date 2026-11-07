@@ -19,10 +19,13 @@ import {
   ShieldCheck,
   Phone,
   User,
+  QrCode,
+  AlertCircle,
 } from 'lucide-react';
 import { ordersService, type Order } from '@/services/orders.service';
 import { cartService, emitCartUpdated } from '@/services/cart.service';
-import { PaymentSimulatorModal, PaymentGatewayType } from '@/components/payment/payment-simulator-modal';
+import { paymentService } from '@/services/payment.service';
+import { VietQrPaymentModal } from '@/components/payment/vietqr-payment-modal';
 
 const formatVnd = (price: number) => {
   return new Intl.NumberFormat('vi-VN').format(price) + ' đ';
@@ -53,7 +56,38 @@ export default function OrderDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isReordering, setIsReordering] = useState(false);
   const [isConfirmingDelivery, setIsConfirmingDelivery] = useState(false);
-  const [showSimulator, setShowSimulator] = useState(false);
+  const [showVietQrModal, setShowVietQrModal] = useState(false);
+  const [isPayingOnline, setIsPayingOnline] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+
+  const handlePayOnline = async () => {
+    if (!order) return;
+    setIsPayingOnline(true);
+    setPaymentError(null);
+    try {
+      const returnPath = '/vi/shop/payment/vnpay-return';
+      const returnUrl = typeof window !== 'undefined' ? `${window.location.origin}${returnPath}` : '';
+      const paymentIntent = await paymentService.createPayment({
+        orderId: order.id,
+        method: 'VNPAY',
+        amount: order.total || order.subtotal,
+        returnUrl,
+      });
+
+      const redirectUrl = paymentIntent?.gatewayResponse?.paymentUrl;
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+        return;
+      }
+      throw new Error('Cổng thanh toán không trả về đường dẫn thanh toán hợp lệ.');
+    } catch (err: unknown) {
+      console.error('Lỗi khởi tạo thanh toán trực tuyến:', err);
+      const msg = (err as Error)?.message || 'Không thể kết nối đến cổng thanh toán';
+      setPaymentError(msg);
+    } finally {
+      setIsPayingOnline(false);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -392,33 +426,160 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
-            <div style={{ padding: '12px', background: 'var(--bg-card-subtle, #f8fafc)', borderRadius: 'var(--radius-md, 8px)', fontSize: '13px', marginBottom: '20px' }}>
-              <div style={{ color: 'var(--text-muted)', marginBottom: '4px' }}>Phương thức thanh toán:</div>
-              <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>
-                {order.paymentMethod === 'VNPAY'
-                  ? 'Cổng thanh toán VNPAY'
-                  : order.paymentMethod === 'MOMO'
-                  ? 'Ví điện tử MoMo'
-                  : order.paymentMethod === 'BANK_TRANSFER'
-                  ? 'Chuyển khoản ngân hàng'
-                  : 'Thanh toán khi nhận hàng (COD)'}
+            {/* Khối hiển thị thông tin và Trạng Thái Thanh Toán */}
+            <div
+              style={{
+                padding: '14px 16px',
+                borderRadius: 'var(--radius-md, 12px)',
+                fontSize: '13px',
+                marginBottom: '18px',
+                background:
+                  order.paymentStatus === 'PAID'
+                    ? '#ecfdf5'
+                    : order.paymentStatus === 'FAILED'
+                    ? '#fef2f2'
+                    : order.paymentMethod === 'COD'
+                    ? '#f0fdf4'
+                    : '#fffbeb',
+                border: `1px solid ${
+                  order.paymentStatus === 'PAID'
+                    ? '#a7f3d0'
+                    : order.paymentStatus === 'FAILED'
+                    ? '#fecaca'
+                    : order.paymentMethod === 'COD'
+                    ? '#bbf7d0'
+                    : '#fde68a'
+                }`,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Trạng thái thanh toán:</span>
+                {order.paymentStatus === 'PAID' ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 700,
+                      color: '#059669',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <CheckCircle2 size={14} /> ĐÃ THANH TOÁN
+                  </span>
+                ) : order.paymentStatus === 'FAILED' ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 700,
+                      color: '#dc2626',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <AlertCircle size={14} /> CHƯA THÀNH CÔNG
+                  </span>
+                ) : order.paymentMethod === 'COD' ? (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 700,
+                      color: '#0284c7',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <Truck size={14} /> THU TIỀN KHI GIAO (COD)
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontWeight: 700,
+                      color: '#d97706',
+                      fontSize: '12px',
+                    }}
+                  >
+                    <Clock size={14} /> CHỜ THANH TOÁN
+                  </span>
+                )}
               </div>
+
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>
+                Phương thức: {order.paymentMethod === 'VNPAY'
+                  ? 'Cổng thanh toán VNPAY'
+                  : order.paymentMethod === 'BANK_TRANSFER'
+                  ? 'Chuyển khoản VietQR'
+                  : 'Thanh toán tiền mặt khi nhận hàng (COD)'}
+              </div>
+
+              {order.paymentStatus === 'PAID' ? (
+                <div style={{ fontSize: '12px', color: '#047857', marginTop: '4px', lineHeight: 1.5 }}>
+                  {order.paidAt ? `Đã thanh toán vào ${formatDate(order.paidAt)}. ` : 'Đã thanh toán thành công. '}
+                  Khoản tiền được bảo đảm an toàn qua CareNest Escrow 7 ngày.
+                </div>
+              ) : order.paymentStatus === 'FAILED' ? (
+                <div style={{ fontSize: '12px', color: '#b91c1c', marginTop: '4px', lineHeight: 1.5 }}>
+                  Giao dịch thanh toán chưa hoàn tất hoặc bị hủy. Quý khách vui lòng bấm nút bên dưới để thanh toán lại.
+                </div>
+              ) : order.paymentMethod === 'COD' ? (
+                <div style={{ fontSize: '12px', color: '#0369a1', marginTop: '4px', lineHeight: 1.5 }}>
+                  Quý khách sẽ thanh toán trực tiếp số tiền {formatVnd(order.total || order.subtotal)} cho nhân viên giao hàng khi nhận kiện hàng.
+                </div>
+              ) : (
+                <div style={{ fontSize: '12px', color: '#b45309', marginTop: '4px', lineHeight: 1.5 }}>
+                  Đơn hàng đang chờ thanh toán. Vui lòng thanh toán để nhà bán hàng xác nhận và chuẩn bị gửi kiện hàng.
+                </div>
+              )}
             </div>
 
-            {/* Nút Giả lập thanh toán Sandbox */}
-            <button
-              type="button"
-              onClick={() => setShowSimulator(true)}
-              className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200/80 transition-colors shadow-2xs mb-3 cursor-pointer"
-            >
-              <CreditCard size={15} className="text-teal-600" />
-              <span>Thử Nghiệm Giả Lập Thanh Toán</span>
-            </button>
+            {/* Nút thanh toán trực tuyến / VietQR khi chưa thanh toán */}
+            {order.paymentStatus !== 'PAID' && order.status !== 'CANCELLED' && order.status !== 'RETURNED' && (
+              <>
+                {order.paymentMethod === 'BANK_TRANSFER' && (
+                  <button
+                    type="button"
+                    onClick={() => setShowVietQrModal(true)}
+                    className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-teal-800 bg-teal-50 hover:bg-teal-100 border border-teal-200/80 transition-colors shadow-2xs mb-3 cursor-pointer"
+                  >
+                    <QrCode size={15} className="text-teal-600" />
+                    <span>Quét mã VietQR chuyển khoản ngay</span>
+                  </button>
+                )}
+
+                {order.paymentMethod === 'VNPAY' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handlePayOnline}
+                      disabled={isPayingOnline}
+                      className="w-full inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-colors shadow-2xs mb-3 cursor-pointer disabled:opacity-60"
+                    >
+                      {isPayingOnline ? <Loader2 size={15} className="animate-spin text-white" /> : <CreditCard size={15} className="text-white" />}
+                      <span>
+                        {order.paymentStatus === 'FAILED'
+                          ? 'Thử thanh toán lại qua VNPAY'
+                          : 'Thanh toán ngay qua VNPAY'}
+                      </span>
+                    </button>
+                    {paymentError && (
+                      <div className="mb-3 p-2.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg">
+                        {paymentError}
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
 
             {/* Các nút hành động */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {/* Nút Người mua xác nhận đã nhận hàng */}
-              {order.status !== 'DELIVERED' && order.status !== 'CANCELLED' && order.status !== 'RETURNED' && (
+              {/* Nút Người mua xác nhận đã nhận hàng (CHỈ HIỂN THỊ KHI ĐƠN ĐÃ GIAO ĐI - SHIPPED) */}
+              {order.status === 'SHIPPED' && (
                 <button
                   type="button"
                   onClick={handleConfirmDelivery}
@@ -446,38 +607,50 @@ export default function OrderDetailPage() {
                 </button>
               )}
 
-              {/* Nút đánh giá review sản phẩm */}
-              <Link
-                href={`/orders/${order.id}/review`}
-                className="btn btn-secondary"
-                style={{
-                  padding: '11px',
-                  justifyContent: 'center',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  ...(order.status === 'DELIVERED'
-                    ? {
-                        border: '1.5px solid #d97706',
-                        color: '#b45309',
-                        background: '#fffbeb',
-                        fontWeight: 700,
-                      }
-                    : {}),
-                }}
-              >
-                <Star
-                  size={16}
-                  style={{
-                    color: '#d97706',
-                    fill: order.status === 'DELIVERED' ? '#d97706' : 'transparent',
-                  }}
-                />
-                <span>
-                  {order.status === 'DELIVERED' ? 'Đánh giá đơn hàng (Đã nhận hàng)' : 'Đánh giá đơn hàng'}
-                </span>
-              </Link>
+              {/* Nút đánh giá review sản phẩm (CHỈ HIỆN KHI ĐƠN HÀNG ĐÃ GIAO THÀNH CÔNG - DELIVERED) */}
+              {order.status === 'DELIVERED' && (
+                order.isReviewed || order.review ? (
+                  <Link
+                    href={`/orders/${order.id}/review`}
+                    className="btn"
+                    style={{
+                      padding: '11px',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      border: '1.5px solid #86efac',
+                      color: '#15803d',
+                      background: '#f0fdf4',
+                      fontWeight: 700,
+                    }}
+                  >
+                    <CheckCircle2 size={16} />
+                    <span>Đã đánh giá ({order.review?.rating || 5}★) — Bấm để chỉnh sửa</span>
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/orders/${order.id}/review`}
+                    className="btn btn-secondary"
+                    style={{
+                      padding: '11px',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      border: '1.5px solid #d97706',
+                      color: '#b45309',
+                      background: '#fffbeb',
+                      fontWeight: 700,
+                    }}
+                  >
+                    <Star size={16} style={{ color: '#d97706', fill: '#d97706' }} />
+                    <span>Đánh giá đơn hàng (Đã nhận hàng)</span>
+                  </Link>
+                )
+              )}
 
               {/* Nút mua lại */}
               <button
@@ -514,16 +687,16 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
-      {/* Payment Simulator Modal */}
-      {showSimulator && order && (
-        <PaymentSimulatorModal
-          isOpen={showSimulator}
+      {/* VietQR Payment Modal */}
+      {showVietQrModal && order && (
+        <VietQrPaymentModal
+          isOpen={showVietQrModal}
           orderId={order.id}
           orderNumber={order.orderNumber}
           amount={order.total || order.subtotal}
-          initialMethod={(order.paymentMethod as PaymentGatewayType) || 'VNPAY'}
-          onClose={() => setShowSimulator(false)}
-          onSuccess={() => {
+          onClose={() => setShowVietQrModal(false)}
+          onPaidSuccess={() => {
+            setShowVietQrModal(false);
             setOrder((prev) => (prev ? { ...prev, status: 'CONFIRMED' } : prev));
           }}
         />
