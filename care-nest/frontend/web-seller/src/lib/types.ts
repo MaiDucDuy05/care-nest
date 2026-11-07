@@ -77,8 +77,23 @@ export interface OrderItem {
   productName: string;
   quantity: number;
   priceVnd: number;
+  unitPriceVnd?: number;
   imeis: string[];
 }
+
+export interface ShippingAddress {
+  fullName?: string;
+  name?: string;
+  phone?: string;
+  addressLine?: string;
+  line1?: string;
+  ward?: string;
+  district?: string;
+  province?: string;
+  country?: string;
+}
+
+export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED' | 'EXPIRED';
 
 export interface Order {
   id: string;
@@ -89,7 +104,11 @@ export interface Order {
   status: OrderStatus;
   totalVnd: number;
   items: OrderItem[];
-  shippingAddress: string;
+  shippingAddress: ShippingAddress | string;
+  paymentId?: string;
+  paymentMethod?: string;
+  paymentStatus?: PaymentStatus;
+  paidAt?: string;
   createdAt: string;
   updatedAt: string;
 }

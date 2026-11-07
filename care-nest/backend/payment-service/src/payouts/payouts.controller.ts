@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query, UseGuards, BadRequestException, Post } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards, BadRequestException, Post, Body } from '@nestjs/common';
 import { z } from 'zod';
 import { PayoutsService } from './payouts.service.js';
 import { PayoutsRepository } from './payouts.repository.js';
@@ -16,7 +16,7 @@ const EntriesQuerySchema = z.object({
   kind: z.enum(['ORDER_CREDIT', 'COMMISSION_DEBIT', 'REFUND_DEBIT', 'PAYOUT_DEBIT', 'ADJUSTMENT']).optional(),
 });
 
-@Controller('seller/payouts')
+@Controller(['seller/payouts', 'payouts'])
 @UseGuards(JwtAuthGuard)
 export class PayoutsController {
   constructor(
@@ -59,6 +59,132 @@ export class PayoutsController {
       pendingVnd: Number(wallet.pendingVnd),
       lifetimeVnd: Number(wallet.lifetimeVnd),
       currency: wallet.currency,
+    };
+  }
+
+  @Post('topup')
+  async topup(
+    @CurrentUser() user: { id: string },
+    @Body() body: { amountVnd: number; note?: string }
+  ) {
+    const amount = Number(body?.amountVnd);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('Số tiền nạp phải lớn hơn 0');
+    }
+    const prisma = (await import('@carenest/database')).getPrismaClient();
+    const seller = await prisma.seller.findUnique({ where: { userId: user.id } });
+    if (!seller) throw new BadRequestException('Không tìm thấy gian hàng của bạn');
+    const wallet = await this.repository.getOrCreateWallet(seller.id);
+
+    const newBalance = Number(wallet.balanceVnd) + amount;
+    const newLifetime = Number(wallet.lifetimeVnd) + amount;
+
+    const [updatedWallet, entry] = await prisma.$transaction([
+      prisma.sellerWallet.update({
+        where: { id: wallet.id },
+        data: {
+          balanceVnd: newBalance,
+          lifetimeVnd: newLifetime,
+        },
+      }),
+      prisma.walletEntry.create({
+        data: {
+          walletId: wallet.id,
+          kind: 'ADJUSTMENT',
+          amountVnd: amount,
+          balanceAfterVnd: newBalance,
+          description: body.note?.trim() || 'Nạp tiền vào ví gian hàng',
+        },
+      }),
+    ]);
+
+    return {
+      success: true,
+      balanceVnd: Number(updatedWallet.balanceVnd),
+      pendingVnd: Number(updatedWallet.pendingVnd),
+      lifetimeVnd: Number(updatedWallet.lifetimeVnd),
+      entry: {
+        id: entry.id,
+        kind: entry.kind,
+        amountVnd: Number(entry.amountVnd),
+        balanceAfterVnd: Number(entry.balanceAfterVnd),
+        description: entry.description,
+        createdAt: entry.createdAt,
+      },
+    };
+  }
+
+  @Post('withdraw')
+  async withdraw(
+    @CurrentUser() user: { id: string },
+    @Body() body: { amountVnd: number; bankName?: string; bankAccount?: string; bankAccountName?: string }
+  ) {
+    const amount = Number(body?.amountVnd);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('Số tiền rút phải lớn hơn 0');
+    }
+    const prisma = (await import('@carenest/database')).getPrismaClient();
+    const seller = await prisma.seller.findUnique({ where: { userId: user.id } });
+    if (!seller) throw new BadRequestException('Không tìm thấy gian hàng của bạn');
+    const wallet = await this.repository.getOrCreateWallet(seller.id);
+
+    if (Number(wallet.balanceVnd) < amount) {
+      throw new BadRequestException('Số dư khả dụng không đủ để thực hiện yêu cầu rút tiền');
+    }
+
+    const newBalance = Number(wallet.balanceVnd) - amount;
+    const bankName = body.bankName || 'Ngân hàng Quân Đội (MBBank)';
+    const bankAccount = body.bankAccount || '0987654321';
+    const bankAccountName = body.bankAccountName || seller.storeName;
+
+    const [updatedWallet, payout, entry] = await prisma.$transaction([
+      prisma.sellerWallet.update({
+        where: { id: wallet.id },
+        data: { balanceVnd: newBalance },
+      }),
+      prisma.payout.create({
+        data: {
+          sellerId: seller.id,
+          walletId: wallet.id,
+          amountVnd: amount,
+          bankName,
+          bankAccount,
+          bankAccountName,
+          status: 'PENDING',
+        },
+      }),
+      prisma.walletEntry.create({
+        data: {
+          walletId: wallet.id,
+          kind: 'PAYOUT_DEBIT',
+          amountVnd: -amount,
+          balanceAfterVnd: newBalance,
+          description: `Yêu cầu rút tiền về ${bankName} - STK: ${bankAccount}`,
+        },
+      }),
+    ]);
+
+    return {
+      success: true,
+      payout: {
+        id: payout.id,
+        amountVnd: Number(payout.amountVnd),
+        bankName: payout.bankName,
+        bankAccount: payout.bankAccount,
+        bankAccountName: payout.bankAccountName,
+        status: payout.status,
+        requestedAt: payout.requestedAt,
+        paidAt: payout.paidAt,
+      },
+      balanceVnd: Number(updatedWallet.balanceVnd),
+      entry: {
+        id: entry.id,
+        kind: entry.kind,
+        amountVnd: Number(entry.amountVnd),
+        balanceAfterVnd: Number(entry.balanceAfterVnd),
+        description: entry.description,
+        createdAt: entry.createdAt,
+      },
     };
   }
 

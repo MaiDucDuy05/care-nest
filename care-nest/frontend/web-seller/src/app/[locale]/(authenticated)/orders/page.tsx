@@ -74,6 +74,7 @@ export default function OrdersListPage() {
                 <th>{t('id')}</th>
                 <th>{t('buyer')}</th>
                 <th>{t('total')}</th>
+                <th>Thanh toán</th>
                 <th>{t('status')}</th>
                 <th>{t('createdAt')}</th>
                 <th>{t('actions')}</th>
@@ -85,6 +86,17 @@ export default function OrdersListPage() {
                   <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{o.orderNumber}</td>
                   <td>{o.buyerName}</td>
                   <td style={{ fontWeight: 600 }}>{formatVnd(o.totalVnd)}</td>
+                  <td>
+                    {o.paymentMethod === 'COD' ? (
+                      <span className="badge badge-teal">COD</span>
+                    ) : o.paymentStatus === 'PAID' ? (
+                      <span className="badge badge-green">Đã thanh toán ({o.paymentMethod || 'Online'})</span>
+                    ) : o.paymentStatus === 'FAILED' ? (
+                      <span className="badge badge-red">Thất bại</span>
+                    ) : (
+                      <span className="badge badge-amber">Chờ thanh toán ({o.paymentMethod || 'Online'})</span>
+                    )}
+                  </td>
                   <td>
                     <span className={`badge ${STATUS_COLOR[o.status]}`}>{t(`statuses.${o.status}`)}</span>
                   </td>

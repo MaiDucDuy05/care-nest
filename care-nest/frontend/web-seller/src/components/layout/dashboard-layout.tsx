@@ -16,7 +16,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const t = useTranslations('common');
   const [seller, setSeller] = useState<SellerProfile | null>(null);
   const [kycStatus, setKycStatus] = useState<KYCStatus>('NOT_STARTED');
-  const [loading, setLoading] = useState(true);
+  const [authState, setAuthState] = useState<'loading' | 'authenticated' | 'unauthenticated'>('loading');
 
   useEffect(() => {
     let mounted = true;
@@ -33,10 +33,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
         setSeller(me);
         setKycStatus(latestKycStatus ?? me.kycStatus ?? 'NOT_STARTED');
+        setAuthState('authenticated');
       } catch {
+        if (!mounted) return;
+        setAuthState('unauthenticated');
         router.replace('/login');
-      } finally {
-        if (mounted) setLoading(false);
       }
     })();
     return () => {
@@ -46,13 +47,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const kycApproved = kycStatus === 'APPROVED';
   const isKycExemptRoute = pathname?.startsWith('/kyc') || pathname?.startsWith('/settings');
-  const isBlockedByKyc = !loading && !kycApproved && Boolean(pathname) && !isKycExemptRoute;
+  const isBlockedByKyc =
+    authState === 'authenticated' && !kycApproved && Boolean(pathname) && !isKycExemptRoute;
 
   useEffect(() => {
     if (isBlockedByKyc) router.replace('/kyc');
   }, [isBlockedByKyc, router]);
 
-  if (loading || isBlockedByKyc) {
+  if (authState !== 'authenticated' || isBlockedByKyc) {
     return (
       <div
         style={{

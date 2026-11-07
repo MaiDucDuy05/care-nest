@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { authService } from '@/lib/services/auth.service';
+import { kycService } from '@/lib/services/kyc.service';
 
 const schema = z.object({
   email: z.string().email('Email không hợp lệ'),
@@ -32,7 +33,8 @@ export default function LoginPage() {
     try {
       setSubmitError(null);
       await authService.login(data.email, data.password);
-      router.replace('/dashboard');
+      const kycStatus = await kycService.getStatus().catch(() => null);
+      router.replace(kycStatus === 'APPROVED' ? '/dashboard' : '/kyc');
     } catch (err) {
       setSubmitError((err as Error).message || t('loginFailed'));
     }

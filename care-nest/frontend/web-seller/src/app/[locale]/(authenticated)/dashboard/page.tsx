@@ -54,7 +54,19 @@ export default function DashboardPage() {
     );
   }
 
-  const pendingOrders = orders.filter((o) => o.status === 'CREATED' || o.status === 'CONFIRMED');
+  // Đơn chờ xử lý: chỉ tính các đơn COD hoặc đơn online đã thanh toán thành công
+  const isReadyToProcess = (o: Order) => {
+    if (o.status === 'CANCELLED' || o.status === 'RETURNED' || o.status === 'DELIVERED' || o.status === 'SHIPPED' || o.status === 'PACKING') {
+      return false;
+    }
+    // Nếu là đơn online mà chưa thanh toán -> Khách chưa trả tiền, chưa được giao hàng
+    if (o.paymentMethod && o.paymentMethod !== 'COD' && o.paymentStatus !== 'PAID' && o.status === 'CREATED') {
+      return false;
+    }
+    return o.status === 'CREATED' || o.status === 'CONFIRMED';
+  };
+
+  const pendingOrders = orders.filter(isReadyToProcess);
   const lowStock = products.filter((p) => p.stock < 5);
   const inStockImeis = imeis.filter((i) => i.status === 'IN_STOCK');
 

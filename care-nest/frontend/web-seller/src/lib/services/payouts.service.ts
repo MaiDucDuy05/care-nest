@@ -49,4 +49,35 @@ export const payoutsService = {
       { token }
     );
   },
+
+  async topup(data: { amountVnd: number; note?: string }): Promise<{ success: boolean; balanceVnd: number; entry: WalletEntry }> {
+    const token = getToken();
+    if (!token) throw new Error('not authenticated');
+    return apiFetch<{ success: boolean; balanceVnd: number; entry: WalletEntry }>(
+      `${PAYMENT_API}/api/v1/seller/payouts/topup`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+        token,
+      }
+    );
+  },
+
+  async withdraw(data: {
+    amountVnd: number;
+    bankName?: string;
+    bankAccount?: string;
+    bankAccountName?: string;
+  }): Promise<{ success: boolean; payout: Payout; balanceVnd: number; entry: WalletEntry }> {
+    const token = getToken();
+    if (!token) throw new Error('not authenticated');
+    return apiFetch<{ success: boolean; payout: Payout; balanceVnd: number; entry: WalletEntry }>(
+      `${PAYMENT_API}/api/v1/seller/payouts/withdraw`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+        token,
+      }
+    );
+  },
 };

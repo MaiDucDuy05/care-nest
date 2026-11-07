@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { authService } from '@/lib/services/auth.service';
 import { kycService } from '@/lib/services/kyc.service';
 import type { KYCStatus } from '@/lib/types';
 import { ChevronLeft, ChevronRight, Check, Clock, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
@@ -51,18 +52,24 @@ export default function KycPage() {
 
   useEffect(() => {
     let mounted = true;
-    kycService.getStatus().then((status) => {
-      if (mounted) {
-        setKycStatus(status);
-        setInitialLoading(false);
+    (async () => {
+      try {
+        await authService.me();
+        const status = await kycService.getStatus().catch(() => null);
+        if (mounted) {
+          setKycStatus(status);
+          setInitialLoading(false);
+        }
+      } catch {
+        if (mounted) {
+          router.replace('/login');
+        }
       }
-    }).catch(() => {
-      if (mounted) setInitialLoading(false);
-    });
+    })();
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [router]);
 
   const handleStep1 = (data: Step1Values) => {
     setStep1(data);
